@@ -234,7 +234,7 @@ export default function Home() {
           id="top"
         >
           <section
-            className="hero-section sticky top-0 h-[100svh] min-h-[100svh]"
+            className="hero-section sticky top-0 h-[100svh] min-h-[100svh] cursor-grab active:cursor-grabbing"
             aria-labelledby="hero-heading"
           >
             <AsciiBackground ref={asciiLayerRef} />
@@ -282,13 +282,22 @@ export default function Home() {
               }}
             />
 
-            <div className="page-container relative z-10 flex flex-1 flex-col justify-end pt-14 pb-6">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none hidden md:block absolute inset-0 z-[3]"
+              style={{
+                background:
+                  "linear-gradient(90deg, rgba(13,11,18,0.78) 0%, rgba(13,11,18,0.42) 34%, transparent 58%)",
+              }}
+            />
+
+            <div className="page-container pointer-events-none relative z-10 flex flex-1 flex-col justify-end pt-14 pb-6">
               <div
                 ref={heroCopyRef}
                 data-testid="hero-copy"
-                className="max-w-[680px] will-change-transform"
+                className="pointer-events-none max-w-[680px] will-change-transform"
               >
-                <div className="mb-5 flex items-center gap-3" data-hero-intro>
+                <div className="pointer-events-none mb-5 flex items-center gap-3" data-hero-intro>
                   <AsciiScramble
                     text={IDENTITY.roleLine}
                     trigger="mount"
@@ -302,7 +311,7 @@ export default function Home() {
                   id="hero-heading"
                   trigger="mount"
                   delay={0.1}
-                  className="type-display text-[#F3EEF8]"
+                  className="pointer-events-none type-display text-[#F3EEF8]"
                   lines={[
                     "Ideas made",
                     <>
@@ -313,7 +322,7 @@ export default function Home() {
 
                 <p
                   data-hero-intro
-                  className="mt-6 max-w-[44ch] text-base sm:text-lg leading-relaxed text-[#ADA4B8]"
+                  className="pointer-events-none mt-6 max-w-[44ch] text-base sm:text-lg leading-relaxed text-[#ADA4B8]"
                 >
                   Architecting distributed AI systems, resilient full-stack products, and
                   real-time spatial graphics with neo-classical precision.
@@ -334,10 +343,10 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="page-container relative z-10">
+            <div className="page-container pointer-events-none relative z-10">
               <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#393143] pt-5 text-xs font-mono uppercase tracking-[0.08em] text-[#ADA4B8]">
                 <span className="inline-flex items-center gap-2">
-                  Hover bust to reveal marble surface · Scroll for spatial zoom
+                  Drag to orbit 3D bust · Hover for marble &amp; particle scatter · Scroll to zoom
                 </span>
                 <div className="flex items-center gap-5 tabular-nums">
                   <span

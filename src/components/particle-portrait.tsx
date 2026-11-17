@@ -62,63 +62,77 @@ const vertexShader = /* glsl */ `
 attribute vec3 aNormal;
 attribute float aRand;
 attribute float aPart;
-uniform float uTime, uAssemble, uSize, uGlint, uShine, uRingRadius, uKeep, uHoverOn, uHoverRadius, uDispersion;
+uniform float uTime, uAssemble, uSize, uGlint, uShine, uRingRadius, uKeep, uHoverOn, uHoverRadius, uDispersion, uPulseAge;
 uniform vec2 uHead;
-uniform vec2 uHover, uViewport;
+uniform vec2 uHover, uViewport, uPulseOrigin;
 uniform vec3 uLight;
-varying float vBrightness, vAlpha, vShine, vGlint, vPart, vGlyph, vReveal;
+varying float vBrightness, vAlpha, vShine, vGlint, vPart, vGlyph, vReveal, vScatterGlow;
 mat3 rotX(float a) { float c=cos(a), s=sin(a); return mat3(1.,0.,0., 0.,c,s, 0.,-s,c); }
 mat3 rotY(float a) { float c=cos(a), s=sin(a); return mat3(c,0.,-s, 0.,1.,0., s,0.,c); }
 void main() {
   float head = smoothstep(-1.3,-0.6,position.y);
-  mat3 turn = rotY(uHead.x*(0.25+0.75*head))*rotX(uHead.y*head);
+  mat3 turn = rotY(uHead.x*(0.28+0.72*head))*rotX(uHead.y*head);
   vec3 home = turn*(position-vec3(0.,-1.,0.))+vec3(0.,-1.,0.);
   vec3 n = normalize(turn*aNormal);
-  home += n*sin(uTime*1.4+aRand*60.)*0.006*uDispersion;
-  home += n*(uDispersion-1.)*0.18*(0.3+aRand*0.7);
+  home += n*sin(uTime*1.6+aRand*60.)*0.009*uDispersion;
+  home += n*(uDispersion-1.)*0.2*(0.3+aRand*0.7);
   float r2 = fract(sin(aRand*91.7)*43758.5453);
   float t = clamp((uAssemble-aRand*0.45)/0.55,0.,1.);
   float e = t<0.5 ? 4.*t*t*t : 1.-pow(-2.*t+2.,3.)/2.;
   float angle=aRand*6.2831853;
   vec3 start=vec3(cos(angle)*uRingRadius, sin(angle)*uRingRadius-0.15, 0.);
   vec3 p=mix(start,home,e)+vec3(sin(aRand*40.+uTime*0.3),cos(aRand*31.),0.9+r2*1.4)*sin(e*3.14159)*0.45;
+  vec4 mvPre=modelViewMatrix*vec4(p,1.);
+  vec4 clipPre=projectionMatrix*mvPre;
+  vec2 screenPre=(clipPre.xy/clipPre.w*0.5+0.5)*uViewport;
+  float hoverDist=distance(screenPre,uHover);
+  float scatter=(1.-smoothstep(0.,uHoverRadius*1.65,hoverDist))*uHoverOn;
+  float pulseWave=0.;
+  if(uPulseAge>0. && uPulseAge<1.6){
+    float pulseDist=distance(screenPre,uPulseOrigin);
+    float ringPos=uPulseAge*420.;
+    pulseWave=exp(-pow((pulseDist-ringPos)/75.,2.))*(1.-uPulseAge/1.6);
+  }
+  p+=n*(scatter*0.18*(0.35+r2*0.85)+pulseWave*0.24*(0.4+aRand));
   vec3 toLight=uLight-home;
-  float lit=max(dot(n,normalize(toLight)),0.)/(1.+dot(toLight,toLight)*0.32);
+  float lit=max(dot(n,normalize(toLight)),0.)/(1.+dot(toLight,toLight)*0.3);
   float key=max(dot(n,normalize(vec3(0.5,0.6,0.7))),0.);
   float facing=n.z;
-  float rim=pow(1.-abs(facing),3.);
-  float b=(0.34+key*0.28+lit*1.5+rim*0.22)*mix(0.55,1.,smoothstep(-0.3,0.25,facing));
-  if(aPart>0.5) b*=0.9;
-  if(aPart>1.5) b*=0.82;
-  if(aPart>2.5) b*=0.72;
-  b*=0.7+r2*0.5;
+  float rim=pow(1.-abs(facing),2.6);
+  float b=(0.24+key*0.26+lit*1.12+rim*0.28)*mix(0.45,1.,smoothstep(-0.3,0.25,facing));
+  if(aPart>0.5) b*=0.86;
+  if(aPart>1.5) b*=0.72;
+  if(aPart>2.5) b*=0.64;
+  b*=0.72+r2*0.48;
   float glint=aPart>0.5 ? 1.-smoothstep(0.,0.09,abs(position.x-uGlint)) : 0.;
   float band=home.y-home.x*0.5-uShine;
   float shine=exp(-band*band*4.);
-  b+=glint*1.2+shine*1.3;
+  b+=glint*0.95+shine*1.05+scatter*0.65+pulseWave*0.95;
   vec4 mv=modelViewMatrix*vec4(p,1.);
   gl_Position=projectionMatrix*mv;
-  gl_PointSize=min(22.,uSize*(1.3+r2*0.25)/max(0.1,-mv.z));
+  gl_PointSize=min(18.,uSize*(1.18+r2*0.24+scatter*0.28)/max(0.1,-mv.z));
   vec2 screen=(gl_Position.xy/gl_Position.w*0.5+0.5)*uViewport;
-  vReveal=uHoverOn*(1.-smoothstep(uHoverRadius*0.68,uHoverRadius,distance(screen,uHover)));
-  vGlyph=floor(clamp((b*0.52+r2*0.18),0.,0.999)*16.);
-  vBrightness=b; vAlpha=mix(0.75,1.,e)*step(aRand, aPart>1.5 ? 0.22 : uKeep); vShine=shine; vGlint=glint; vPart=aPart;
+  vReveal=uHoverOn*(1.-smoothstep(uHoverRadius*0.38,uHoverRadius*0.90,distance(screen,uHover)));
+  vScatterGlow=clamp(scatter+pulseWave,0.,1.);
+  vGlyph=floor(clamp((b*0.54+r2*0.18),0.,0.999)*16.);
+  vBrightness=min(b,1.75); vAlpha=mix(0.75,1.,e)*step(aRand, aPart>1.5 ? 0.30 : uKeep); vShine=shine; vGlint=glint; vPart=aPart;
 }`;
 
 const fragmentShader = /* glsl */ `
 uniform vec3 uInk,uAccent,uIvory;
 uniform sampler2D uGlyphAtlas;
-varying float vBrightness,vAlpha,vShine,vGlint,vPart,vGlyph,vReveal;
+varying float vBrightness,vAlpha,vShine,vGlint,vPart,vGlyph,vReveal,vScatterGlow;
 void main() {
   if(vAlpha<0.01) discard;
   vec2 cell=vec2(mod(vGlyph,4.),3.-floor(vGlyph/4.));
   vec2 uv=(cell+vec2(gl_PointCoord.x,1.-gl_PointCoord.y))/4.;
   float glyph=texture2D(uGlyphAtlas,uv).a;
   if(glyph<0.08) discard;
-  float alpha=glyph*vAlpha*(1.-vReveal);
-  vec3 ink=mix(uInk,uIvory,clamp(vShine*0.65,0.,1.));
-  if(vPart>2.5) ink=mix(ink,uAccent,0.68);
-  ink=mix(ink,uAccent,clamp(vGlint*0.78,0.,1.));
+  float alpha=glyph*vAlpha*(1.-vReveal*0.96);
+  if(alpha<0.01) discard;
+  vec3 ink=mix(uInk,uIvory,clamp(vShine*0.55+vScatterGlow*0.40,0.,1.));
+  if(vPart>2.5) ink=mix(ink,uAccent,0.72);
+  ink=mix(ink,uAccent,clamp(vGlint*0.72+vScatterGlow*0.52,0.,1.));
   gl_FragColor=vec4(ink*vBrightness,alpha);
 }`;
 
@@ -130,7 +144,7 @@ mat3 rotX(float a) { float c=cos(a), s=sin(a); return mat3(1.,0.,0., 0.,c,s, 0.,
 mat3 rotY(float a) { float c=cos(a), s=sin(a); return mat3(c,0.,-s, 0.,1.,0., s,0.,c); }
 void main() {
   float head=smoothstep(-1.3,-0.6,position.y);
-  mat3 turn=rotY(uHead.x*(0.25+0.75*head))*rotX(uHead.y*head);
+  mat3 turn=rotY(uHead.x*(0.28+0.72*head))*rotX(uHead.y*head);
   vec3 p=turn*(position-vec3(0.,-1.,0.))+vec3(0.,-1.,0.);
   vNormal=normalize(turn*normal);
   vModelPos=vec3(position.x/2.8,(position.y+0.68)/2.8,position.z/2.8);
@@ -143,11 +157,13 @@ uniform float uHoverOn,uHoverRadius,uAssemble;
 varying vec3 vNormal;
 varying vec3 vModelPos;
 void main() {
-  float reveal=(1.-smoothstep(uHoverRadius*0.68,uHoverRadius,distance(gl_FragCoord.xy,uHover)))*uHoverOn*uAssemble;
-  if(reveal<0.01) discard;
   vec3 n=normalize(vNormal);
   float key=max(dot(n,normalize(vec3(0.5,0.65,0.8))),0.);
-  float rim=pow(1.-abs(n.z),2.2);
+  float rim=pow(1.-abs(n.z),2.4);
+  float spotlight=(1.-smoothstep(uHoverRadius*0.5,uHoverRadius*1.05,distance(gl_FragCoord.xy,uHover)))*uHoverOn;
+  float baseAlpha=clamp(0.11+rim*0.22,0.,0.34)*uAssemble;
+  float reveal=max(baseAlpha,spotlight*uAssemble);
+  if(reveal<0.01) discard;
   float x=abs(vModelPos.x), y=vModelPos.y, z=vModelPos.z;
   // Classical Pentelic marble and obsidian chiaroscuro tones
   vec3 marble=vec3(0.84,0.80,0.90);
@@ -162,7 +178,8 @@ void main() {
   base=mix(base,laurel,leafMask);
   float visor=(1.-smoothstep(0.20,0.24,x))*smoothstep(0.275,0.30,y)*(1.-smoothstep(0.37,0.39,y))*smoothstep(0.1,0.25,z);
   base=mix(base,vec3(0.82,0.74,0.91),visor*0.65);
-  vec3 color=base*(0.38+key*0.68)+vec3(0.74,0.65,0.83)*rim*0.35;
+  float ambientScale=mix(0.24,1.0,spotlight);
+  vec3 color=(base*(0.32+key*0.68)*ambientScale)+vec3(0.74,0.65,0.83)*rim*0.36;
   gl_FragColor=vec4(color,reveal);
 }`;
 
@@ -295,6 +312,7 @@ export default function ParticlePortrait({
   spatialProgressRef,
   controlsRef,
 }: ParticlePortraitProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
   const [progress, setProgress] = useState(0);
   const [ready, setReady] = useState(false);
@@ -316,22 +334,116 @@ export default function ParticlePortrait({
     const pointer = new THREE.Vector2();
     let pointerActive = false;
     let touchUntil = 0;
+    let dragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let orbitBaseYaw = 0;
+    let orbitBasePitch = 0;
+    let targetOrbitYaw = 0;
+    let targetOrbitPitch = 0;
+    let currentOrbitYaw = 0;
+    let currentOrbitPitch = 0;
+    let dragMoved = 0;
+    let pulseStartTime = -10;
+    const pulseOrigin = new THREE.Vector2(-1000, -1000);
 
-    const onMove = (event: PointerEvent) => {
+    const heroInteractionRoot: EventTarget =
+      container.closest(".hero-section") ?? container;
+
+    const updatePointerFromClient = (clientX: number, clientY: number) => {
       const rect = container.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return false;
+      const inside =
+        clientX >= rect.left &&
+        clientX <= rect.right &&
+        clientY >= rect.top &&
+        clientY <= rect.bottom;
       pointer.set(
-        ((event.clientX - rect.left) / Math.max(1, rect.width)) * 2 - 1,
-        1 - ((event.clientY - rect.top) / Math.max(1, rect.height)) * 2
+        ((clientX - rect.left) / rect.width) * 2 - 1,
+        1 - ((clientY - rect.top) / rect.height) * 2
       );
+      return inside;
+    };
+
+    const syncTelemetry = (activeState: boolean, yawValue: number) => {
+      if (!rootRef.current) return;
+      rootRef.current.dataset.hoverActive = activeState ? "true" : "false";
+      rootRef.current.dataset.orbitRad = yawValue.toFixed(3);
+    };
+
+    const onWindowMove = (event: PointerEvent) => {
+      const inside = updatePointerFromClient(event.clientX, event.clientY);
+      pointerActive = inside || dragging;
+      if (dragging) {
+        const dx = event.clientX - dragStartX;
+        const dy = event.clientY - dragStartY;
+        dragMoved = Math.max(dragMoved, Math.hypot(dx, dy));
+        targetOrbitYaw = orbitBaseYaw + dx * 0.0085;
+        targetOrbitPitch = Math.max(-0.55, Math.min(0.55, orbitBasePitch - dy * 0.0045));
+      }
+      if (event.pointerType === "touch" && inside) {
+        touchUntil = performance.now() + 1500;
+      }
+      syncTelemetry(pointerActive, dragging ? targetOrbitYaw : currentOrbitYaw);
+    };
+
+    const onStageDown = (event: PointerEvent) => {
+      if (event.button !== 0 && event.pointerType === "mouse") return;
+      const targetEl = event.target as HTMLElement | null;
+      if (targetEl?.closest("a, button, input, textarea, select, label, [role='button']")) {
+        return;
+      }
+      updatePointerFromClient(event.clientX, event.clientY);
       pointerActive = true;
+      dragging = true;
+      dragStartX = event.clientX;
+      dragStartY = event.clientY;
+      orbitBaseYaw = targetOrbitYaw;
+      orbitBasePitch = targetOrbitPitch;
+      dragMoved = 0;
       if (event.pointerType === "touch") touchUntil = performance.now() + 1500;
+      syncTelemetry(true, targetOrbitYaw);
+      try {
+        container.setPointerCapture(event.pointerId);
+      } catch {
+        // Ignore capture failures in synthetic events
+      }
     };
-    const onLeave = () => {
-      pointerActive = false;
+
+    const onStageUp = (event: PointerEvent) => {
+      if (!dragging) return;
+      dragging = false;
+      const rect = container.getBoundingClientRect();
+      const dpr = renderer?.getPixelRatio() ?? 1;
+      if (dragMoved < 10 && rect.width > 0 && rect.height > 0) {
+        pulseOrigin.set(
+          (event.clientX - rect.left) * dpr,
+          (rect.bottom - event.clientY) * dpr
+        );
+        pulseStartTime = performance.now() * 0.001;
+      }
+      syncTelemetry(pointerActive, targetOrbitYaw);
+      try {
+        if (container.hasPointerCapture(event.pointerId)) {
+          container.releasePointerCapture(event.pointerId);
+        }
+      } catch {
+        // Ignore release errors
+      }
     };
-    container.addEventListener("pointermove", onMove);
-    container.addEventListener("pointerdown", onMove);
-    container.addEventListener("pointerleave", onLeave);
+
+    const onWindowLeave = () => {
+      if (!dragging) {
+        pointerActive = false;
+        syncTelemetry(false, currentOrbitYaw);
+      }
+    };
+
+    window.addEventListener("pointermove", onWindowMove, { passive: true });
+    heroInteractionRoot.addEventListener("pointerdown", onStageDown as EventListener);
+    window.addEventListener("pointerup", onStageUp, { passive: true });
+    window.addEventListener("pointercancel", onStageUp, { passive: true });
+    document.documentElement.addEventListener("pointerleave", onWindowLeave);
 
     async function start() {
       try {
@@ -406,20 +518,22 @@ export default function ParticlePortrait({
         const uniforms = {
           uTime: { value: 0 },
           uAssemble: { value: reduced ? 1 : 0 },
-          uSize: { value: 26 },
+          uSize: { value: 28 },
           uGlint: { value: -9 },
           uShine: { value: 99 },
           uRingRadius: { value: 0.5 },
           uHead: { value: new THREE.Vector2() },
           uLight: { value: new THREE.Vector3(-1.4, 1.2, 1.6) },
           uGlyphAtlas: { value: glyphAtlas },
-          uKeep: { value: 0.27 },
+          uKeep: { value: 0.48 },
           uHover: { value: new THREE.Vector2(-1000, -1000) },
           uHoverOn: { value: 0 },
-          uHoverRadius: { value: 120 },
+          uHoverRadius: { value: 145 },
           uViewport: { value: new THREE.Vector2(1, 1) },
           uDispersion: { value: 1.0 },
-          uInk: { value: new THREE.Color("#ADA4B8") },
+          uPulseAge: { value: -1 },
+          uPulseOrigin: { value: new THREE.Vector2(-1000, -1000) },
+          uInk: { value: new THREE.Color("#C4B9D2") },
           uAccent: { value: new THREE.Color("#BCA5D4") },
           uIvory: { value: new THREE.Color("#F3EEF8") },
         };
@@ -456,14 +570,29 @@ export default function ParticlePortrait({
         bust.renderOrder = 2;
         scene.add(bust);
 
+        const dustCount = 1400;
         const dustGeometry = new THREE.BufferGeometry();
-        const dustPositions = new Float32Array(700 * 3);
-        const dustRand = new Float32Array(700);
-        for (let i = 0; i < 700; i++) {
-          dustPositions.set(
-            [(Math.random() - 0.5) * 18, (Math.random() - 0.5) * 12, Math.random() * 8 - 6],
-            i * 3
-          );
+        const dustPositions = new Float32Array(dustCount * 3);
+        const dustRand = new Float32Array(dustCount);
+        for (let i = 0; i < dustCount; i++) {
+          const aroundBust = i < 860;
+          if (aroundBust) {
+            const theta = Math.random() * Math.PI * 2;
+            const r = 0.58 + Math.random() * 1.35;
+            dustPositions.set(
+              [
+                Math.cos(theta) * r,
+                -1.65 + Math.random() * 3.05,
+                Math.sin(theta) * r * 0.78,
+              ],
+              i * 3
+            );
+          } else {
+            dustPositions.set(
+              [(Math.random() - 0.5) * 14, (Math.random() - 0.5) * 10, Math.random() * 7 - 5],
+              i * 3
+            );
+          }
           dustRand[i] = Math.random();
         }
         dustGeometry.setAttribute("position", new THREE.BufferAttribute(dustPositions, 3));
@@ -476,10 +605,14 @@ export default function ParticlePortrait({
             uTime: uniforms.uTime,
             uOn: { value: reduced ? 1 : 0 },
             uDpr: { value: 1 },
-            uInk: uniforms.uInk,
+            uInk: uniforms.uAccent,
+            uHover: uniforms.uHover,
+            uHoverOn: uniforms.uHoverOn,
+            uHoverRadius: uniforms.uHoverRadius,
+            uViewport: uniforms.uViewport,
           },
-          vertexShader: `attribute float aRand; uniform float uTime,uDpr; varying float vRand; void main(){vec3 p=position; p.y=mod(p.y+6.+uTime*(0.03+aRand*0.05),12.)-6.; p.x+=sin(uTime*0.2+aRand*40.)*0.15; vec4 mv=modelViewMatrix*vec4(p,1.); gl_Position=projectionMatrix*mv; gl_PointSize=20.*uDpr*(0.5+aRand)/max(0.1,-mv.z); vRand=aRand;}`,
-          fragmentShader: `uniform vec3 uInk; uniform float uOn; varying float vRand; void main(){vec2 q=gl_PointCoord-0.5; float a=exp(-64.*dot(q,q))*(0.08+vRand*0.14)*uOn; gl_FragColor=vec4(uInk,a);}`,
+          vertexShader: `attribute float aRand; uniform float uTime,uDpr,uHoverOn,uHoverRadius; uniform vec2 uHover,uViewport; varying float vRand,vSwirl; void main(){vec3 p=position; p.y=mod(p.y+5.+uTime*(0.06+aRand*0.09),10.)-5.; p.x+=sin(uTime*0.35+aRand*40.)*0.18; p.z+=cos(uTime*0.28+aRand*25.)*0.14; vec4 mv0=modelViewMatrix*vec4(p,1.); vec4 clip0=projectionMatrix*mv0; vec2 scr=(clip0.xy/clip0.w*0.5+0.5)*uViewport; float swirl=(1.-smoothstep(0.,uHoverRadius*1.8,distance(scr,uHover)))*uHoverOn; p.xy+=normalize(scr-uHover+vec2(0.001,0.002))*swirl*0.24*(0.5+aRand); vec4 mv=modelViewMatrix*vec4(p,1.); gl_Position=projectionMatrix*mv; gl_PointSize=min(14.,(28.+swirl*16.)*uDpr*(0.5+aRand)/max(0.1,-mv.z)); vRand=aRand; vSwirl=swirl;}`,
+          fragmentShader: `uniform vec3 uInk; uniform float uOn; varying float vRand,vSwirl; void main(){vec2 q=gl_PointCoord-0.5; float a=exp(-34.*dot(q,q))*(0.26+vRand*0.38+vSwirl*0.35)*uOn; gl_FragColor=vec4(mix(uInk,vec3(0.96,0.94,0.98),clamp(vRand*0.45+vSwirl*0.45,0.,1.)),a);}`,
         });
         const dust = new THREE.Points(dustGeometry, dustMaterial);
         dust.frustumCulled = false;
@@ -493,14 +626,14 @@ export default function ParticlePortrait({
           blending: THREE.AdditiveBlending,
           uniforms: { uOn: { value: reduced ? 1 : 0 }, uDpr: { value: 1 } },
           vertexShader: `uniform float uOn,uDpr; void main(){vec4 mv=modelViewMatrix*vec4(position,1.); gl_Position=projectionMatrix*mv; gl_PointSize=min(240.,220.*uDpr*uOn/max(0.1,-mv.z));}`,
-          fragmentShader: `void main(){float r=length(gl_FragCoord.xy-0.5)*2.; float p=length(gl_PointCoord-0.5)*2.; float core=1.-smoothstep(0.08,0.14,p); float glow=exp(-4.*p)*0.4+exp(-12.*p)*0.65; gl_FragColor=vec4(vec3(0.82,0.74,0.91)*(core+glow),min(1.,core+glow));}`,
+          fragmentShader: `void main(){float p=length(gl_PointCoord-0.5)*2.; float core=1.-smoothstep(0.08,0.14,p); float glow=exp(-4.*p)*0.4+exp(-12.*p)*0.65; gl_FragColor=vec4(vec3(0.82,0.74,0.91)*(core+glow),min(1.,core+glow));}`,
         });
         const light = new THREE.Points(lightGeometry, lightMaterial);
         light.frustumCulled = false;
         scene.add(light);
 
         let baseDistance = 8.5;
-        let baseKeep = 0.27;
+        let baseKeep = 0.34;
         let shown = false;
 
         const resize = () => {
@@ -518,16 +651,16 @@ export default function ParticlePortrait({
           const spatial = computeSpatialScrollState(spatialProgressRef?.current ?? 0);
           camera.position.set(
             spatial.cameraOffsetX,
-            -0.15,
-            Math.max(4.5, baseDistance + spatial.cameraOffsetZ)
+            -0.15 + 0.16 * spatial.progress,
+            Math.max(4.1, baseDistance + spatial.cameraOffsetZ)
           );
-          camera.lookAt(spatial.cameraOffsetX * 0.35, -0.15, 0);
+          camera.lookAt(spatial.cameraOffsetX * 0.35, -0.12, 0);
           camera.updateProjectionMatrix();
-          uniforms.uSize.value = 74 * dpr;
-          baseKeep = w < 700 ? 0.18 : 0.27;
+          uniforms.uSize.value = 72 * dpr;
+          baseKeep = w < 700 ? 0.22 : 0.34;
           const densityScale = controlsRef?.current?.densityScale ?? 1;
-          uniforms.uKeep.value = Math.min(0.85, baseKeep * densityScale);
-          uniforms.uHoverRadius.value = (w < 700 ? 88 : 120) * dpr;
+          uniforms.uKeep.value = Math.min(0.95, baseKeep * densityScale);
+          uniforms.uHoverRadius.value = (w < 700 ? 105 : 145) * dpr;
           uniforms.uViewport.value.set(w * dpr, h * dpr);
           uniforms.uRingRadius.value =
             (92 * 2 * baseDistance * Math.tan(Math.PI / 12)) / h;
@@ -604,8 +737,12 @@ export default function ParticlePortrait({
           const dispersionBoost = ctrl?.dispersionBoost ?? 0;
           const azimuthOffset = ctrl?.lightAzimuth ?? 0;
 
-          uniforms.uKeep.value = Math.min(0.85, baseKeep * densityScale);
+          uniforms.uKeep.value = Math.min(0.95, baseKeep * densityScale);
           uniforms.uDispersion.value = spatial.dispersion + dispersionBoost;
+
+          const pulseAge = performance.now() * 0.001 - pulseStartTime;
+          uniforms.uPulseAge.value = pulseAge >= 0 && pulseAge < 1.6 ? pulseAge : -1;
+          uniforms.uPulseOrigin.value.copy(pulseOrigin);
 
           const camY = -0.15 + 0.16 * spatial.progress;
           camera.position.set(
@@ -622,8 +759,8 @@ export default function ParticlePortrait({
             (pointer.y * 0.5 + 0.5) * stage.clientHeight * dpr
           );
           uniforms.uHoverOn.value +=
-            ((active && assemble > 0.9 ? 1 : 0) - uniforms.uHoverOn.value) *
-            (reduced ? 1 : 1 - Math.exp(-dt * 8));
+            ((active && assemble > 0.7 ? 1 : 0) - uniforms.uHoverOn.value) *
+            (reduced || isSoftwareGl ? 0.65 : 1 - Math.exp(-dt * 9));
 
           if (active) {
             raycaster.setFromCamera(pointer, camera);
@@ -638,23 +775,38 @@ export default function ParticlePortrait({
             );
           }
 
-          uniforms.uLight.value.lerp(target, reduced ? 1 : 1 - Math.exp(-dt * 5));
+          uniforms.uLight.value.lerp(target, reduced ? 1 : 1 - Math.exp(-dt * 6));
           light.position.copy(uniforms.uLight.value);
+
+          const orbitAlpha = isSoftwareGl ? 0.55 : 1 - Math.exp(-dt * 7);
+          currentOrbitYaw += (targetOrbitYaw - currentOrbitYaw) * orbitAlpha;
+          currentOrbitPitch += (targetOrbitPitch - currentOrbitPitch) * orbitAlpha;
 
           if (!reduced) {
             if (active) {
-              desiredHead.set(pointer.x * 0.5 + spatial.headBiasX, pointer.y * 0.18 + spatial.headBiasY);
+              desiredHead.set(
+                pointer.x * 0.45 + spatial.headBiasX + currentOrbitYaw,
+                pointer.y * 0.22 + spatial.headBiasY + currentOrbitPitch
+              );
             } else {
               desiredHead.set(
-                0.32 * Math.sin(0.45 * elapsed) + spatial.headBiasX,
-                0.1 * Math.cos(0.33 * elapsed) + spatial.headBiasY
+                0.28 * Math.sin(0.45 * elapsed) + spatial.headBiasX + currentOrbitYaw,
+                0.08 * Math.cos(0.33 * elapsed) + spatial.headBiasY + currentOrbitPitch
               );
             }
-            const headAlpha = isSoftwareGl ? 0.55 : 1 - Math.exp(-dt * (active ? 4.5 : 3.2));
+            const headAlpha = isSoftwareGl ? 0.55 : 1 - Math.exp(-dt * (active ? 5 : 3.2));
             head.lerp(desiredHead, headAlpha);
             uniforms.uHead.value.set(head.x, -head.y);
           } else {
-            uniforms.uHead.value.set(spatial.headBiasX, -spatial.headBiasY);
+            uniforms.uHead.value.set(
+              spatial.headBiasX + currentOrbitYaw,
+              -(spatial.headBiasY + currentOrbitPitch)
+            );
+          }
+
+          if (rootRef.current) {
+            rootRef.current.dataset.hoverActive = active ? "true" : "false";
+            rootRef.current.dataset.orbitRad = currentOrbitYaw.toFixed(3);
           }
 
           const easeLight = 1 - Math.exp(-dt * 4);
@@ -700,9 +852,11 @@ export default function ParticlePortrait({
       controller.abort();
       cancelAnimationFrame(frameId);
       clearTimeout(frameId);
-      container.removeEventListener("pointermove", onMove);
-      container.removeEventListener("pointerdown", onMove);
-      container.removeEventListener("pointerleave", onLeave);
+      window.removeEventListener("pointermove", onWindowMove);
+      heroInteractionRoot.removeEventListener("pointerdown", onStageDown as EventListener);
+      window.removeEventListener("pointerup", onStageUp);
+      window.removeEventListener("pointercancel", onStageUp);
+      document.documentElement.removeEventListener("pointerleave", onWindowLeave);
       renderer?.dispose();
       renderer?.domElement.remove();
       portrait?.dispose();
@@ -713,9 +867,12 @@ export default function ParticlePortrait({
 
   return (
     <div
+      ref={rootRef}
       className={`particle-portrait ${ready ? "is-ready" : ""}`}
       data-phase={ready ? "ready" : "loading"}
       data-webgl={webglUnavailable ? "fallback" : "active"}
+      data-hover-active="false"
+      data-orbit-rad="0"
       data-testid="particle-portrait"
     >
       {webglUnavailable ? (
@@ -737,7 +894,11 @@ export default function ParticlePortrait({
           />
         </div>
       ) : (
-        <div className="particle-stage" ref={host} aria-hidden="true" />
+        <div
+          className="particle-stage cursor-grab active:cursor-grabbing"
+          ref={host}
+          aria-hidden="true"
+        />
       )}
 
       <div
