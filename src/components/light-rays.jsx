@@ -305,6 +305,9 @@ const LightRays = ({
     if (!gl || !shader) return;
 
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const debugExt = gl.getExtension('WEBGL_debug_renderer_info');
+    const gpuRenderer = String(gl.getParameter(debugExt ? debugExt.UNMASKED_RENDERER_WEBGL : gl.RENDERER) || '');
+    const isSoftwareGl = /SwiftShader|llvmpipe|softpipe|Software|Basic Render/i.test(gpuRenderer);
     const vao = gl.createVertexArray();
     const size = { width: 1, height: 1, ratio: 1 };
     const pointer = { x: 0.5, y: 0.5, inside: false, seen: false };
@@ -315,6 +318,7 @@ const LightRays = ({
     let time = 0;
     let opening = settingsRef.current.intro && !reduced && generation === 0 ? 0 : 1;
     let raf = 0;
+    let paceTimer = 0;
     let last = 0;
     let visible = true;
     let pageVisible = document.visibilityState !== 'hidden';
@@ -328,12 +332,14 @@ const LightRays = ({
       const cssHeight = Math.max(1, rect.height);
       const detail = s.density * (0.35 + 0.65 * s.sharpness);
       const sampling = Math.max(clamp(0.35 + 0.3 * detail, 0.5, 2), s.noise > 0 ? 1 : 0);
-      const ratio = Math.min(
-        window.devicePixelRatio || 1,
-        s.maxRatio,
-        sampling,
-        Math.sqrt(PIXEL_BUDGET / (cssWidth * cssHeight))
-      );
+      const ratio = isSoftwareGl
+        ? 0.5
+        : Math.min(
+            window.devicePixelRatio || 1,
+            s.maxRatio,
+            sampling,
+            Math.sqrt(PIXEL_BUDGET / (cssWidth * cssHeight))
+          );
       const width = Math.max(1, Math.round(cssWidth * ratio));
       const height = Math.max(1, Math.round(cssHeight * ratio));
       if (canvas.width !== width || canvas.height !== height) {
@@ -361,7 +367,7 @@ const LightRays = ({
       const dt = clamp((now - last) / 1000 || 0, 0, 0.05);
       last = Math.max(last, now);
       time += dt * s.speed * (reduced ? 0 : 1);
-      if (opening < 1) opening = Math.min(1, opening + dt / 1.8);
+      if (opening < 1) opening = Math.min(1, opening + (isSoftwareGl ? 0.25 : dt / 1.8));
 
       const steer = 1 - Math.exp(-dt / 0.2);
       const aimX = s.follow && pointer.seen ? pointer.x : 0.5;
@@ -446,11 +452,20 @@ const LightRays = ({
         Math.abs((shading ? 1 : 0) - shade.presence) > 1e-3 ||
         pulses.length > 0;
       const busy = s.speed > 0 || opening < 1 || settling;
-      if (busy && visible && pageVisible) raf = requestAnimationFrame(frame);
+      if (busy && visible && pageVisible) {
+        if (isSoftwareGl) {
+          paceTimer = window.setTimeout(() => {
+            paceTimer = 0;
+            raf = requestAnimationFrame(frame);
+          }, 120);
+        } else {
+          raf = requestAnimationFrame(frame);
+        }
+      }
     };
 
     const wake = () => {
-      if (raf || lost || !visible || !pageVisible) return;
+      if (raf || paceTimer || lost || !visible || !pageVisible) return;
       last = performance.now();
       raf = requestAnimationFrame(frame);
     };
@@ -509,6 +524,8 @@ const LightRays = ({
       event.preventDefault();
       lost = true;
       cancelAnimationFrame(raf);
+      clearTimeout(paceTimer);
+      paceTimer = 0;
       raf = 0;
     };
     const onRestored = () => setGeneration(value => value + 1);
@@ -538,6 +555,7 @@ const LightRays = ({
 
     return () => {
       cancelAnimationFrame(raf);
+      clearTimeout(paceTimer);
       wakeRef.current = null;
       resizeObserver.disconnect();
       intersection.disconnect();
