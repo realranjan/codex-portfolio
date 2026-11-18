@@ -77,6 +77,7 @@ export default function Home() {
   const raysLayerRef = useRef<HTMLDivElement>(null);
 
   const spatialProgressRef = useRef<number>(0);
+  const projectsProgressRef = useRef<number>(0);
   const centerMixRef = useRef<number>(0);
   const ringDrawMixRef = useRef<number>(0);
   const carouselMixRef = useRef<number>(0);
@@ -109,10 +110,23 @@ export default function Home() {
       );
       const rawHero = Math.min(1, Math.max(0, window.scrollY / heroHeight));
 
-      const spatial = computeSpatialScrollState(rawHero);
-      const transition = computeHeroToCarouselState(rawHero);
+      const projectsEl = projectsBandRef.current;
+      const projectsTop = projectsEl
+        ? projectsEl.getBoundingClientRect().top + window.scrollY
+        : heroHeight;
+      const projectsScrollable = projectsEl
+        ? Math.max(1, projectsEl.offsetHeight - window.innerHeight)
+        : Math.max(1, window.innerHeight);
+      const rawProjects = Math.min(
+        1,
+        Math.max(0, (window.scrollY - projectsTop) / projectsScrollable)
+      );
+
+      const spatial = computeSpatialScrollState(rawHero, rawProjects);
+      const transition = computeHeroToCarouselState(rawHero, rawProjects);
 
       spatialProgressRef.current = rawHero;
+      projectsProgressRef.current = rawProjects;
       centerMixRef.current = transition.centerMix;
       ringDrawMixRef.current = transition.ringDrawMix;
       carouselMixRef.current = transition.carouselMix;
@@ -140,11 +154,11 @@ export default function Home() {
       }
 
       if (projectsHudRef.current) {
-        const hudY = (1 - transition.carouselMix) * 18;
-        projectsHudRef.current.style.opacity = String(transition.carouselMix);
+        const hudY = (1 - transition.hudOpacity) * 18;
+        projectsHudRef.current.style.opacity = String(transition.hudOpacity);
         projectsHudRef.current.style.transform = `translate3d(0, ${hudY.toFixed(1)}px, 0)`;
         projectsHudRef.current.style.visibility =
-          transition.carouselMix > 0.02 ? "visible" : "hidden";
+          transition.hudOpacity > 0.02 ? "visible" : "hidden";
       }
 
       if (asciiLayerRef.current) {
@@ -342,6 +356,7 @@ export default function Home() {
             {/* 3D Particle Bust (z-[5]) sitting between Carousel Back Ring (z-[2]) and Front Ring (z-[12]) */}
             <ParticlePortrait
               spatialProgressRef={spatialProgressRef}
+              projectsProgressRef={projectsProgressRef}
               centerMixRef={centerMixRef}
               controlsRef={spatialControlsRef}
             />
@@ -470,12 +485,12 @@ export default function Home() {
             className="h-[135svh] md:h-[165svh] pointer-events-none"
           />
 
-          {/* Scroll Band 2 (#projects anchor): Orbiting circular carousel around the model */}
+          {/* Scroll Band 2 (#projects anchor): Orbiting circular carousel + continuous scroll cinema + clean exit */}
           <section
             ref={projectsBandRef}
             id="projects"
             aria-labelledby="projects-heading"
-            className="h-[210svh] md:h-[225svh] pointer-events-none"
+            className="h-[235svh] md:h-[260svh] pointer-events-none"
           />
         </div>
 

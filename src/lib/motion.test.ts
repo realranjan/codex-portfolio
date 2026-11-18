@@ -73,15 +73,31 @@ test("computeHeroToCarouselState preserves close-up hero cinema then traces O-ri
   assert.equal(atRingDraw.carouselMix, 0);
   assert.ok(atRingDraw.orbitPullbackMix > 0.4);
 
-  // Act III (1.0): full centered orbit with O-ring closed and carousel active
-  const atAnchor = computeHeroToCarouselState(1.2);
+  // Act III (hero = 1.0, projects = 0.0): full centered orbit with O-ring closed and carousel active
+  const atAnchor = computeHeroToCarouselState(1.2, 0);
   assert.equal(atAnchor.heroProgress, 1);
+  assert.equal(atAnchor.projectsProgress, 0);
   assert.equal(atAnchor.heroOverlayOpacity, 0);
   assert.equal(atAnchor.centerMix, 1);
   assert.equal(atAnchor.cinematicDollyZ, 0);
   assert.equal(atAnchor.ringDrawMix, 1);
   assert.equal(atAnchor.carouselMix, 1);
+  assert.equal(atAnchor.hudOpacity, 1);
   assert.equal(atAnchor.carouselScale, 1);
+
+  // Mid-projects orbit (projects = 0.35): cinematic scroll keeps moving camera while carousel stays active
+  const atMidOrbit = computeHeroToCarouselState(1, 0.35);
+  assert.equal(atMidOrbit.carouselMix, 1);
+  assert.equal(atMidOrbit.ringDrawMix, 1);
+  assert.ok(Math.abs(atMidOrbit.orbitCameraArcX) > 0.3, "Camera continues arcing smoothly across orbit");
+  assert.ok(atMidOrbit.cinematicDollyZ < -0.4, "Camera breathes forward along the orbital scroll");
+
+  // Act IV exit (projects = 0.98): carousel and O-ring dissolve back out before next section enters
+  const atExit = computeHeroToCarouselState(1, 0.98);
+  assert.equal(atExit.carouselMix, 0);
+  assert.equal(atExit.ringDrawMix, 0);
+  assert.equal(atExit.hudOpacity, 0);
+  assert.ok(atExit.cinematicDollyZ < -1.5, "Closing sculptural dolly sweep remains active on exit");
 });
 
 test("computeParallaxOffset maps normalized scroll progress cleanly", () => {

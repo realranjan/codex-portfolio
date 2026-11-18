@@ -21,6 +21,7 @@ export interface SpatialControlValues {
 
 interface ParticlePortraitProps {
   spatialProgressRef?: MutableRefObject<number>;
+  projectsProgressRef?: MutableRefObject<number>;
   centerMixRef?: MutableRefObject<number>;
   controlsRef?: MutableRefObject<SpatialControlValues>;
 }
@@ -312,6 +313,7 @@ function buildDots(mesh: THREE.Mesh): THREE.BufferGeometry {
 
 export default function ParticlePortrait({
   spatialProgressRef,
+  projectsProgressRef,
   centerMixRef,
   controlsRef,
 }: ParticlePortraitProps) {
@@ -392,7 +394,11 @@ export default function ParticlePortrait({
 
     const onStageDown = (event: PointerEvent) => {
       if (event.button !== 0 && event.pointerType === "mouse") return;
-      if ((centerMixRef?.current ?? 0) >= 0.55) return;
+      const curState = computeHeroToCarouselState(
+        spatialProgressRef?.current ?? 0,
+        projectsProgressRef?.current ?? 0
+      );
+      if (curState.carouselMix >= 0.35) return;
       const targetEl = event.target as HTMLElement | null;
       if (targetEl?.closest("a, button, input, textarea, select, label, [role='button']")) {
         return;
@@ -647,12 +653,14 @@ export default function ParticlePortrait({
         const applyCameraFraming = (w: number) => {
           const isDesktop = w >= 768;
           const rawHero = spatialProgressRef?.current ?? 0;
-          const spatial = computeSpatialScrollState(rawHero);
-          const transition = computeHeroToCarouselState(rawHero);
+          const rawProjects = projectsProgressRef?.current ?? 0;
+          const spatial = computeSpatialScrollState(rawHero, rawProjects);
+          const transition = computeHeroToCarouselState(rawHero, rawProjects);
           const centerMix = centerMixRef?.current ?? transition.centerMix;
 
-          // Hero framing puts the bust firmly in the right-third clear of H1 & top nav;
-          // Act I dollies into a sculptural close-up, then pulls back into centered O-ring framing.
+          // Hero framing puts the bust in the right-third clear of H1 & top nav;
+          // Act I dollies into close-up cinema, Act II settles to centered O-ring orbit,
+          // Act III/IV continue gentle orbital camera arcs and a closing sculptural dolly on exit.
           const heroShiftX = isDesktop ? 1.24 : 0;
           const heroCamX = bustCenter.x - heroShiftX * 1.12;
           const heroLookX = bustCenter.x - heroShiftX * 0.92;
@@ -667,12 +675,14 @@ export default function ParticlePortrait({
           const orbitCamZ = Math.max(7.2, baseDistance * (isDesktop ? 1.44 : 1.52));
 
           const pullback = transition.orbitPullbackMix;
-          const camX = heroCamX + (orbitCamX - heroCamX) * centerMix;
+          const camX =
+            heroCamX + (orbitCamX - heroCamX) * centerMix + transition.orbitCameraArcX;
           const lookX = heroLookX + (orbitLookX - heroLookX) * centerMix;
           const camY =
             heroCamY +
             (orbitCamY - heroCamY) * pullback +
-            0.14 * (1 - pullback) * centerMix;
+            0.14 * (1 - pullback) * centerMix +
+            transition.orbitCameraArcY;
           const lookY = heroLookY + (orbitLookY - heroLookY) * pullback;
           const camZ = Math.max(
             4.1,
@@ -681,7 +691,7 @@ export default function ParticlePortrait({
 
           camera.position.set(camX, camY, camZ);
           camera.lookAt(lookX, lookY, bustCenter.z);
-          return { spatial, transition, centerMix };
+          return { spatial, transition, centerMix, rawProjects };
         };
 
         const resize = () => {
@@ -773,7 +783,9 @@ export default function ParticlePortrait({
             uniforms.uGlint.value = s <= 1 ? -0.75 + s * 1.8 : -9;
           }
 
-          const { spatial, transition, centerMix } = applyCameraFraming(stage.clientWidth);
+          const { spatial, transition, centerMix, rawProjects } = applyCameraFraming(
+            stage.clientWidth
+          );
           const ctrl = controlsRef?.current;
           const densityScale = ctrl?.densityScale ?? 1;
           const dispersionBoost = ctrl?.dispersionBoost ?? 0;
@@ -852,6 +864,7 @@ export default function ParticlePortrait({
             rootRef.current.dataset.hoverActive = active ? "true" : "false";
             rootRef.current.dataset.orbitRad = currentOrbitYaw.toFixed(3);
             rootRef.current.dataset.centerMix = centerMix.toFixed(2);
+            rootRef.current.dataset.projectsProgress = rawProjects.toFixed(2);
             rootRef.current.dataset.gazeX = head.x.toFixed(3);
             rootRef.current.dataset.gazeY = head.y.toFixed(3);
           }
@@ -910,7 +923,7 @@ export default function ParticlePortrait({
       surfaceGeometry?.dispose();
       glyphAtlas?.dispose();
     };
-  }, [spatialProgressRef, centerMixRef, controlsRef]);
+  }, [spatialProgressRef, projectsProgressRef, centerMixRef, controlsRef]);
 
   return (
     <div

@@ -97,81 +97,128 @@ function smoothstep(edge0: number, edge1: number, x: number): number {
  * Computes coordinated 3D camera, sculpture orientation, background parallax,
  * and typography displacement across a single ScrollTrigger progress curve.
  */
-export function computeSpatialScrollState(rawProgress: number): SpatialScrollState {
+export function computeSpatialScrollState(
+  rawProgress: number,
+  rawProjectsProgress = 0
+): SpatialScrollState {
   const progress = clamp01(rawProgress);
+  const projects = clamp01(rawProjectsProgress);
   const arc = Math.sin(progress * Math.PI);
   const settle = smoothstep(0.04, 0.94, progress);
+  const orbitDrift = smoothstep(0, 1, projects);
+  const outroArc = Math.sin(smoothstep(0.7, 1, projects) * Math.PI);
 
   return {
     progress,
     cameraOffsetX: -1.35 * settle,
     cameraOffsetZ: -3.5 * settle + 0.45 * arc,
-    headBiasX: 0.92 * settle,
-    headBiasY: -0.26 * settle,
-    dispersion: 1 + 1.15 * arc,
+    headBiasX: 0.92 * settle - 0.55 * outroArc,
+    headBiasY: -0.26 * settle + 0.16 * outroArc,
+    dispersion: 1 + 1.15 * arc + 0.7 * outroArc,
     textDriftY: -96 * smoothstep(0, 0.72, progress),
     textOpacity: 1 - smoothstep(0.28, 0.85, progress),
-    bgDriftX: -5.5 * settle,
-    bgDriftY: -8.0 * settle,
-    bgScale: 1.06 + 0.24 * settle,
-    bgOpacity: 0.48 + 0.26 * arc,
-    raysShiftY: -54 * settle,
+    bgDriftX: -5.5 * settle - 4.5 * orbitDrift,
+    bgDriftY: -8.0 * settle - 6.5 * orbitDrift,
+    bgScale: 1.06 + 0.24 * settle + 0.14 * orbitDrift,
+    bgOpacity: 0.48 + 0.26 * arc + 0.14 * Math.sin(projects * Math.PI),
+    raysShiftY: -54 * settle - 42 * orbitDrift,
   };
 }
 
 export interface HeroToCarouselState {
   /** Normalized 0..1 progress across the hero-to-carousel transition band */
   heroProgress: number;
+  /** Normalized 0..1 progress across the projects orbital band */
+  projectsProgress: number;
   /** Hero copy & bottom shader dock opacity (1 -> 0) */
   heroOverlayOpacity: number;
   /** Hero copy upward drift in px */
   heroOverlayY: number;
   /** Bust framing blend: 0 = hero composition, 1 = horizontally centered */
   centerMix: number;
-  /** Close-up cinematic dolly offset in world Z (0 -> -3.4 -> 0) */
+  /** Continuous scroll-driven camera dolly offset in world Z */
   cinematicDollyZ: number;
-  /** Scroll-driven particle dispersion boost during close-up cinema (1 -> ~2.25 -> 1) */
+  /** Scroll-driven particle dispersion boost across Hero & Projects outro */
   cinematicDispersion: number;
+  /** Continuous orbital camera lateral sweep during projects scroll */
+  orbitCameraArcX: number;
+  /** Continuous orbital camera vertical breath during projects scroll */
+  orbitCameraArcY: number;
   /** Blend from Hero camera distance to Orbit framing distance (0 -> 1) */
   orbitPullbackMix: number;
-  /** 0..1 trace progress for the O-shape circular track around the model */
+  /** 0..1 trace progress for the O-shape circular track around the model (comes & goes) */
   ringDrawMix: number;
-  /** Carousel cards visibility & scale along the O-shape line (0 -> 1) */
+  /** Carousel cards visibility along the O-shape line (comes & goes) */
   carouselMix: number;
-  /** Carousel orbital ring scale during reveal (0.9 -> 1) */
+  /** Selected Work HUD opacity (tracks carousel entrance & exit) */
+  hudOpacity: number;
+  /** Carousel orbital ring scale during reveal and exit (0.88 -> 1 -> 0.88) */
   carouselScale: number;
 }
 
 /**
- * Coordinates the 3-act spatial scroll transition:
- * Act I  (0.00 -> 0.52): Close-up Hero cinematic (zoom-in, head turn, particle dispersion).
- * Act II (0.54 -> 0.88): Camera settles to center while the circular O-shape orbit line draws around the bust.
- * Act III(0.72 -> 1.00): Project cards materialize right along that circular O-ring line.
+ * Coordinates the continuous 4-act spatial scroll choreography:
+ * Act I  (hero 0.00 -> 0.52): Close-up Hero cinematic (zoom-in, head turn, particle dispersion).
+ * Act II (hero 0.54 -> 0.86): Camera pulls back to center while the circular O-shape orbit line draws.
+ * Act III(hero 0.72 -> 1.00, projects 0.00 -> 0.74): Carousel comes along the O-ring and orbits while scroll cinema continues.
+ * Act IV (projects 0.72 -> 1.00): Carousel & O-ring retract back out while the bust completes a closing cinematic sweep.
  */
-export function computeHeroToCarouselState(rawHeroProgress: number): HeroToCarouselState {
+export function computeHeroToCarouselState(
+  rawHeroProgress: number,
+  rawProjectsProgress = 0
+): HeroToCarouselState {
   const heroProgress = clamp01(rawHeroProgress);
+  const projectsProgress = clamp01(rawProjectsProgress);
   const heroFade = smoothstep(0.04, 0.36, heroProgress);
   const centerMix = smoothstep(0.14, 0.82, heroProgress);
 
   // Bell curve peaking ~0.45 for the preserved dramatic close-up Hero cinematic
   const closeUpEnvelope =
     smoothstep(0.06, 0.42, heroProgress) * (1 - smoothstep(0.48, 0.9, heroProgress));
+  const heroDollyZ = closeUpEnvelope === 0 ? 0 : -3.4 * closeUpEnvelope;
+
+  // Continuous cinematic motion while scrolling through the projects orbital band & exit outro
+  const activeOrbitPhase = clamp01(projectsProgress / 0.78);
+  const orbitDollyBreath =
+    projectsProgress === 0 ? 0 : -0.7 * Math.sin(activeOrbitPhase * Math.PI);
+  const outroEnvelope = smoothstep(0.72, 0.96, projectsProgress);
+  const outroWave = Math.sin(smoothstep(0.7, 1.0, projectsProgress) * Math.PI);
+  const outroDollyZ = outroEnvelope === 0 ? 0 : -1.85 * outroEnvelope;
+
+  const orbitCameraArcX =
+    projectsProgress === 0 ? 0 : 0.72 * Math.sin(projectsProgress * Math.PI * 2);
+  const orbitCameraArcY =
+    projectsProgress === 0 ? 0 : 0.22 * Math.sin(projectsProgress * Math.PI * 2);
 
   const orbitPullbackMix = smoothstep(0.48, 0.94, heroProgress);
-  const ringDrawMix = smoothstep(0.54, 0.86, heroProgress);
-  const carouselMix = smoothstep(0.72, 1.0, heroProgress);
+
+  // Carousel & O-ring come in across Hero -> Projects, then dissolve back out near runway end
+  const ringEnter = smoothstep(0.54, 0.86, heroProgress);
+  const ringExit = 1 - smoothstep(0.8, 0.97, projectsProgress);
+  const ringDrawMix = ringEnter * ringExit;
+
+  const carouselEnter = smoothstep(0.72, 1.0, heroProgress);
+  const carouselExit = 1 - smoothstep(0.72, 0.92, projectsProgress);
+  const carouselMix = carouselEnter * carouselExit;
+
+  const hudExit = 1 - smoothstep(0.68, 0.88, projectsProgress);
+  const hudOpacity = carouselEnter * hudExit;
 
   return {
     heroProgress,
+    projectsProgress,
     heroOverlayOpacity: 1 - heroFade,
     heroOverlayY: heroProgress === 0 ? 0 : -72 * smoothstep(0, 0.45, heroProgress),
     centerMix,
-    cinematicDollyZ: closeUpEnvelope === 0 ? 0 : -3.4 * closeUpEnvelope,
-    cinematicDispersion: 1 + 1.25 * closeUpEnvelope,
+    cinematicDollyZ: heroDollyZ + orbitDollyBreath + outroDollyZ,
+    cinematicDispersion: 1 + 1.25 * closeUpEnvelope + 0.28 * Math.sin(activeOrbitPhase * Math.PI) + 0.95 * outroWave,
+    orbitCameraArcX,
+    orbitCameraArcY,
     orbitPullbackMix,
     ringDrawMix,
     carouselMix,
-    carouselScale: 0.9 + 0.1 * carouselMix,
+    hudOpacity,
+    carouselScale: 0.88 + 0.12 * carouselMix,
   };
 }
 

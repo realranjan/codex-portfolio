@@ -240,7 +240,7 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
         const clampedCards = Math.min(1, Math.max(0, cardMix));
         const stageVisible = clampedRing > 0.01 || clampedCards > 0.01;
         const interactive = clampedCards >= 0.35;
-        const cardScale = 0.9 + 0.1 * clampedCards;
+        const cardScale = 0.86 + 0.14 * clampedCards;
         const ringTransform = `rotateX(${tiltDegRef.current}deg) rotateY(${deg.toFixed(3)}deg) scale(${cardScale.toFixed(4)})`;
 
         if (backRingRef.current) {
@@ -250,7 +250,7 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
           frontRingRef.current.style.transform = ringTransform;
         }
 
-        // Sweep circular O-shape line smoothly (0 -> 0.5 draws rear arc; 0.5 -> 1 closes front arc)
+        // Sweep circular O-shape line smoothly (comes: 0 -> 1; goes: 1 -> 0)
         const arcLen = semiArcLenRef.current;
         const backDraw = Math.min(1, Math.max(0, clampedRing * 2));
         const frontDraw = Math.min(1, Math.max(0, (clampedRing - 0.5) * 2));
@@ -262,12 +262,16 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
           frontArcPathRef.current.style.strokeDasharray = `${arcLen.toFixed(1)}`;
           frontArcPathRef.current.style.strokeDashoffset = `${((1 - frontDraw) * arcLen).toFixed(1)}`;
         }
-        const trackOpacity = clampedRing > 0.01 ? (0.45 + 0.55 * clampedRing).toFixed(3) : "0";
+        const trackOpacity = clampedRing > 0.01 ? (0.42 + 0.58 * clampedRing).toFixed(3) : "0";
+        const trackScale = (0.94 + 0.06 * clampedRing).toFixed(4);
+        const arcPlaneTransform = `rotateX(${tiltDegRef.current + 90}deg) scale(${trackScale})`;
         if (backArcWrapRef.current) {
           backArcWrapRef.current.style.opacity = trackOpacity;
+          backArcWrapRef.current.style.transform = arcPlaneTransform;
         }
         if (frontArcWrapRef.current) {
           frontArcWrapRef.current.style.opacity = trackOpacity;
+          frontArcWrapRef.current.style.transform = arcPlaneTransform;
         }
 
         if (backStageRef.current) {
