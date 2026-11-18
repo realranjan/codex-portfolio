@@ -4,7 +4,10 @@ import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshSurfaceSampler } from "three/addons/math/MeshSurfaceSampler.js";
-import { computeSpatialScrollState } from "@/lib/motion";
+import {
+  computeHeroToCarouselState,
+  computeSpatialScrollState,
+} from "@/lib/motion";
 
 const COUNT = 66000;
 const MODEL = "/particle-bust.glb";
@@ -643,11 +646,13 @@ export default function ParticlePortrait({
 
         const applyCameraFraming = (w: number) => {
           const isDesktop = w >= 768;
-          const spatial = computeSpatialScrollState(spatialProgressRef?.current ?? 0);
-          const centerMix = centerMixRef?.current ?? 0;
+          const rawHero = spatialProgressRef?.current ?? 0;
+          const spatial = computeSpatialScrollState(rawHero);
+          const transition = computeHeroToCarouselState(rawHero);
+          const centerMix = centerMixRef?.current ?? transition.centerMix;
 
           // Hero framing puts the bust firmly in the right-third clear of H1 & top nav;
-          // Carousel framing pulls back slightly and centers the bust inside the orbital ring.
+          // Act I dollies into a sculptural close-up, then pulls back into centered O-ring framing.
           const heroShiftX = isDesktop ? 1.24 : 0;
           const heroCamX = bustCenter.x - heroShiftX * 1.12;
           const heroLookX = bustCenter.x - heroShiftX * 0.92;
@@ -661,18 +666,22 @@ export default function ParticlePortrait({
           const orbitLookY = isDesktop ? bustCenter.y - 0.16 : bustCenter.y - 0.14;
           const orbitCamZ = Math.max(7.2, baseDistance * (isDesktop ? 1.44 : 1.52));
 
+          const pullback = transition.orbitPullbackMix;
           const camX = heroCamX + (orbitCamX - heroCamX) * centerMix;
           const lookX = heroLookX + (orbitLookX - heroLookX) * centerMix;
-          const camY = heroCamY + (orbitCamY - heroCamY) * centerMix;
-          const lookY = heroLookY + (orbitLookY - heroLookY) * centerMix;
-          const camZ =
-            heroCamZ +
-            (orbitCamZ - heroCamZ) * centerMix +
-            Math.sin(spatial.progress * Math.PI) * -0.4;
+          const camY =
+            heroCamY +
+            (orbitCamY - heroCamY) * pullback +
+            0.14 * (1 - pullback) * centerMix;
+          const lookY = heroLookY + (orbitLookY - heroLookY) * pullback;
+          const camZ = Math.max(
+            4.1,
+            heroCamZ + (orbitCamZ - heroCamZ) * pullback + transition.cinematicDollyZ
+          );
 
           camera.position.set(camX, camY, camZ);
           camera.lookAt(lookX, lookY, bustCenter.z);
-          return { spatial, centerMix };
+          return { spatial, transition, centerMix };
         };
 
         const resize = () => {
@@ -764,14 +773,14 @@ export default function ParticlePortrait({
             uniforms.uGlint.value = s <= 1 ? -0.75 + s * 1.8 : -9;
           }
 
-          const { spatial, centerMix } = applyCameraFraming(stage.clientWidth);
+          const { spatial, transition, centerMix } = applyCameraFraming(stage.clientWidth);
           const ctrl = controlsRef?.current;
           const densityScale = ctrl?.densityScale ?? 1;
           const dispersionBoost = ctrl?.dispersionBoost ?? 0;
           const azimuthOffset = ctrl?.lightAzimuth ?? 0;
 
           uniforms.uKeep.value = Math.min(0.95, baseKeep * densityScale);
-          uniforms.uDispersion.value = spatial.dispersion + dispersionBoost;
+          uniforms.uDispersion.value = transition.cinematicDispersion + dispersionBoost;
 
           const pulseAge = performance.now() * 0.001 - pulseStartTime;
           uniforms.uPulseAge.value = pulseAge >= 0 && pulseAge < 1.6 ? pulseAge : -1;
@@ -807,24 +816,29 @@ export default function ParticlePortrait({
           currentOrbitYaw += (targetOrbitYaw - currentOrbitYaw) * orbitAlpha;
           currentOrbitPitch += (targetOrbitPitch - currentOrbitPitch) * orbitAlpha;
 
-          // Keep a poised front-facing sculpture silhouette inside the orbital ring
-          const dragAttenuation = 1 - centerMix * 0.65;
-          const heroYawBias = spatial.headBiasX * (1 - centerMix * 0.88);
-          const heroPitchBias = spatial.headBiasY * (1 - centerMix * 0.85);
+          // Act I applies cinematic head turn; inside the O-ring orbit the bust looks directly where the cursor moves
+          const pullback = transition.orbitPullbackMix;
+          const heroYawBias = spatial.headBiasX * (1 - pullback * 0.94);
+          const heroPitchBias = spatial.headBiasY * (1 - pullback * 0.92);
+          const dragAttenuation = 1 - centerMix * 0.6;
+          const gazeSpanX = 0.52 + 0.28 * transition.carouselMix;
+          const gazeSpanY = 0.24 + 0.12 * transition.carouselMix;
 
           if (!reduced) {
             if (active) {
               desiredHead.set(
-                pointer.x * (0.45 - 0.17 * centerMix) + heroYawBias + currentOrbitYaw * dragAttenuation,
-                pointer.y * (0.22 - 0.08 * centerMix) + heroPitchBias + currentOrbitPitch * dragAttenuation
+                pointer.x * gazeSpanX + heroYawBias + currentOrbitYaw * dragAttenuation,
+                pointer.y * gazeSpanY + heroPitchBias + currentOrbitPitch * dragAttenuation
               );
             } else {
               desiredHead.set(
-                (0.28 - 0.1 * centerMix) * Math.sin(0.45 * elapsed) + heroYawBias + currentOrbitYaw * dragAttenuation,
+                (0.28 - 0.12 * pullback) * Math.sin(0.45 * elapsed) +
+                  heroYawBias +
+                  currentOrbitYaw * dragAttenuation,
                 0.08 * Math.cos(0.33 * elapsed) + heroPitchBias + currentOrbitPitch * dragAttenuation
               );
             }
-            const headAlpha = isSoftwareGl ? 0.55 : 1 - Math.exp(-dt * (active ? 5 : 3.2));
+            const headAlpha = isSoftwareGl ? 0.65 : 1 - Math.exp(-dt * (active ? 6.5 : 3.2));
             head.lerp(desiredHead, headAlpha);
             uniforms.uHead.value.set(head.x, -head.y);
           } else {
@@ -838,6 +852,8 @@ export default function ParticlePortrait({
             rootRef.current.dataset.hoverActive = active ? "true" : "false";
             rootRef.current.dataset.orbitRad = currentOrbitYaw.toFixed(3);
             rootRef.current.dataset.centerMix = centerMix.toFixed(2);
+            rootRef.current.dataset.gazeX = head.x.toFixed(3);
+            rootRef.current.dataset.gazeY = head.y.toFixed(3);
           }
 
           const easeLight = 1 - Math.exp(-dt * 4);
@@ -905,6 +921,8 @@ export default function ParticlePortrait({
       data-hover-active="false"
       data-orbit-rad="0"
       data-center-mix="0"
+      data-gaze-x="0"
+      data-gaze-y="0"
       data-testid="particle-portrait"
     >
       {webglUnavailable ? (

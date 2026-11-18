@@ -51,23 +51,35 @@ import {
   computeParallaxOffset,
 } from "./motion";
 
-test("computeHeroToCarouselState transitions cleanly from hero to centered carousel", () => {
+test("computeHeroToCarouselState preserves close-up hero cinema then traces O-ring into carousel", () => {
   const atStart = computeHeroToCarouselState(-0.2);
   assert.equal(atStart.heroProgress, 0);
   assert.equal(atStart.heroOverlayOpacity, 1);
-  assert.equal(atStart.centerMix, 0);
+  assert.equal(atStart.cinematicDollyZ, 0);
+  assert.equal(atStart.ringDrawMix, 0);
   assert.equal(atStart.carouselMix, 0);
-  assert.equal(atStart.carouselScale, 0.86);
 
-  const midTransition = computeHeroToCarouselState(0.5);
-  assert.ok(midTransition.heroOverlayOpacity < 0.15, "Hero text should fade out by midpoint");
-  assert.ok(midTransition.centerMix > 0.45, "Bust should be gliding toward center");
-  assert.ok(midTransition.carouselMix > 0 && midTransition.carouselMix < 0.25);
+  // Act I peak (~0.45): close-up zoom-in + dispersion before ring draws
+  const atCinemaPeak = computeHeroToCarouselState(0.45);
+  assert.equal(atCinemaPeak.heroOverlayOpacity, 0);
+  assert.ok(atCinemaPeak.cinematicDollyZ < -3.0, "Camera should dolly close during Act I cinema");
+  assert.ok(atCinemaPeak.cinematicDispersion > 2.0, "Particles should disperse at cinema peak");
+  assert.equal(atCinemaPeak.ringDrawMix, 0);
+  assert.equal(atCinemaPeak.carouselMix, 0);
 
+  // Act II (~0.70): O-shape orbital track is tracing while cards prepare to emerge
+  const atRingDraw = computeHeroToCarouselState(0.7);
+  assert.ok(atRingDraw.ringDrawMix > 0.4 && atRingDraw.ringDrawMix < 0.7);
+  assert.equal(atRingDraw.carouselMix, 0);
+  assert.ok(atRingDraw.orbitPullbackMix > 0.4);
+
+  // Act III (1.0): full centered orbit with O-ring closed and carousel active
   const atAnchor = computeHeroToCarouselState(1.2);
   assert.equal(atAnchor.heroProgress, 1);
   assert.equal(atAnchor.heroOverlayOpacity, 0);
   assert.equal(atAnchor.centerMix, 1);
+  assert.equal(atAnchor.cinematicDollyZ, 0);
+  assert.equal(atAnchor.ringDrawMix, 1);
   assert.equal(atAnchor.carouselMix, 1);
   assert.equal(atAnchor.carouselScale, 1);
 });

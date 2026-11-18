@@ -46,7 +46,9 @@ export interface CircularGalleryProps extends HTMLAttributes<HTMLDivElement> {
   autoRotateSpeed?: number;
   /** Optional sticky runway container used to drive 0..360deg rotation across the section. */
   scrollTargetRef?: RefObject<HTMLElement | null>;
-  /** Optional 0..1 ref controlling carousel fade/scale bloom inside a shared 3D stage. */
+  /** Optional 0..1 ref controlling O-shape orbital track drawing around the model. */
+  ringDrawMixRef?: MutableRefObject<number>;
+  /** Optional 0..1 ref controlling carousel cards bloom along the O-shape line. */
   carouselMixRef?: MutableRefObject<number>;
   /** Optional external rotational offset (e.g. from Next/Previous buttons). */
   manualOffsetDeg?: number;
@@ -65,10 +67,11 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
     {
       items,
       className,
-      radius = 460,
-      tiltDeg = -11,
+      radius = 510,
+      tiltDeg = -9,
       autoRotateSpeed = 0.2,
       scrollTargetRef,
+      ringDrawMixRef,
       carouselMixRef,
       manualOffsetDeg = 0,
       onSelectItem,
@@ -84,6 +87,10 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
     const frontStageRef = useRef<HTMLDivElement | null>(null);
     const backRingRef = useRef<HTMLDivElement | null>(null);
     const frontRingRef = useRef<HTMLDivElement | null>(null);
+    const backArcPathRef = useRef<SVGPathElement | null>(null);
+    const frontArcPathRef = useRef<SVGPathElement | null>(null);
+    const backArcWrapRef = useRef<HTMLDivElement | null>(null);
+    const frontArcWrapRef = useRef<HTMLDivElement | null>(null);
     const backCardRefs = useRef<Array<HTMLDivElement | null>>([]);
     const frontCardRefs = useRef<Array<HTMLDivElement | null>>([]);
     const frontFaceRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -133,6 +140,33 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
     useEffect(() => {
       onActiveIndexChangeRef.current = onActiveIndexChange;
     }, [onActiveIndexChange]);
+
+    const { cardWidth, cardHeight, effectiveRadius } = useMemo(() => {
+      if (stageWidth < 640) {
+        return {
+          cardWidth: 178,
+          cardHeight: 232,
+          effectiveRadius: Math.min(radius, Math.max(180, Math.round(stageWidth * 0.49))),
+        };
+      }
+      if (stageWidth < 1024) {
+        return {
+          cardWidth: 222,
+          cardHeight: 286,
+          effectiveRadius: Math.min(radius, Math.max(305, Math.round(stageWidth * 0.4))),
+        };
+      }
+      return {
+        cardWidth: 244,
+        cardHeight: 312,
+        effectiveRadius: Math.min(radius, Math.max(430, Math.round(stageWidth * 0.35))),
+      };
+    }, [stageWidth, radius]);
+
+    const semiArcLenRef = useRef(Math.PI * effectiveRadius);
+    useEffect(() => {
+      semiArcLenRef.current = Math.PI * effectiveRadius;
+    }, [effectiveRadius]);
 
     const assignRefs = (node: HTMLDivElement | null) => {
       containerRef.current = node;
@@ -192,7 +226,7 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
       };
     }, [scrollTargetRef]);
 
-    // Continuous 60fps loop synchronizing front hemisphere (z > bust) & back hemisphere (z < bust)
+    // Continuous 60fps loop synchronizing the O-shape track + front/back card hemispheres around the bust
     useEffect(() => {
       const reduced =
         typeof window !== "undefined" &&
@@ -201,11 +235,13 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
       let rafId = 0;
       let lastTime = performance.now();
 
-      const applyRotationToDOM = (deg: number, mix: number) => {
-        const clampedMix = Math.min(1, Math.max(0, mix));
-        const ringScale = 0.86 + 0.14 * clampedMix;
-        const interactive = clampedMix >= 0.35;
-        const ringTransform = `rotateX(${tiltDegRef.current}deg) rotateY(${deg.toFixed(3)}deg)`;
+      const applyRotationToDOM = (deg: number, ringMix: number, cardMix: number) => {
+        const clampedRing = Math.min(1, Math.max(0, ringMix));
+        const clampedCards = Math.min(1, Math.max(0, cardMix));
+        const stageVisible = clampedRing > 0.01 || clampedCards > 0.01;
+        const interactive = clampedCards >= 0.35;
+        const cardScale = 0.9 + 0.1 * clampedCards;
+        const ringTransform = `rotateX(${tiltDegRef.current}deg) rotateY(${deg.toFixed(3)}deg) scale(${cardScale.toFixed(4)})`;
 
         if (backRingRef.current) {
           backRingRef.current.style.transform = ringTransform;
@@ -214,21 +250,40 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
           frontRingRef.current.style.transform = ringTransform;
         }
 
+        // Sweep circular O-shape line smoothly (0 -> 0.5 draws rear arc; 0.5 -> 1 closes front arc)
+        const arcLen = semiArcLenRef.current;
+        const backDraw = Math.min(1, Math.max(0, clampedRing * 2));
+        const frontDraw = Math.min(1, Math.max(0, (clampedRing - 0.5) * 2));
+        if (backArcPathRef.current) {
+          backArcPathRef.current.style.strokeDasharray = `${arcLen.toFixed(1)}`;
+          backArcPathRef.current.style.strokeDashoffset = `${((1 - backDraw) * arcLen).toFixed(1)}`;
+        }
+        if (frontArcPathRef.current) {
+          frontArcPathRef.current.style.strokeDasharray = `${arcLen.toFixed(1)}`;
+          frontArcPathRef.current.style.strokeDashoffset = `${((1 - frontDraw) * arcLen).toFixed(1)}`;
+        }
+        const trackOpacity = clampedRing > 0.01 ? (0.45 + 0.55 * clampedRing).toFixed(3) : "0";
+        if (backArcWrapRef.current) {
+          backArcWrapRef.current.style.opacity = trackOpacity;
+        }
+        if (frontArcWrapRef.current) {
+          frontArcWrapRef.current.style.opacity = trackOpacity;
+        }
+
         if (backStageRef.current) {
-          backStageRef.current.style.opacity = clampedMix.toFixed(3);
-          backStageRef.current.style.visibility = clampedMix > 0.01 ? "visible" : "hidden";
-          backStageRef.current.style.transform = `scale(${ringScale.toFixed(4)})`;
+          backStageRef.current.style.opacity = stageVisible ? "1" : "0";
+          backStageRef.current.style.visibility = stageVisible ? "visible" : "hidden";
         }
         if (frontStageRef.current) {
-          frontStageRef.current.style.opacity = clampedMix.toFixed(3);
-          frontStageRef.current.style.visibility = clampedMix > 0.01 ? "visible" : "hidden";
+          frontStageRef.current.style.opacity = stageVisible ? "1" : "0";
+          frontStageRef.current.style.visibility = stageVisible ? "visible" : "hidden";
           frontStageRef.current.style.pointerEvents = interactive ? "auto" : "none";
-          frontStageRef.current.style.transform = `scale(${ringScale.toFixed(4)})`;
         }
 
         if (containerRef.current) {
           containerRef.current.dataset.rotation = deg.toFixed(1);
-          containerRef.current.dataset.carouselMix = clampedMix.toFixed(2);
+          containerRef.current.dataset.ringMix = clampedRing.toFixed(2);
+          containerRef.current.dataset.carouselMix = clampedCards.toFixed(2);
         }
 
         const total = itemsLenRef.current;
@@ -238,14 +293,16 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
 
           const backEl = backCardRefs.current[i];
           if (backEl) {
-            backEl.style.visibility = isBackHemisphere ? "visible" : "hidden";
-            backEl.style.opacity = (opacity * 0.56).toFixed(3);
+            backEl.style.visibility =
+              isBackHemisphere && clampedCards > 0.01 ? "visible" : "hidden";
+            backEl.style.opacity = (opacity * 0.56 * clampedCards).toFixed(3);
           }
 
           const frontEl = frontCardRefs.current[i];
           if (frontEl) {
-            frontEl.style.visibility = isBackHemisphere ? "hidden" : "visible";
-            frontEl.style.opacity = opacity.toFixed(3);
+            frontEl.style.visibility =
+              !isBackHemisphere && clampedCards > 0.01 ? "visible" : "hidden";
+            frontEl.style.opacity = (opacity * clampedCards).toFixed(3);
           }
 
           const frontBtn = frontFaceRefs.current[i];
@@ -263,20 +320,22 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
         }
       };
 
-      const initialMix = carouselMixRef ? carouselMixRef.current : 1;
+      const initialRingMix = ringDrawMixRef ? ringDrawMixRef.current : 1;
+      const initialCardMix = carouselMixRef ? carouselMixRef.current : 1;
       currentRotRef.current =
         scrollRotRef.current +
         autoRotRef.current +
         dragOffsetRef.current +
         manualOffsetRef.current;
-      applyRotationToDOM(currentRotRef.current, initialMix);
+      applyRotationToDOM(currentRotRef.current, initialRingMix, initialCardMix);
 
       const step = (now: number) => {
         const dt = Math.min(64, Math.max(0, now - lastTime));
         lastTime = now;
 
-        const mix = carouselMixRef ? carouselMixRef.current : 1;
-        if (!reduced && mix > 0.08 && !pausedRef.current && !isDraggingRef.current) {
+        const ringMix = ringDrawMixRef ? ringDrawMixRef.current : 1;
+        const cardMix = carouselMixRef ? carouselMixRef.current : 1;
+        if (!reduced && cardMix > 0.08 && !pausedRef.current && !isDraggingRef.current) {
           autoRotRef.current += autoSpeedRef.current * (dt / 16.667);
         }
 
@@ -293,7 +352,7 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
           currentRotRef.current += (target - currentRotRef.current) * alpha;
         }
 
-        applyRotationToDOM(currentRotRef.current, mix);
+        applyRotationToDOM(currentRotRef.current, ringMix, cardMix);
         rafId = requestAnimationFrame(step);
       };
 
@@ -301,29 +360,7 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
       return () => {
         cancelAnimationFrame(rafId);
       };
-    }, [carouselMixRef, items.length]);
-
-    const { cardWidth, cardHeight, effectiveRadius } = useMemo(() => {
-      if (stageWidth < 640) {
-        return {
-          cardWidth: 178,
-          cardHeight: 232,
-          effectiveRadius: Math.min(radius, Math.max(180, Math.round(stageWidth * 0.49))),
-        };
-      }
-      if (stageWidth < 1024) {
-        return {
-          cardWidth: 222,
-          cardHeight: 286,
-          effectiveRadius: Math.min(radius, Math.max(305, Math.round(stageWidth * 0.4))),
-        };
-      }
-      return {
-        cardWidth: 244,
-        cardHeight: 312,
-        effectiveRadius: Math.min(radius, Math.max(430, Math.round(stageWidth * 0.35))),
-      };
-    }, [stageWidth, radius]);
+    }, [ringDrawMixRef, carouselMixRef, items.length]);
 
     const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.button !== 0) return;
@@ -345,6 +382,9 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
       isDraggingRef.current = false;
     };
 
+    const orbitDiameter = effectiveRadius * 2;
+    const planeTilt = tiltDeg + 90;
+
     return (
       /* Intentionally NO z-index, transform, opacity, or perspective on root so back (z-2) & front (z-12) stages interleave around ParticlePortrait (z-5) */
       <div
@@ -354,13 +394,53 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
         className={cn("absolute inset-0 pointer-events-none select-none", className)}
         {...props}
       >
-        {/* BACK HEMISPHERE STAGE (z-[2]): passes strictly behind the centered 3D bust */}
+        {/* BACK HEMISPHERE STAGE (z-[2]): far arc of the O-shape track + rear cards strictly behind the bust */}
         <div
           ref={backStageRef}
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center overflow-hidden"
           style={{ perspective: "2200px", opacity: 0, visibility: "hidden" }}
         >
+          {/* Back half of the O-shape circular track passing behind the bust */}
+          <div
+            ref={backArcWrapRef}
+            className="pointer-events-none absolute"
+            style={{
+              width: `${orbitDiameter}px`,
+              height: `${orbitDiameter}px`,
+              left: "50%",
+              top: "53.5%",
+              marginLeft: `-${effectiveRadius}px`,
+              marginTop: `-${effectiveRadius}px`,
+              transform: `rotateX(${planeTilt}deg)`,
+              transformStyle: "preserve-3d",
+              opacity: 0,
+            }}
+          >
+            <svg
+              width={orbitDiameter}
+              height={orbitDiameter}
+              viewBox={`-6 -6 ${orbitDiameter + 12} ${orbitDiameter + 12}`}
+              className="overflow-visible"
+            >
+              <path
+                d={`M 0 ${effectiveRadius} A ${effectiveRadius} ${effectiveRadius} 0 0 1 ${orbitDiameter} ${effectiveRadius}`}
+                fill="none"
+                stroke="rgba(244, 241, 234, 0.14)"
+                strokeWidth="2"
+                strokeDasharray="4 10"
+              />
+              <path
+                ref={backArcPathRef}
+                d={`M 0 ${effectiveRadius} A ${effectiveRadius} ${effectiveRadius} 0 0 1 ${orbitDiameter} ${effectiveRadius}`}
+                fill="none"
+                stroke="rgba(196, 176, 220, 0.72)"
+                strokeWidth="3.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+
           <div
             ref={backRingRef}
             className="relative h-full w-full will-change-transform"
@@ -411,7 +491,7 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
           </div>
         </div>
 
-        {/* FRONT HEMISPHERE STAGE (z-[12]): orbits in front of the bust & handles card interaction */}
+        {/* FRONT HEMISPHERE STAGE (z-[12]): near arc of the O-shape track + front cards orbiting cleanly */}
         <div
           ref={frontStageRef}
           onPointerDown={handlePointerDown}
@@ -422,9 +502,50 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
           className="absolute inset-0 z-[12] flex items-center justify-center overflow-hidden touch-pan-y cursor-grab active:cursor-grabbing"
           style={{ perspective: "2200px", opacity: 0, visibility: "hidden", pointerEvents: "none" }}
         >
+          {/* Front half of the O-shape circular track passing behind/between front cards */}
+          <div
+            ref={frontArcWrapRef}
+            aria-hidden="true"
+            className="pointer-events-none absolute z-[1]"
+            style={{
+              width: `${orbitDiameter}px`,
+              height: `${orbitDiameter}px`,
+              left: "50%",
+              top: "53.5%",
+              marginLeft: `-${effectiveRadius}px`,
+              marginTop: `-${effectiveRadius}px`,
+              transform: `rotateX(${planeTilt}deg)`,
+              transformStyle: "preserve-3d",
+              opacity: 0,
+            }}
+          >
+            <svg
+              width={orbitDiameter}
+              height={orbitDiameter}
+              viewBox={`-6 -6 ${orbitDiameter + 12} ${orbitDiameter + 12}`}
+              className="overflow-visible"
+            >
+              <path
+                d={`M ${orbitDiameter} ${effectiveRadius} A ${effectiveRadius} ${effectiveRadius} 0 0 1 0 ${effectiveRadius}`}
+                fill="none"
+                stroke="rgba(244, 241, 234, 0.14)"
+                strokeWidth="2"
+                strokeDasharray="4 10"
+              />
+              <path
+                ref={frontArcPathRef}
+                d={`M ${orbitDiameter} ${effectiveRadius} A ${effectiveRadius} ${effectiveRadius} 0 0 1 0 ${effectiveRadius}`}
+                fill="none"
+                stroke="rgba(196, 176, 220, 0.85)"
+                strokeWidth="3.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+
           <div
             ref={frontRingRef}
-            className="relative h-full w-full will-change-transform"
+            className="relative z-[2] h-full w-full will-change-transform"
             style={{
               transform: `rotateX(${tiltDeg}deg) rotateY(0deg)`,
               transformStyle: "preserve-3d",
@@ -493,7 +614,7 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
                         src={item.photo.url}
                         alt={item.photo.text}
                         fill
-                        sizes="(max-width: 640px) 186px, 262px"
+                        sizes="(max-width: 640px) 178px, 244px"
                         referrerPolicy="no-referrer"
                         onError={() =>
                           setFailedUrls((prev) => ({ ...prev, [item.photo.url]: true }))

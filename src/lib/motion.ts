@@ -126,31 +126,52 @@ export interface HeroToCarouselState {
   heroOverlayOpacity: number;
   /** Hero copy upward drift in px */
   heroOverlayY: number;
-  /** Bust framing blend: 0 = hero composition, 1 = dead-center inside carousel */
+  /** Bust framing blend: 0 = hero composition, 1 = horizontally centered */
   centerMix: number;
-  /** Carousel ring visibility & reveal progress (0 -> 1) */
+  /** Close-up cinematic dolly offset in world Z (0 -> -3.4 -> 0) */
+  cinematicDollyZ: number;
+  /** Scroll-driven particle dispersion boost during close-up cinema (1 -> ~2.25 -> 1) */
+  cinematicDispersion: number;
+  /** Blend from Hero camera distance to Orbit framing distance (0 -> 1) */
+  orbitPullbackMix: number;
+  /** 0..1 trace progress for the O-shape circular track around the model */
+  ringDrawMix: number;
+  /** Carousel cards visibility & scale along the O-shape line (0 -> 1) */
   carouselMix: number;
-  /** Carousel orbital ring scale during reveal (0.86 -> 1) */
+  /** Carousel orbital ring scale during reveal (0.9 -> 1) */
   carouselScale: number;
 }
 
 /**
- * Coordinates the seamless transition from the asymmetric Hero framing into
- * the centered 3D bust surrounded by the orbiting circular project carousel.
+ * Coordinates the 3-act spatial scroll transition:
+ * Act I  (0.00 -> 0.52): Close-up Hero cinematic (zoom-in, head turn, particle dispersion).
+ * Act II (0.54 -> 0.88): Camera settles to center while the circular O-shape orbit line draws around the bust.
+ * Act III(0.72 -> 1.00): Project cards materialize right along that circular O-ring line.
  */
 export function computeHeroToCarouselState(rawHeroProgress: number): HeroToCarouselState {
   const heroProgress = clamp01(rawHeroProgress);
-  const heroFade = smoothstep(0.04, 0.52, heroProgress);
-  const centerMix = smoothstep(0.06, 0.88, heroProgress);
-  const carouselMix = smoothstep(0.46, 0.96, heroProgress);
+  const heroFade = smoothstep(0.04, 0.36, heroProgress);
+  const centerMix = smoothstep(0.14, 0.82, heroProgress);
+
+  // Bell curve peaking ~0.45 for the preserved dramatic close-up Hero cinematic
+  const closeUpEnvelope =
+    smoothstep(0.06, 0.42, heroProgress) * (1 - smoothstep(0.48, 0.9, heroProgress));
+
+  const orbitPullbackMix = smoothstep(0.48, 0.94, heroProgress);
+  const ringDrawMix = smoothstep(0.54, 0.86, heroProgress);
+  const carouselMix = smoothstep(0.72, 1.0, heroProgress);
 
   return {
     heroProgress,
     heroOverlayOpacity: 1 - heroFade,
-    heroOverlayY: -56 * smoothstep(0, 0.62, heroProgress),
+    heroOverlayY: heroProgress === 0 ? 0 : -72 * smoothstep(0, 0.45, heroProgress),
     centerMix,
+    cinematicDollyZ: closeUpEnvelope === 0 ? 0 : -3.4 * closeUpEnvelope,
+    cinematicDispersion: 1 + 1.25 * closeUpEnvelope,
+    orbitPullbackMix,
+    ringDrawMix,
     carouselMix,
-    carouselScale: 0.86 + 0.14 * carouselMix,
+    carouselScale: 0.9 + 0.1 * carouselMix,
   };
 }
 

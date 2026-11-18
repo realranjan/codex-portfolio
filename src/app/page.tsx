@@ -78,6 +78,7 @@ export default function Home() {
 
   const spatialProgressRef = useRef<number>(0);
   const centerMixRef = useRef<number>(0);
+  const ringDrawMixRef = useRef<number>(0);
   const carouselMixRef = useRef<number>(0);
   const spatialControlsRef = useRef<SpatialControlValues>(SCULPTURE_MODES[0].values);
 
@@ -113,6 +114,7 @@ export default function Home() {
 
       spatialProgressRef.current = rawHero;
       centerMixRef.current = transition.centerMix;
+      ringDrawMixRef.current = transition.ringDrawMix;
       carouselMixRef.current = transition.carouselMix;
 
       if (heroOverlayRef.current) {
@@ -455,16 +457,17 @@ export default function Home() {
               selectedProject={selectedProject}
               onSelectProject={handleOpenProject}
               scrollTargetRef={projectsBandRef}
+              ringDrawMixRef={ringDrawMixRef}
               carouselMixRef={carouselMixRef}
               hudRef={projectsHudRef}
             />
           </div>
 
-          {/* Scroll Band 1: Hero transition -> Centered Model */}
+          {/* Scroll Band 1: Hero close-up cinema -> Centered Model & O-Shape Track Draw */}
           <div
             ref={heroBandRef}
             aria-hidden="true"
-            className="h-[100svh] md:h-[115svh] pointer-events-none"
+            className="h-[135svh] md:h-[165svh] pointer-events-none"
           />
 
           {/* Scroll Band 2 (#projects anchor): Orbiting circular carousel around the model */}

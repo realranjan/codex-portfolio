@@ -15,6 +15,7 @@ interface ProjectsGallerySectionProps {
   selectedProject: ProjectCaseStudy | null;
   onSelectProject: (project: ProjectCaseStudy) => void;
   scrollTargetRef: RefObject<HTMLElement | null>;
+  ringDrawMixRef: MutableRefObject<number>;
   carouselMixRef: MutableRefObject<number>;
   hudRef: RefObject<HTMLDivElement | null>;
 }
@@ -23,6 +24,7 @@ export function ProjectsGallerySection({
   selectedProject,
   onSelectProject,
   scrollTargetRef,
+  ringDrawMixRef,
   carouselMixRef,
   hudRef,
 }: ProjectsGallerySectionProps) {
@@ -84,6 +86,7 @@ export function ProjectsGallerySection({
         tiltDeg={-9}
         autoRotateSpeed={0.2}
         scrollTargetRef={scrollTargetRef}
+        ringDrawMixRef={ringDrawMixRef}
         carouselMixRef={carouselMixRef}
         manualOffsetDeg={manualOffsetDeg}
         paused={paused || Boolean(selectedProject)}
