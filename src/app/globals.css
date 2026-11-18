@@ -14,7 +14,7 @@
   --color-accent-soft: var(--accent-soft);
   --color-border: var(--border-subtle);
 
-  --font-sans: var(--font-space-grotesk), system-ui, sans-serif;
+  --font-sans: var(--font-jakarta), system-ui, sans-serif;
   --font-serif: var(--font-cormorant), Georgia, serif;
   --font-mono: var(--font-ibm-plex-mono), monospace;
 }
@@ -28,7 +28,7 @@ html {
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  font-family: var(--font-space-grotesk), system-ui, sans-serif;
+  font-family: var(--font-jakarta), system-ui, sans-serif;
   font-size: var(--font-body);
   font-weight: 400;
   line-height: 1.6;
@@ -63,8 +63,7 @@ textarea:focus-visible {
   font-family: var(--font-ibm-plex-mono), monospace;
   font-size: var(--font-caption);
   font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.06em;
   text-decoration: none;
   transition: top var(--motion-fast) var(--ease-ui);
 }
@@ -79,59 +78,59 @@ textarea:focus-visible {
   inset: 0;
   z-index: 40;
   pointer-events: none;
-  opacity: 0.032;
+  opacity: 0.025;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
 }
 
 /* Typography Utilities */
 .type-display {
-  font-family: var(--font-space-grotesk), system-ui, sans-serif;
+  font-family: var(--font-jakarta), system-ui, sans-serif;
   font-size: var(--font-display);
   font-weight: 700;
   line-height: 0.96;
-  letter-spacing: -0.05em;
-  text-wrap: balance;
-}
-
-.type-h1 {
-  font-family: var(--font-space-grotesk), system-ui, sans-serif;
-  font-size: var(--font-h1);
-  font-weight: 700;
-  line-height: 0.98;
   letter-spacing: -0.045em;
   text-wrap: balance;
 }
 
-.type-h2 {
-  font-family: var(--font-space-grotesk), system-ui, sans-serif;
-  font-size: var(--font-h2);
-  font-weight: 600;
-  line-height: 1.04;
+.type-h1 {
+  font-family: var(--font-jakarta), system-ui, sans-serif;
+  font-size: var(--font-h1);
+  font-weight: 700;
+  line-height: 0.98;
   letter-spacing: -0.04em;
   text-wrap: balance;
 }
 
+.type-h2 {
+  font-family: var(--font-jakarta), system-ui, sans-serif;
+  font-size: var(--font-h2);
+  font-weight: 600;
+  line-height: 1.06;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
 .type-h3 {
-  font-family: var(--font-space-grotesk), system-ui, sans-serif;
+  font-family: var(--font-jakarta), system-ui, sans-serif;
   font-size: var(--font-h3);
   font-weight: 600;
   line-height: 1.15;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.025em;
 }
 
 .type-intro {
-  font-family: var(--font-space-grotesk), system-ui, sans-serif;
+  font-family: var(--font-jakarta), system-ui, sans-serif;
   font-size: var(--font-intro);
   font-weight: 400;
-  line-height: 1.45;
-  letter-spacing: -0.02em;
+  line-height: 1.48;
+  letter-spacing: -0.015em;
 }
 
 .type-serif-accent {
   font-family: var(--font-cormorant), Georgia, serif;
   font-style: italic;
   font-weight: 500;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.01em;
   color: var(--accent-primary);
 }
 
@@ -139,8 +138,7 @@ textarea:focus-visible {
   font-family: var(--font-ibm-plex-mono), monospace;
   font-size: var(--font-caption);
   font-weight: 400;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
   color: var(--text-secondary);
 }
@@ -165,12 +163,7 @@ textarea:focus-visible {
 }
 
 .section-band--elevated {
-  background: radial-gradient(
-      900px 420px at 85% 0%,
-      rgba(188, 165, 212, 0.055),
-      transparent 70%
-    ),
-    var(--bg-primary);
+  background-color: var(--bg-primary);
 }
 
 /* Persistent Top Navigation */
@@ -186,34 +179,26 @@ textarea:focus-visible {
 }
 
 .site-nav-wrap.is-scrolled {
-  background-color: rgba(13, 11, 18, 0.94);
+  background-color: rgba(10, 10, 12, 0.96);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border-bottom-color: var(--border-subtle);
 }
 
-/* Hero & 3D Sculpture Stage */
+/* Unified Hero -> Circular Orbit Spatial Stage */
 .hero-runway {
   position: relative;
-  min-height: 215svh;
 }
 
 .hero-section {
   position: sticky;
   top: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
   isolation: isolate;
   overflow: hidden;
   height: 100svh;
   min-height: 100svh;
-  padding-top: 96px;
-  padding-bottom: 32px;
-  background: radial-gradient(
-      780px 560px at 78% 18%,
-      rgba(188, 165, 212, 0.09),
-      transparent 72%
-    ),
-    var(--bg-primary);
+  margin-bottom: -100svh;
+  background-color: var(--bg-primary);
   color: var(--text-primary);
 }
 
@@ -236,15 +221,15 @@ textarea:focus-visible {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(90deg, rgba(13, 11, 18, 0.9) 0%, rgba(13, 11, 18, 0.55) 45%, rgba(13, 11, 18, 0.25) 100%),
-    linear-gradient(0deg, var(--bg-primary) 0%, transparent 32%, rgba(13, 11, 18, 0.45) 100%);
+  background: linear-gradient(90deg, rgba(10, 10, 12, 0.92) 0%, rgba(10, 10, 12, 0.56) 44%, rgba(10, 10, 12, 0.22) 100%),
+    linear-gradient(0deg, var(--bg-primary) 0%, transparent 32%, rgba(10, 10, 12, 0.45) 100%);
 }
 
 .hero-rays {
   position: absolute;
   inset: -4% 0;
   z-index: 1;
-  opacity: 0.92;
+  opacity: 0.72;
   will-change: transform;
 }
 
@@ -253,14 +238,14 @@ textarea:focus-visible {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(90deg, rgba(13, 11, 18, 0.85) 0%, rgba(13, 11, 18, 0.3) 45%, transparent 72%),
+  background: linear-gradient(90deg, rgba(10, 10, 12, 0.88) 0%, rgba(10, 10, 12, 0.34) 44%, transparent 72%),
     linear-gradient(0deg, var(--bg-primary) 0%, transparent 28%);
 }
 
 .particle-portrait {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 5;
   overflow: hidden;
   pointer-events: none;
 }
@@ -298,14 +283,14 @@ textarea:focus-visible {
   position: absolute;
   left: 68%;
   top: 48%;
-  width: 224px;
-  height: 224px;
+  width: 204px;
+  height: 204px;
   transform: translate(-50%, -50%);
   overflow: visible;
 }
 
 .particle-loader circle {
-  fill: rgba(188, 165, 212, 0.18);
+  fill: rgba(244, 241, 234, 0.14);
   transition: fill 250ms ease, r 250ms ease;
 }
 
@@ -317,23 +302,11 @@ textarea:focus-visible {
   position: absolute;
   top: 48%;
   left: 68%;
-  transform: translate(-50%, -62%);
-  font-size: 32px;
+  transform: translate(-50%, -50%);
+  font-size: 28px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
   color: var(--text-primary);
-  white-space: nowrap;
-}
-
-.particle-label {
-  position: absolute;
-  top: 48%;
-  left: 68%;
-  transform: translate(-50%, 24px);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--accent-primary);
   white-space: nowrap;
 }
 
@@ -363,28 +336,6 @@ textarea:focus-visible {
   will-change: transform, clip-path;
 }
 
-/* Project Cards */
-.project-card {
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-subtle);
-  background-color: var(--bg-elevated);
-  padding: 20px;
-  transition: border-color var(--motion-fast) var(--ease-ui),
-    background-color var(--motion-fast) var(--ease-ui),
-    transform var(--motion-fast) var(--ease-ui);
-}
-
-.project-card:hover,
-.project-card:focus-within {
-  border-color: var(--border-strong);
-  background-color: rgba(37, 32, 46, 0.55);
-}
-
-.project-card[data-selected="true"] {
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 1px var(--accent-primary);
-}
-
 @layer components {
   /* Interactive Buttons */
   .btn-primary {
@@ -395,20 +346,21 @@ textarea:focus-visible {
     min-height: 40px;
     padding: 8px 18px;
     border-radius: var(--radius-sm);
-    background-color: var(--accent-primary);
+    background-color: var(--text-primary);
     color: var(--bg-primary);
-    font-family: var(--font-space-grotesk), system-ui, sans-serif;
+    font-family: var(--font-jakarta), system-ui, sans-serif;
     font-size: var(--font-small);
     font-weight: 600;
     white-space: nowrap;
     flex-shrink: 0;
     cursor: pointer;
     transition: background-color var(--motion-fast) var(--ease-ui),
-      transform var(--motion-fast) var(--ease-ui);
+      color var(--motion-fast) var(--ease-ui);
   }
 
   .btn-primary:hover {
     background-color: var(--accent-soft);
+    color: var(--bg-primary);
   }
 
   .btn-secondary {
@@ -420,9 +372,9 @@ textarea:focus-visible {
     padding: 8px 18px;
     border-radius: var(--radius-sm);
     border: 1px solid var(--border-subtle);
-    background-color: var(--bg-elevated);
+    background-color: transparent;
     color: var(--text-primary);
-    font-family: var(--font-space-grotesk), system-ui, sans-serif;
+    font-family: var(--font-jakarta), system-ui, sans-serif;
     font-size: var(--font-small);
     font-weight: 500;
     white-space: nowrap;
@@ -435,44 +387,29 @@ textarea:focus-visible {
 
   .btn-secondary:hover {
     border-color: var(--accent-primary);
-    background-color: var(--bg-surface);
+    background-color: var(--bg-elevated);
     color: var(--accent-soft);
   }
 }
 
 @media (max-width: 767px) {
-  .hero-runway {
-    min-height: 165svh;
-  }
-
   .btn-primary,
   .btn-secondary {
     min-height: 44px;
   }
 
   .particle-loader svg,
-  .particle-counter,
-  .particle-label {
+  .particle-counter {
     left: 50%;
     top: 38%;
   }
 
   .particle-stage {
-    opacity: 0.78;
-    transform: translate(6%, -12%) scale(0.9);
-    transform-origin: center;
+    opacity: 0.85;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-runway {
-    min-height: 100svh;
-  }
-
-  .hero-section {
-    position: relative;
-  }
-
   *,
   *::before,
   *::after {

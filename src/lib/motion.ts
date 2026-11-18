@@ -119,6 +119,41 @@ export function computeSpatialScrollState(rawProgress: number): SpatialScrollSta
   };
 }
 
+export interface HeroToCarouselState {
+  /** Normalized 0..1 progress across the hero-to-carousel transition band */
+  heroProgress: number;
+  /** Hero copy & bottom shader dock opacity (1 -> 0) */
+  heroOverlayOpacity: number;
+  /** Hero copy upward drift in px */
+  heroOverlayY: number;
+  /** Bust framing blend: 0 = hero composition, 1 = dead-center inside carousel */
+  centerMix: number;
+  /** Carousel ring visibility & reveal progress (0 -> 1) */
+  carouselMix: number;
+  /** Carousel orbital ring scale during reveal (0.86 -> 1) */
+  carouselScale: number;
+}
+
+/**
+ * Coordinates the seamless transition from the asymmetric Hero framing into
+ * the centered 3D bust surrounded by the orbiting circular project carousel.
+ */
+export function computeHeroToCarouselState(rawHeroProgress: number): HeroToCarouselState {
+  const heroProgress = clamp01(rawHeroProgress);
+  const heroFade = smoothstep(0.04, 0.52, heroProgress);
+  const centerMix = smoothstep(0.06, 0.88, heroProgress);
+  const carouselMix = smoothstep(0.46, 0.96, heroProgress);
+
+  return {
+    heroProgress,
+    heroOverlayOpacity: 1 - heroFade,
+    heroOverlayY: -56 * smoothstep(0, 0.62, heroProgress),
+    centerMix,
+    carouselMix,
+    carouselScale: 0.86 + 0.14 * carouselMix,
+  };
+}
+
 /**
  * Maps normalized scroll progress [0..1] into a centered vertical parallax translation [-rangePx..+rangePx].
  */

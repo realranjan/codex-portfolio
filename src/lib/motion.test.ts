@@ -46,7 +46,31 @@ test("computeSpatialScrollState clamps inputs and interpolates multi-plane paral
   assert.ok(end.raysShiftY < -30);
 });
 
-import { computeParallaxOffset } from "./motion";
+import {
+  computeHeroToCarouselState,
+  computeParallaxOffset,
+} from "./motion";
+
+test("computeHeroToCarouselState transitions cleanly from hero to centered carousel", () => {
+  const atStart = computeHeroToCarouselState(-0.2);
+  assert.equal(atStart.heroProgress, 0);
+  assert.equal(atStart.heroOverlayOpacity, 1);
+  assert.equal(atStart.centerMix, 0);
+  assert.equal(atStart.carouselMix, 0);
+  assert.equal(atStart.carouselScale, 0.86);
+
+  const midTransition = computeHeroToCarouselState(0.5);
+  assert.ok(midTransition.heroOverlayOpacity < 0.15, "Hero text should fade out by midpoint");
+  assert.ok(midTransition.centerMix > 0.45, "Bust should be gliding toward center");
+  assert.ok(midTransition.carouselMix > 0 && midTransition.carouselMix < 0.25);
+
+  const atAnchor = computeHeroToCarouselState(1.2);
+  assert.equal(atAnchor.heroProgress, 1);
+  assert.equal(atAnchor.heroOverlayOpacity, 0);
+  assert.equal(atAnchor.centerMix, 1);
+  assert.equal(atAnchor.carouselMix, 1);
+  assert.equal(atAnchor.carouselScale, 1);
+});
 
 test("computeParallaxOffset maps normalized scroll progress cleanly", () => {
   assert.equal(computeParallaxOffset(0, 40), -40);

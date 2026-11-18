@@ -1,11 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
-import Image from "next/image";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshSurfaceSampler } from "three/addons/math/MeshSurfaceSampler.js";
-import { AsciiScramble } from "@/components/motion/ascii-scramble";
 import { computeSpatialScrollState } from "@/lib/motion";
 
 const COUNT = 66000;
@@ -20,6 +18,7 @@ export interface SpatialControlValues {
 
 interface ParticlePortraitProps {
   spatialProgressRef?: MutableRefObject<number>;
+  centerMixRef?: MutableRefObject<number>;
   controlsRef?: MutableRefObject<SpatialControlValues>;
 }
 
@@ -310,6 +309,7 @@ function buildDots(mesh: THREE.Mesh): THREE.BufferGeometry {
 
 export default function ParticlePortrait({
   spatialProgressRef,
+  centerMixRef,
   controlsRef,
 }: ParticlePortraitProps) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -389,6 +389,7 @@ export default function ParticlePortrait({
 
     const onStageDown = (event: PointerEvent) => {
       if (event.button !== 0 && event.pointerType === "mouse") return;
+      if ((centerMixRef?.current ?? 0) >= 0.55) return;
       const targetEl = event.target as HTMLElement | null;
       if (targetEl?.closest("a, button, input, textarea, select, label, [role='button']")) {
         return;
@@ -497,6 +498,10 @@ export default function ParticlePortrait({
         surfaceGeometry = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
         if (!surfaceGeometry.getAttribute("normal")) surfaceGeometry.computeVertexNormals();
         surfaceGeometry.scale(2.8, 2.8, 2.8).translate(0, -0.68, 0);
+        const bustBox = new THREE.Box3().setFromBufferAttribute(
+          surfaceGeometry.getAttribute("position") as THREE.BufferAttribute
+        );
+        const bustCenter = bustBox.getCenter(new THREE.Vector3());
         glyphAtlas = makeGlyphAtlas();
         if (cleaned) return;
         setProgress(100);
@@ -581,9 +586,9 @@ export default function ParticlePortrait({
             const r = 0.58 + Math.random() * 1.35;
             dustPositions.set(
               [
-                Math.cos(theta) * r,
-                -1.65 + Math.random() * 3.05,
-                Math.sin(theta) * r * 0.78,
+                bustCenter.x + Math.cos(theta) * r,
+                bustCenter.y - 1.45 + Math.random() * 2.95,
+                bustCenter.z + Math.sin(theta) * r * 0.78,
               ],
               i * 3
             );
@@ -636,6 +641,40 @@ export default function ParticlePortrait({
         let baseKeep = 0.34;
         let shown = false;
 
+        const applyCameraFraming = (w: number) => {
+          const isDesktop = w >= 768;
+          const spatial = computeSpatialScrollState(spatialProgressRef?.current ?? 0);
+          const centerMix = centerMixRef?.current ?? 0;
+
+          // Hero framing puts the bust firmly in the right-third clear of H1 & top nav;
+          // Carousel framing pulls back slightly and centers the bust inside the orbital ring.
+          const heroShiftX = isDesktop ? 1.24 : 0;
+          const heroCamX = bustCenter.x - heroShiftX * 1.12;
+          const heroLookX = bustCenter.x - heroShiftX * 0.92;
+          const heroCamY = isDesktop ? bustCenter.y - 0.26 : bustCenter.y - 0.36;
+          const heroLookY = isDesktop ? bustCenter.y - 0.12 : bustCenter.y - 0.18;
+          const heroCamZ = isDesktop ? baseDistance * 1.06 : baseDistance * 1.18;
+
+          const orbitCamX = bustCenter.x;
+          const orbitLookX = bustCenter.x;
+          const orbitCamY = isDesktop ? bustCenter.y - 0.08 : bustCenter.y - 0.1;
+          const orbitLookY = isDesktop ? bustCenter.y - 0.16 : bustCenter.y - 0.14;
+          const orbitCamZ = Math.max(7.2, baseDistance * (isDesktop ? 1.44 : 1.52));
+
+          const camX = heroCamX + (orbitCamX - heroCamX) * centerMix;
+          const lookX = heroLookX + (orbitLookX - heroLookX) * centerMix;
+          const camY = heroCamY + (orbitCamY - heroCamY) * centerMix;
+          const lookY = heroLookY + (orbitLookY - heroLookY) * centerMix;
+          const camZ =
+            heroCamZ +
+            (orbitCamZ - heroCamZ) * centerMix +
+            Math.sin(spatial.progress * Math.PI) * -0.4;
+
+          camera.position.set(camX, camY, camZ);
+          camera.lookAt(lookX, lookY, bustCenter.z);
+          return { spatial, centerMix };
+        };
+
         const resize = () => {
           if (!renderer) return;
           const w = Math.max(1, stage.clientWidth);
@@ -648,13 +687,7 @@ export default function ParticlePortrait({
             2.35 / Math.tan(Math.PI / 12),
             1.7 / (Math.tan(Math.PI / 12) * camera.aspect)
           );
-          const spatial = computeSpatialScrollState(spatialProgressRef?.current ?? 0);
-          camera.position.set(
-            spatial.cameraOffsetX,
-            -0.15 + 0.16 * spatial.progress,
-            Math.max(4.1, baseDistance + spatial.cameraOffsetZ)
-          );
-          camera.lookAt(spatial.cameraOffsetX * 0.35, -0.12, 0);
+          applyCameraFraming(w);
           camera.updateProjectionMatrix();
           uniforms.uSize.value = 72 * dpr;
           baseKeep = w < 700 ? 0.22 : 0.34;
@@ -731,7 +764,7 @@ export default function ParticlePortrait({
             uniforms.uGlint.value = s <= 1 ? -0.75 + s * 1.8 : -9;
           }
 
-          const spatial = computeSpatialScrollState(spatialProgressRef?.current ?? 0);
+          const { spatial, centerMix } = applyCameraFraming(stage.clientWidth);
           const ctrl = controlsRef?.current;
           const densityScale = ctrl?.densityScale ?? 1;
           const dispersionBoost = ctrl?.dispersionBoost ?? 0;
@@ -743,14 +776,6 @@ export default function ParticlePortrait({
           const pulseAge = performance.now() * 0.001 - pulseStartTime;
           uniforms.uPulseAge.value = pulseAge >= 0 && pulseAge < 1.6 ? pulseAge : -1;
           uniforms.uPulseOrigin.value.copy(pulseOrigin);
-
-          const camY = -0.15 + 0.16 * spatial.progress;
-          camera.position.set(
-            spatial.cameraOffsetX,
-            camY,
-            Math.max(4.1, baseDistance + spatial.cameraOffsetZ)
-          );
-          camera.lookAt(spatial.cameraOffsetX * 0.35, -0.12, 0);
 
           const active = pointerActive || performance.now() < touchUntil;
           const dpr = renderer!.getPixelRatio();
@@ -782,16 +807,21 @@ export default function ParticlePortrait({
           currentOrbitYaw += (targetOrbitYaw - currentOrbitYaw) * orbitAlpha;
           currentOrbitPitch += (targetOrbitPitch - currentOrbitPitch) * orbitAlpha;
 
+          // Keep a poised front-facing sculpture silhouette inside the orbital ring
+          const dragAttenuation = 1 - centerMix * 0.65;
+          const heroYawBias = spatial.headBiasX * (1 - centerMix * 0.88);
+          const heroPitchBias = spatial.headBiasY * (1 - centerMix * 0.85);
+
           if (!reduced) {
             if (active) {
               desiredHead.set(
-                pointer.x * 0.45 + spatial.headBiasX + currentOrbitYaw,
-                pointer.y * 0.22 + spatial.headBiasY + currentOrbitPitch
+                pointer.x * (0.45 - 0.17 * centerMix) + heroYawBias + currentOrbitYaw * dragAttenuation,
+                pointer.y * (0.22 - 0.08 * centerMix) + heroPitchBias + currentOrbitPitch * dragAttenuation
               );
             } else {
               desiredHead.set(
-                0.28 * Math.sin(0.45 * elapsed) + spatial.headBiasX + currentOrbitYaw,
-                0.08 * Math.cos(0.33 * elapsed) + spatial.headBiasY + currentOrbitPitch
+                (0.28 - 0.1 * centerMix) * Math.sin(0.45 * elapsed) + heroYawBias + currentOrbitYaw * dragAttenuation,
+                0.08 * Math.cos(0.33 * elapsed) + heroPitchBias + currentOrbitPitch * dragAttenuation
               );
             }
             const headAlpha = isSoftwareGl ? 0.55 : 1 - Math.exp(-dt * (active ? 5 : 3.2));
@@ -799,14 +829,15 @@ export default function ParticlePortrait({
             uniforms.uHead.value.set(head.x, -head.y);
           } else {
             uniforms.uHead.value.set(
-              spatial.headBiasX + currentOrbitYaw,
-              -(spatial.headBiasY + currentOrbitPitch)
+              heroYawBias + currentOrbitYaw * dragAttenuation,
+              -(heroPitchBias + currentOrbitPitch * dragAttenuation)
             );
           }
 
           if (rootRef.current) {
             rootRef.current.dataset.hoverActive = active ? "true" : "false";
             rootRef.current.dataset.orbitRad = currentOrbitYaw.toFixed(3);
+            rootRef.current.dataset.centerMix = centerMix.toFixed(2);
           }
 
           const easeLight = 1 - Math.exp(-dt * 4);
@@ -863,7 +894,7 @@ export default function ParticlePortrait({
       surfaceGeometry?.dispose();
       glyphAtlas?.dispose();
     };
-  }, [spatialProgressRef, controlsRef]);
+  }, [spatialProgressRef, centerMixRef, controlsRef]);
 
   return (
     <div
@@ -873,26 +904,17 @@ export default function ParticlePortrait({
       data-webgl={webglUnavailable ? "fallback" : "active"}
       data-hover-active="false"
       data-orbit-rad="0"
+      data-center-mix="0"
       data-testid="particle-portrait"
     >
       {webglUnavailable ? (
-        <div className="relative h-full w-full overflow-hidden">
-          <Image
-            src="/ascii-art-poster.webp"
-            alt="Classical ASCII sculptural bust visualization"
-            fill
-            priority
-            referrerPolicy="no-referrer"
-            className="object-cover opacity-55 mix-blend-screen grayscale contrast-125"
-          />
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(circle at 68% 42%, rgba(188,165,212,0.18), rgba(13,11,18,0.92) 68%)",
-            }}
-          />
-        </div>
+        <div
+          className="relative h-full w-full overflow-hidden"
+          style={{
+            background:
+              "radial-gradient(circle at 68% 44%, rgba(196,176,220,0.16), #0A0A0C 64%)",
+          }}
+        />
       ) : (
         <div
           className="particle-stage cursor-grab active:cursor-grabbing"
@@ -904,7 +926,7 @@ export default function ParticlePortrait({
       <div
         className="particle-loader"
         role="progressbar"
-        aria-label="Assembling sculptural portrait"
+        aria-label="Loading 3D sculpture"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={progress}
@@ -925,12 +947,6 @@ export default function ParticlePortrait({
           })}
         </svg>
         <span className="particle-counter">{String(progress).padStart(3, "0")}</span>
-        <AsciiScramble
-          text="RV · CLASSICAL TOPOLOGY"
-          trigger="mount"
-          duration={0.9}
-          className="particle-label"
-        />
       </div>
     </div>
   );

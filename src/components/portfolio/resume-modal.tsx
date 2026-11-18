@@ -73,15 +73,15 @@ export function ResumeModal({ open, onClose }: ResumeModalProps) {
       data-testid="resume-modal"
     >
       <div
-        className="fixed inset-0 bg-[#0D0B12]/85"
+        className="fixed inset-0 bg-[#0A0A0C]/85"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      <div className="relative z-10 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[16px] border border-[#393143] bg-[#17131F] p-6 sm:p-10 text-[#F3EEF8]">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#393143] pb-5">
+      <div className="relative z-10 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[6px] border border-white/[0.12] bg-[#121216] p-6 sm:p-10 text-[#F4F1EA]">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.1] pb-5">
           <div>
-            <p className="type-tech-label text-[#BCA5D4]">Curriculum Vitae</p>
+            <p className="type-tech-label text-[#C4B0DC]">Curriculum Vitae</p>
             <h2 id="resume-dialog-title" className="mt-1 text-2xl font-semibold tracking-[-0.03em]">
               {IDENTITY.name}
             </h2>
@@ -110,7 +110,7 @@ export function ResumeModal({ open, onClose }: ResumeModalProps) {
               ref={closeBtnRef}
               type="button"
               onClick={onClose}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-[8px] border border-[#393143] bg-[#25202E] text-[#F3EEF8] hover:border-[#BCA5D4]"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-[4px] border border-white/[0.12] bg-[#1B1A20] text-[#F4F1EA] hover:border-[#C4B0DC]"
               aria-label="Close resume dialog"
             >
               <X size={18} strokeWidth={1.6} />
@@ -119,7 +119,7 @@ export function ResumeModal({ open, onClose }: ResumeModalProps) {
         </div>
 
         <div className="mt-6 space-y-7 text-sm sm:text-base">
-          <div className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs text-[#ADA4B8]">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs text-[#A19D97]">
             <span>{IDENTITY.email}</span>
             <span aria-hidden="true">·</span>
             <span>{IDENTITY.location}</span>
@@ -128,11 +128,11 @@ export function ResumeModal({ open, onClose }: ResumeModalProps) {
           </div>
 
           <div>
-            <h3 className="type-tech-label text-[#BCA5D4] mb-3">Engineering Profile</h3>
-            <ul className="space-y-2 text-[#ADA4B8] list-none p-0 m-0">
+            <h3 className="type-tech-label text-[#C4B0DC] mb-3">Engineering Profile</h3>
+            <ul className="space-y-2 text-[#A19D97] list-none p-0 m-0">
               {RESUME_SUMMARY.highlights.map((h, i) => (
                 <li key={i} className="grid grid-cols-[18px_1fr] gap-2">
-                  <span className="font-mono text-xs text-[#766C83] pt-1">—</span>
+                  <span className="font-mono text-xs text-[#6C6863] pt-1">—</span>
                   <span>{h}</span>
                 </li>
               ))}
@@ -140,36 +140,36 @@ export function ResumeModal({ open, onClose }: ResumeModalProps) {
           </div>
 
           <div>
-            <h3 className="type-tech-label text-[#BCA5D4] mb-3">Career Chronology</h3>
-            <div className="space-y-4">
+            <h3 className="type-tech-label text-[#C4B0DC] mb-3">Career Chronology</h3>
+            <div className="border-t border-white/[0.1]">
               {CAREER_STOPS.slice()
                 .reverse()
                 .map((stop) => (
                   <div
                     key={stop.id}
-                    className="rounded-[12px] border border-[#393143] bg-[#0D0B12] p-4"
+                    className="border-b border-white/[0.08] py-4"
                   >
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <span className="font-semibold text-[#F3EEF8]">
+                      <span className="font-semibold text-[#F4F1EA]">
                         {stop.company} · {stop.role}
                       </span>
-                      <span className="font-mono text-xs text-[#766C83] tabular-nums">
+                      <span className="font-mono text-xs text-[#6C6863] tabular-nums">
                         {stop.period}
                       </span>
                     </div>
-                    <p className="mt-1.5 text-sm text-[#ADA4B8]">{stop.summary}</p>
+                    <p className="mt-1.5 text-sm text-[#A19D97]">{stop.summary}</p>
                   </div>
                 ))}
             </div>
           </div>
 
           <div>
-            <h3 className="type-tech-label text-[#BCA5D4] mb-3">Systems & Stack</h3>
+            <h3 className="type-tech-label text-[#C4B0DC] mb-3">Systems & Stack</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {STACK_CATEGORIES.map((cat) => (
-                <div key={cat.name} className="border-t border-[#393143] pt-3">
-                  <div className="font-medium text-[#F3EEF8]">{cat.name}</div>
-                  <div className="mt-1 text-xs font-mono text-[#ADA4B8]">
+                <div key={cat.name} className="border-t border-white/[0.1] pt-3">
+                  <div className="font-medium text-[#F4F1EA]">{cat.name}</div>
+                  <div className="mt-1 text-xs font-mono text-[#A19D97]">
                     {cat.items.join(" · ")}
                   </div>
                 </div>

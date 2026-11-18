@@ -25,8 +25,8 @@ export function MaskedLineReveal({
   id,
   trigger = "scroll",
   delay = 0,
-  stagger = MOTION_STAGGER.relaxed,
-  duration = MOTION_DURATION.editorial,
+  stagger = MOTION_STAGGER.tight,
+  duration = MOTION_DURATION.standard,
 }: MaskedLineRevealProps) {
   const containerRef = useRef<HTMLElement>(null);
 
@@ -46,7 +46,7 @@ export function MaskedLineReveal({
       if (trigger === "mount") {
         gsap.fromTo(
           lineNodes,
-          { yPercent: 112 },
+          { yPercent: 110 },
           {
             yPercent: 0,
             duration,
@@ -59,7 +59,7 @@ export function MaskedLineReveal({
       } else {
         gsap.fromTo(
           lineNodes,
-          { yPercent: 112 },
+          { yPercent: 110 },
           {
             yPercent: 0,
             duration,
@@ -69,7 +69,7 @@ export function MaskedLineReveal({
             clearProps: "transform",
             scrollTrigger: {
               trigger: el,
-              start: "top 86%",
+              start: "top 96%",
               once: true,
             },
           }

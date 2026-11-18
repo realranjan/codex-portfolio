@@ -14,10 +14,12 @@ import {
   STACK_CATEGORIES,
   type ProjectCaseStudy,
 } from "@/data/portfolio";
-import { computeSpatialScrollState } from "@/lib/motion";
+import {
+  computeHeroToCarouselState,
+  computeSpatialScrollState,
+} from "@/lib/motion";
 import type { SpatialControlValues } from "@/components/particle-portrait";
 import AsciiBackground from "@/components/ascii-background";
-import { AsciiScramble } from "@/components/motion/ascii-scramble";
 import { DirectionalMediaReveal } from "@/components/motion/directional-media-reveal";
 import { MaskedLineReveal } from "@/components/motion/masked-line-reveal";
 import { ScrollWordReveal } from "@/components/motion/scroll-word-reveal";
@@ -26,7 +28,6 @@ import { ProjectFlyout } from "@/components/portfolio/project-flyout";
 import { ProjectsGallerySection } from "@/components/portfolio/projects-gallery-section";
 import { ResumeModal } from "@/components/portfolio/resume-modal";
 import { SiteNav } from "@/components/portfolio/site-nav";
-import { SpatialStudy } from "@/components/portfolio/spatial-study";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -37,20 +38,50 @@ const LightRays = dynamic(() => import("@/components/light-rays"), {
   ssr: false,
 });
 
+const SCULPTURE_MODES: readonly {
+  id: "relief" | "dense" | "disperse";
+  label: string;
+  values: SpatialControlValues;
+}[] = [
+  {
+    id: "relief",
+    label: "Ascii",
+    values: { densityScale: 1.0, lightAzimuth: 0, dispersionBoost: 0 },
+  },
+  {
+    id: "dense",
+    label: "Dense",
+    values: { densityScale: 1.85, lightAzimuth: 0.75, dispersionBoost: -0.04 },
+  },
+  {
+    id: "disperse",
+    label: "Disperse",
+    values: { densityScale: 1.25, lightAzimuth: -0.95, dispersionBoost: 0.65 },
+  },
+];
+
 export default function Home() {
   const pageRef = useRef<HTMLElement>(null);
-  const heroRunwayRef = useRef<HTMLDivElement>(null);
-  const heroCopyRef = useRef<HTMLDivElement>(null);
+  const unifiedRunwayRef = useRef<HTMLDivElement>(null);
+  const heroBandRef = useRef<HTMLDivElement>(null);
+  const projectsBandRef = useRef<HTMLElement>(null);
+
+  const heroOverlayRef = useRef<HTMLDivElement>(null);
+  const heroActionsRef = useRef<HTMLDivElement>(null);
+  const heroDockRef = useRef<HTMLDivElement>(null);
+  const heroScrimMobileRef = useRef<HTMLDivElement>(null);
+  const heroScrimDesktopRef = useRef<HTMLDivElement>(null);
+  const projectsHudRef = useRef<HTMLDivElement>(null);
+
   const asciiLayerRef = useRef<HTMLDivElement>(null);
   const raysLayerRef = useRef<HTMLDivElement>(null);
-  const heroScrollPctRef = useRef<HTMLSpanElement>(null);
-  const spatialProgressRef = useRef<number>(0);
-  const spatialControlsRef = useRef<SpatialControlValues>({
-    densityScale: 1.0,
-    lightAzimuth: 0,
-    dispersionBoost: 0,
-  });
 
+  const spatialProgressRef = useRef<number>(0);
+  const centerMixRef = useRef<number>(0);
+  const carouselMixRef = useRef<number>(0);
+  const spatialControlsRef = useRef<SpatialControlValues>(SCULPTURE_MODES[0].values);
+
+  const [sculptureMode, setSculptureMode] = useState<"relief" | "dense" | "disperse">("relief");
   const [selectedProject, setSelectedProject] = useState<ProjectCaseStudy | null>(null);
   const [lastTriggerId, setLastTriggerId] = useState<string | null>(null);
   const [resumeOpen, setResumeOpen] = useState(false);
@@ -62,66 +93,100 @@ export default function Home() {
   const [contactError, setContactError] = useState<string | null>(null);
   const [contactSent, setContactSent] = useState(false);
 
+  const handleSculptureMode = (mode: (typeof SCULPTURE_MODES)[number]) => {
+    setSculptureMode(mode.id);
+    spatialControlsRef.current = mode.values;
+  };
+
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) return;
+
+    const applyStageFromScroll = () => {
+      const heroHeight = Math.max(
+        1,
+        heroBandRef.current?.offsetHeight ?? window.innerHeight * 1.15
+      );
+      const rawHero = Math.min(1, Math.max(0, window.scrollY / heroHeight));
+
+      const spatial = computeSpatialScrollState(rawHero);
+      const transition = computeHeroToCarouselState(rawHero);
+
+      spatialProgressRef.current = rawHero;
+      centerMixRef.current = transition.centerMix;
+      carouselMixRef.current = transition.carouselMix;
+
+      if (heroOverlayRef.current) {
+        heroOverlayRef.current.style.transform = `translate3d(0, ${transition.heroOverlayY}px, 0)`;
+        heroOverlayRef.current.style.opacity = String(transition.heroOverlayOpacity);
+        heroOverlayRef.current.style.visibility =
+          transition.heroOverlayOpacity > 0.02 ? "visible" : "hidden";
+      }
+
+      const heroInteractive = transition.heroOverlayOpacity > 0.25 ? "auto" : "none";
+      if (heroActionsRef.current) {
+        heroActionsRef.current.style.pointerEvents = heroInteractive;
+      }
+      if (heroDockRef.current) {
+        heroDockRef.current.style.pointerEvents = heroInteractive;
+      }
+
+      if (heroScrimMobileRef.current) {
+        heroScrimMobileRef.current.style.opacity = String(transition.heroOverlayOpacity);
+      }
+      if (heroScrimDesktopRef.current) {
+        heroScrimDesktopRef.current.style.opacity = String(transition.heroOverlayOpacity);
+      }
+
+      if (projectsHudRef.current) {
+        const hudY = (1 - transition.carouselMix) * 18;
+        projectsHudRef.current.style.opacity = String(transition.carouselMix);
+        projectsHudRef.current.style.transform = `translate3d(0, ${hudY.toFixed(1)}px, 0)`;
+        projectsHudRef.current.style.visibility =
+          transition.carouselMix > 0.02 ? "visible" : "hidden";
+      }
+
+      if (asciiLayerRef.current) {
+        asciiLayerRef.current.style.transform = `translate3d(${spatial.bgDriftX}%, ${spatial.bgDriftY}%, 0) scale(${spatial.bgScale})`;
+        asciiLayerRef.current.style.opacity = String(spatial.bgOpacity);
+      }
+
+      if (raysLayerRef.current) {
+        raysLayerRef.current.style.transform = `translate3d(0, ${spatial.raysShiftY}px, 0)`;
+      }
+    };
+
+    applyStageFromScroll();
+    window.addEventListener("scroll", applyStageFromScroll, { passive: true });
+    window.addEventListener("resize", applyStageFromScroll);
+
+    if (reduced) {
+      return () => {
+        window.removeEventListener("scroll", applyStageFromScroll);
+        window.removeEventListener("resize", applyStageFromScroll);
+      };
+    }
 
     const lenis = new Lenis({ autoRaf: true, anchors: true });
-    const syncScrollTrigger = () => ScrollTrigger.update();
-    lenis.on("scroll", syncScrollTrigger);
+    const syncScroll = () => {
+      applyStageFromScroll();
+      ScrollTrigger.update();
+    };
+    lenis.on("scroll", syncScroll);
 
     const ctx = gsap.context(() => {
       gsap.from("[data-hero-intro]", {
         y: 14,
         opacity: 0,
-        duration: 0.7,
+        duration: 0.65,
         stagger: 0.08,
         ease: "power3.out",
         clearProps: "transform,opacity",
       });
 
-      const applyHeroState = (progress: number) => {
-        spatialProgressRef.current = progress;
-        const state = computeSpatialScrollState(progress);
-
-        if (heroCopyRef.current) {
-          heroCopyRef.current.style.transform = `translate3d(0, ${state.textDriftY}px, 0)`;
-          heroCopyRef.current.style.opacity = String(state.textOpacity);
-        }
-
-        if (asciiLayerRef.current) {
-          asciiLayerRef.current.style.transform = `translate3d(${state.bgDriftX}%, ${state.bgDriftY}%, 0) scale(${state.bgScale})`;
-          asciiLayerRef.current.style.opacity = String(state.bgOpacity);
-        }
-
-        if (raysLayerRef.current) {
-          raysLayerRef.current.style.transform = `translate3d(0, ${state.raysShiftY}px, 0)`;
-        }
-
-        if (heroScrollPctRef.current) {
-          const pct = Math.round(state.progress * 100);
-          heroScrollPctRef.current.textContent = `SCROLL DEPTH ${String(pct).padStart(2, "0")}%`;
-        }
-      };
-
-      applyHeroState(0);
-
-      if (heroRunwayRef.current) {
-        ScrollTrigger.create({
-          trigger: heroRunwayRef.current,
-          start: "top top",
-          end: "bottom bottom",
-          scrub: true,
-          onUpdate: (self) => applyHeroState(self.progress),
-        });
-      }
-
       const parallaxTargets: Array<{ selector: string; fromY: number; toY: number; trigger?: string }> = [
-        { selector: '[data-parallax="ascii-ambient"]', fromY: -48, toY: 48, trigger: "#about" },
-        { selector: '[data-parallax="prose"]', fromY: 20, toY: -20 },
-        { selector: '[data-parallax="portrait"]', fromY: 56, toY: -56 },
-        { selector: '[data-parallax="gallery-ring"]', fromY: 26, toY: -26, trigger: "#projects" },
-        { selector: '[data-parallax="contact-form"]', fromY: 30, toY: -22, trigger: "#contact" },
+        { selector: '[data-parallax="prose"]', fromY: 16, toY: -16 },
+        { selector: '[data-parallax="portrait"]', fromY: 36, toY: -36 },
+        { selector: '[data-parallax="contact-form"]', fromY: 20, toY: -16, trigger: "#contact" },
       ];
 
       for (const item of parallaxTargets) {
@@ -151,8 +216,10 @@ export default function Home() {
     }, pageRef);
 
     return () => {
+      window.removeEventListener("scroll", applyStageFromScroll);
+      window.removeEventListener("resize", applyStageFromScroll);
       ctx.revert();
-      lenis.off("scroll", syncScrollTrigger);
+      lenis.off("scroll", syncScroll);
       lenis.destroy();
     };
   }, []);
@@ -227,15 +294,17 @@ export default function Home() {
       <SiteNav onOpenResume={() => setResumeOpen(true)} />
 
       <main ref={pageRef} id="main-content">
-        {/* 01 / HERO & SPATIAL SCULPTURE RUNWAY */}
+        {/* 01 / UNIFIED HERO -> CIRCULAR CAROUSEL AROUND THE MODEL */}
         <div
-          ref={heroRunwayRef}
-          className="hero-runway relative min-h-[165svh] md:min-h-[215svh]"
+          ref={unifiedRunwayRef}
+          className="hero-runway relative"
           id="top"
         >
-          <section
-            className="hero-section sticky top-0 h-[100svh] min-h-[100svh] cursor-grab active:cursor-grabbing"
-            aria-labelledby="hero-heading"
+          {/* Sticky 100svh 3D Spatial Viewport spanning Hero -> Carousel */}
+          <div
+            className="hero-section cursor-grab active:cursor-grabbing"
+            role="region"
+            aria-label="Interactive 3D sculpture and orbiting project gallery"
           >
             <AsciiBackground ref={asciiLayerRef} />
 
@@ -247,225 +316,234 @@ export default function Home() {
                 className="hero-rays"
                 style={{}}
                 raysOrigin="top-right"
-                raysColor="#BCA5D4"
-                raysSpeed={0.48}
+                raysColor="#C4B0DC"
+                raysSpeed={0.44}
                 lightSpread={0.72}
-                rayLength={3.0}
-                rayDensity={1.45}
+                rayLength={2.9}
+                rayDensity={1.35}
                 raySharpness={0.78}
                 tilt={28}
-                glow={0.44}
-                haze={0.24}
-                atmosphere={0.22}
-                intensity={1.75}
-                opacity={0.86}
+                glow={0.38}
+                haze={0.2}
+                atmosphere={0.18}
+                intensity={1.55}
+                opacity={0.78}
                 pulsating
                 followMouse
-                mouseInfluence={0.12}
+                mouseInfluence={0.1}
                 cursorShadow
                 clickPulse
                 maxDevicePixelRatio={1.25}
               />
             </div>
 
+            {/* 3D Particle Bust (z-[5]) sitting between Carousel Back Ring (z-[2]) and Front Ring (z-[12]) */}
             <ParticlePortrait
               spatialProgressRef={spatialProgressRef}
+              centerMixRef={centerMixRef}
               controlsRef={spatialControlsRef}
             />
 
+            {/* Hero contrast scrims fade away cleanly as the carousel orbits the centered model */}
             <div
+              ref={heroScrimMobileRef}
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 z-[2] md:hidden"
+              className="pointer-events-none absolute inset-0 z-[6] md:hidden will-change-opacity"
               style={{
                 background:
-                  "linear-gradient(to top, rgba(13,11,18,0.92) 0%, rgba(13,11,18,0.68) 42%, rgba(13,11,18,0.18) 72%, transparent 100%)",
+                  "linear-gradient(to top, rgba(10,10,12,0.92) 0%, rgba(10,10,12,0.68) 42%, rgba(10,10,12,0.18) 72%, transparent 100%)",
+              }}
+            />
+            <div
+              ref={heroScrimDesktopRef}
+              aria-hidden="true"
+              className="pointer-events-none hidden md:block absolute inset-0 z-[6] will-change-opacity"
+              style={{
+                background:
+                  "linear-gradient(90deg, rgba(10,10,12,0.82) 0%, rgba(10,10,12,0.44) 36%, transparent 60%)",
               }}
             />
 
+            {/* Hero Copy & Bottom Shader Controls */}
             <div
-              aria-hidden="true"
-              className="pointer-events-none hidden md:block absolute inset-0 z-[3]"
-              style={{
-                background:
-                  "linear-gradient(90deg, rgba(13,11,18,0.78) 0%, rgba(13,11,18,0.42) 34%, transparent 58%)",
-              }}
-            />
-
-            <div className="page-container pointer-events-none relative z-10 flex flex-1 flex-col justify-end pt-14 pb-6">
-              <div
-                ref={heroCopyRef}
-                data-testid="hero-copy"
-                className="pointer-events-none max-w-[680px] will-change-transform"
-              >
-                <div className="pointer-events-none mb-5 flex items-center gap-3" data-hero-intro>
-                  <AsciiScramble
-                    text={IDENTITY.roleLine}
-                    trigger="mount"
-                    duration={0.85}
-                    className="type-tech-label text-[#BCA5D4]"
-                  />
-                </div>
-
-                <MaskedLineReveal
-                  as="h1"
-                  id="hero-heading"
-                  trigger="mount"
-                  delay={0.1}
-                  className="pointer-events-none type-display text-[#F3EEF8]"
-                  lines={[
-                    "Ideas made",
-                    <>
-                      <em className="type-serif-accent font-medium">visible</em> in code.
-                    </>,
-                  ]}
-                />
-
-                <p
-                  data-hero-intro
-                  className="pointer-events-none mt-6 max-w-[44ch] text-base sm:text-lg leading-relaxed text-[#ADA4B8]"
-                >
-                  Architecting distributed AI systems, resilient full-stack products, and
-                  real-time spatial graphics with neo-classical precision.
-                </p>
-
+              ref={heroOverlayRef}
+              className="pointer-events-none absolute inset-0 z-[20] flex flex-col justify-between pt-[92px] pb-7 will-change-[transform,opacity]"
+            >
+              <div className="page-container pointer-events-none flex flex-1 flex-col justify-end pb-6">
                 <div
-                  data-hero-intro
-                  className="mt-8 flex flex-wrap items-center gap-4 pointer-events-auto"
+                  data-testid="hero-copy"
+                  className="pointer-events-none max-w-[660px]"
                 >
-                  <a href="#projects" className="btn-primary no-underline">
-                    <span>Explore selected work</span>
-                    <ArrowDown size={15} strokeWidth={1.6} aria-hidden="true" />
-                  </a>
-                  <a href="#spatial-study" className="btn-secondary no-underline">
-                    <span>Calibrate 3D bust</span>
-                  </a>
+                  <p className="pointer-events-none mb-5 type-tech-label text-[#C4B0DC]" data-hero-intro>
+                    {IDENTITY.roleLine}
+                  </p>
+
+                  <MaskedLineReveal
+                    as="h1"
+                    id="hero-heading"
+                    trigger="mount"
+                    delay={0.08}
+                    className="pointer-events-none type-display text-[#F4F1EA]"
+                    lines={[
+                      "Systems shaped",
+                      <>
+                        for <em className="type-serif-accent font-medium whitespace-nowrap">real-time</em>
+                      </>,
+                      "speed.",
+                    ]}
+                  />
+
+                  <p
+                    data-hero-intro
+                    className="pointer-events-none mt-6 max-w-[44ch] text-base sm:text-lg leading-relaxed text-[#A19D97]"
+                  >
+                    Full-stack software, low-latency inference routers, and custom WebGL graphics
+                    built for production predictability.
+                  </p>
+
+                  <div
+                    ref={heroActionsRef}
+                    data-hero-intro
+                    className="mt-8 flex flex-wrap items-center gap-4 pointer-events-auto"
+                  >
+                    <a href="#projects" className="btn-primary no-underline">
+                      <span>Selected work</span>
+                      <ArrowDown size={15} strokeWidth={1.6} aria-hidden="true" />
+                    </a>
+                    <a href="#about" className="btn-secondary no-underline">
+                      <span>Practice &amp; background</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <div className="page-container pointer-events-none">
+                <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.1] pt-4 text-xs font-mono text-[#A19D97]">
+                  <span>Drag bust to orbit · Hover to inspect marble · Scroll to orbit projects</span>
+
+                  <div
+                    ref={heroDockRef}
+                    className="pointer-events-auto flex items-center gap-1 rounded-[4px] border border-white/[0.1] bg-[#0A0A0C]/85 p-1"
+                    role="group"
+                    aria-label="Sculpture shader mode"
+                  >
+                    {SCULPTURE_MODES.map((mode) => {
+                      const active = sculptureMode === mode.id;
+                      return (
+                        <button
+                          key={mode.id}
+                          type="button"
+                          onClick={() => handleSculptureMode(mode)}
+                          aria-pressed={active}
+                          className={`px-2.5 py-1 rounded-[3px] text-[11px] font-mono transition-colors duration-150 cursor-pointer whitespace-nowrap shrink-0 ${
+                            active
+                              ? "bg-[#C4B0DC] text-[#0A0A0C] font-medium"
+                              : "text-[#A19D97] hover:text-[#F4F1EA]"
+                          }`}
+                        >
+                          {mode.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="page-container pointer-events-none relative z-10">
-              <div className="flex flex-wrap items-center justify-between gap-4 border-t border-[#393143] pt-5 text-xs font-mono uppercase tracking-[0.08em] text-[#ADA4B8]">
-                <span className="inline-flex items-center gap-2">
-                  Drag to orbit 3D bust · Hover for marble &amp; particle scatter · Scroll to zoom
-                </span>
-                <div className="flex items-center gap-5 tabular-nums">
-                  <span
-                    ref={heroScrollPctRef}
-                    data-testid="hero-scroll-depth"
-                    className="text-[#BCA5D4]"
-                  >
-                    SCROLL DEPTH 00%
-                  </span>
-                  <span className="text-[#766C83]">01 / 05</span>
-                </div>
-              </div>
-            </div>
-          </section>
+            {/* Selected Work Circular Rings (Back z-2 + Front z-12) & Case Controls HUD */}
+            <ProjectsGallerySection
+              selectedProject={selectedProject}
+              onSelectProject={handleOpenProject}
+              scrollTargetRef={projectsBandRef}
+              carouselMixRef={carouselMixRef}
+              hudRef={projectsHudRef}
+            />
+          </div>
+
+          {/* Scroll Band 1: Hero transition -> Centered Model */}
+          <div
+            ref={heroBandRef}
+            aria-hidden="true"
+            className="h-[100svh] md:h-[115svh] pointer-events-none"
+          />
+
+          {/* Scroll Band 2 (#projects anchor): Orbiting circular carousel around the model */}
+          <section
+            ref={projectsBandRef}
+            id="projects"
+            aria-labelledby="projects-heading"
+            className="h-[210svh] md:h-[225svh] pointer-events-none"
+          />
         </div>
 
-        {/* 02 / SELECTED WORK — 3D CIRCULAR GALLERY */}
-        <ProjectsGallerySection
-          selectedProject={selectedProject}
-          onSelectProject={handleOpenProject}
-        />
-
-        {/* 03 / ABOUT, WORD REVEAL & SPATIAL STUDY */}
+        {/* 03 / PRACTICE & CRAFT */}
         <section
           id="about"
           aria-labelledby="about-heading"
           className="section-band overflow-hidden"
         >
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 overflow-hidden"
-          >
-            <div
-              data-parallax="ascii-ambient"
-              className="absolute -inset-y-20 inset-x-0 opacity-[0.032] will-change-transform"
-            >
-              <Image
-                src="/ascii-art-poster.webp"
-                alt=""
-                fill
-                sizes="100vw"
-                referrerPolicy="no-referrer"
-                className="object-cover object-right mix-blend-screen grayscale contrast-125"
-              />
-            </div>
-            <div
-              className="absolute inset-0"
-              style={{
-                background:
-                  "linear-gradient(90deg, var(--bg-primary) 0%, rgba(13,11,18,0.85) 48%, transparent 100%), linear-gradient(180deg, var(--bg-primary) 0%, transparent 25%, transparent 75%, var(--bg-primary) 100%)",
-              }}
-            />
-          </div>
-
-          <div className="page-container relative z-10">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-14 items-start">
+          <div className="page-container">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12 items-start">
               <div className="lg:col-span-2">
-                <AsciiScramble text="03 / ABOUT & CRAFT" className="type-tech-label" />
+                <span className="type-tech-label">02. Practice</span>
               </div>
               <div className="lg:col-span-10">
                 <MaskedLineReveal
                   as="h2"
                   id="about-heading"
-                  className="type-h2 text-[#F3EEF8]"
+                  className="type-h2 text-[#F4F1EA]"
                   lines={[
-                    "Where engineering rigor",
+                    "From kernel tuning",
                     <>
-                      meets <em className="type-serif-accent font-medium">sculptural</em> stillness.
+                      to the <em className="type-serif-accent font-medium">final</em> frame.
                     </>,
                   ]}
                 />
               </div>
             </div>
 
-            {/* Scroll-Synchronized Editorial Word Reveal */}
-            <div className="lg:ml-[16.666%] mb-16 border-y border-[#393143] py-10">
+            <div className="lg:ml-[16.666%] mb-14 border-y border-white/[0.1] py-10">
               <ScrollWordReveal
-                text="I build intelligent software systems, low-latency AI infrastructure, and tactile spatial interfaces that turn dense computation into calm, legible human instruments."
-                accentWords={["intelligent", "tactile", "instruments"]}
+                text="Across backend routers, storage engines, and browser shaders, good engineering cuts out unnecessary abstraction until the mechanism holds under load."
+                accentWords={["routers,", "shaders,", "holds"]}
                 className="type-intro max-w-[44ch]"
               />
             </div>
 
-            {/* Asymmetrical 12-Col Editorial Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
               <div
                 data-parallax="prose"
-                className="lg:col-span-7 space-y-10 will-change-transform"
+                className="lg:col-span-7 space-y-12 will-change-transform"
               >
-                <div className="space-y-5 text-[#ADA4B8] prose-measure">
+                <div className="space-y-5 text-[#A19D97] prose-measure">
                   <p>
-                    Across six years working on distributed data pipelines, inference routers, and
-                    real-time WebGL engines, my focus has stayed consistent: remove incidental
-                    complexity until only the essential mechanics remain.
+                    Over six years building distributed data pipelines, inference routers, and
+                    browser WebGL engines, my approach has stayed straightforward: measure tail
+                    behavior early, isolate pure state logic, and remove layers that obscure failure.
                   </p>
                   <p>
-                    Whether profiling CUDA kernel occupancy or tuning a GLSL fragment shader, good
-                    engineering shares the discipline of classical stonework—every joint is load-bearing,
-                    every proportion deliberate.
+                    Whether debugging CUDA occupancy or calibrating a fragment shader, software holds
+                    up best when every moving part earns its complexity.
                   </p>
                 </div>
 
-                {/* Connected Disciplines */}
+                {/* Core Disciplines */}
                 <div>
-                  <h3 className="type-tech-label text-[#BCA5D4] mb-4">Core Disciplines</h3>
-                  <div className="border-t border-[#393143]">
+                  <h3 className="type-tech-label text-[#C4B0DC] mb-4">Disciplines</h3>
+                  <div className="border-t border-white/[0.1]">
                     {DISCIPLINES.map((item) => (
                       <div
                         key={item.index}
-                        className="grid grid-cols-1 sm:grid-cols-[44px_1fr] gap-2 sm:gap-4 border-b border-[#393143] py-5"
+                        className="grid grid-cols-1 sm:grid-cols-[44px_1fr] gap-2 sm:gap-4 border-b border-white/[0.1] py-5"
                       >
-                        <span className="font-mono text-xs text-[#766C83] tabular-nums pt-1">
+                        <span className="font-mono text-xs text-[#6C6863] tabular-nums pt-1">
                           {item.index}
                         </span>
                         <div>
-                          <h4 className="text-lg font-semibold tracking-[-0.02em] text-[#F3EEF8]">
+                          <h4 className="text-lg font-semibold tracking-[-0.02em] text-[#F4F1EA]">
                             {item.title}
                           </h4>
-                          <p className="mt-1.5 text-sm sm:text-base text-[#ADA4B8] leading-relaxed prose-measure">
+                          <p className="mt-1.5 text-sm sm:text-base text-[#A19D97] leading-relaxed prose-measure">
                             {item.detail}
                           </p>
                         </div>
@@ -474,22 +552,19 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* Technical Stack Matrix (Zero Pills) */}
+                {/* Unboxed Hairline Stack Specification */}
                 <div>
-                  <h3 className="type-tech-label text-[#BCA5D4] mb-4">Technical Stack</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <h3 className="type-tech-label text-[#C4B0DC] mb-4">Technical Stack</h3>
+                  <div className="border-t border-white/[0.1]">
                     {STACK_CATEGORIES.map((group) => (
                       <div
                         key={group.name}
-                        className="rounded-[12px] border border-[#393143] bg-[#17131F] p-5"
+                        className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-2 sm:gap-6 border-b border-white/[0.1] py-4 items-baseline"
                       >
-                        <div className="flex items-center justify-between border-b border-[#393143]/70 pb-3">
-                          <span className="font-semibold text-[#F3EEF8]">{group.name}</span>
-                          <span className="font-mono text-xs text-[#766C83] tabular-nums">
-                            {group.index}
-                          </span>
-                        </div>
-                        <p className="mt-3 font-mono text-xs leading-relaxed text-[#ADA4B8]">
+                        <span className="text-sm font-medium text-[#F4F1EA]">
+                          {group.name}
+                        </span>
+                        <p className="font-mono text-xs leading-relaxed text-[#A19D97]">
                           {group.items.join(" · ")}
                         </p>
                       </div>
@@ -506,32 +581,27 @@ export default function Home() {
                 <DirectionalMediaReveal
                   direction="right"
                   aspectClassName="aspect-[3/4]"
-                  className="max-w-[480px] lg:ml-auto"
+                  className="max-w-[460px] lg:ml-auto"
                 >
                   <Image
                     src={IDENTITY.portrait}
                     alt={IDENTITY.portraitAlt}
                     fill
-                    sizes="(max-width: 1024px) 100vw, 480px"
+                    sizes="(max-width: 1024px) 100vw, 460px"
                     referrerPolicy="no-referrer"
                     className="object-cover"
                   />
                 </DirectionalMediaReveal>
-                <div className="mt-4 max-w-[480px] lg:ml-auto flex items-center justify-between text-xs font-mono text-[#766C83]">
+                <div className="mt-3 max-w-[460px] lg:ml-auto flex items-center justify-between text-xs font-mono text-[#6C6863]">
                   <span>{IDENTITY.location}</span>
-                  <span>Studio Monograph · 2026</span>
+                  <span>2026</span>
                 </div>
               </div>
-            </div>
-
-            {/* Spatial 3D Calibration Study */}
-            <div id="spatial-study" className="mt-16 pt-4">
-              <SpatialStudy controlsRef={spatialControlsRef} />
             </div>
           </div>
         </section>
 
-        {/* 04 / AIRPLANE CAREER JOURNEY */}
+        {/* 04 / EXPERIENCE */}
         <CareerJourney />
 
         {/* 05 / CONTACT & FOOTER */}
@@ -539,34 +609,34 @@ export default function Home() {
           <div className="page-container">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12 items-start">
               <div className="lg:col-span-2">
-                <AsciiScramble text="05 / CONTACT" className="type-tech-label" />
+                <span className="type-tech-label">04. Contact</span>
               </div>
               <div className="lg:col-span-10">
                 <MaskedLineReveal
                   as="h2"
                   id="contact-heading"
-                  className="type-h2 text-[#F3EEF8]"
+                  className="type-h2 text-[#F4F1EA]"
                   lines={[
-                    "Let’s architect something",
+                    "Start a conversation",
                     <>
-                      <em className="type-serif-accent font-medium">enduring</em> together.
+                      about <em className="type-serif-accent font-medium">systems</em> work.
                     </>,
                   ]}
                 />
               </div>
             </div>
 
-            <div className="lg:ml-[16.666%] grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+            <div className="lg:ml-[16.666%] grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
               <div className="lg:col-span-5 space-y-6">
-                <p className="text-base sm:text-lg text-[#ADA4B8] leading-relaxed prose-measure">
-                  Open to principal engineering roles, AI infrastructure advisory, and select
-                  interactive web collaborations.
+                <p className="text-base sm:text-lg text-[#A19D97] leading-relaxed prose-measure">
+                  Available for principal engineering roles, AI infrastructure advisory, and select
+                  interactive web engagements.
                 </p>
 
-                <div className="rounded-[12px] border border-[#393143] bg-[#17131F] p-5 space-y-4">
+                <div className="border-t border-white/[0.1] pt-5 space-y-4">
                   <div>
-                    <span className="type-tech-label text-[#766C83]">Direct Email</span>
-                    <div className="mt-1 font-mono text-sm text-[#F3EEF8] break-all">
+                    <span className="type-tech-label text-[#6C6863]">Direct Email</span>
+                    <div className="mt-1 font-mono text-sm text-[#F4F1EA] break-all">
                       {IDENTITY.email}
                     </div>
                   </div>
@@ -594,7 +664,7 @@ export default function Home() {
                       onClick={() => setResumeOpen(true)}
                       className="btn-secondary"
                     >
-                      <span>View Resume</span>
+                      <span>Resume</span>
                     </button>
                   </div>
                 </div>
@@ -607,15 +677,15 @@ export default function Home() {
                 {contactSent ? (
                   <div
                     role="status"
-                    className="rounded-[16px] border border-[#BCA5D4]/60 bg-[#17131F] p-8 space-y-4"
+                    className="rounded-[6px] border border-[#C4B0DC]/50 bg-[#121216] p-8 space-y-4"
                   >
-                    <p className="type-tech-label text-[#BCA5D4]">Dispatch Recorded</p>
-                    <h3 className="text-2xl font-semibold tracking-[-0.03em] text-[#F3EEF8]">
+                    <p className="type-tech-label text-[#C4B0DC]">Message Recorded</p>
+                    <h3 className="text-2xl font-semibold tracking-[-0.025em] text-[#F4F1EA]">
                       Thank you, {contactName}.
                     </h3>
-                    <p className="text-sm sm:text-base text-[#ADA4B8] prose-measure">
-                      Your note has been formatted for {IDENTITY.email}. You can also reach out
-                      directly via email or send another inquiry below.
+                    <p className="text-sm sm:text-base text-[#A19D97] prose-measure">
+                      Your note is ready for {IDENTITY.email}. You can send a follow-up note below
+                      or copy the email address directly.
                     </p>
                     <button
                       type="button"
@@ -634,7 +704,7 @@ export default function Home() {
                   <form
                     onSubmit={handleContactSubmit}
                     noValidate
-                    className="rounded-[16px] border border-[#393143] bg-[#17131F] p-6 sm:p-8 space-y-5"
+                    className="rounded-[6px] border border-white/[0.1] bg-[#121216] p-6 sm:p-8 space-y-5"
                   >
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <label className="block">
@@ -643,8 +713,8 @@ export default function Home() {
                           type="text"
                           value={contactName}
                           onChange={(e) => setContactName(e.target.value)}
-                          placeholder="Ada Lovelace"
-                          className="w-full min-h-[44px] rounded-[8px] border border-[#393143] bg-[#0D0B12] px-3.5 py-2.5 text-sm text-[#F3EEF8] placeholder:text-[#766C83] focus:border-[#BCA5D4] focus:outline-none"
+                          placeholder="Your name"
+                          className="w-full min-h-[44px] rounded-[4px] border border-white/[0.12] bg-[#0A0A0C] px-3.5 py-2.5 text-sm text-[#F4F1EA] placeholder:text-[#6C6863] focus:border-[#C4B0DC] focus:outline-none"
                           required
                         />
                       </label>
@@ -654,8 +724,8 @@ export default function Home() {
                           type="email"
                           value={contactEmail}
                           onChange={(e) => setContactEmail(e.target.value)}
-                          placeholder="ada@analytical.org"
-                          className="w-full min-h-[44px] rounded-[8px] border border-[#393143] bg-[#0D0B12] px-3.5 py-2.5 text-sm text-[#F3EEF8] placeholder:text-[#766C83] focus:border-[#BCA5D4] focus:outline-none"
+                          placeholder="you@company.com"
+                          className="w-full min-h-[44px] rounded-[4px] border border-white/[0.12] bg-[#0A0A0C] px-3.5 py-2.5 text-sm text-[#F4F1EA] placeholder:text-[#6C6863] focus:border-[#C4B0DC] focus:outline-none"
                           required
                         />
                       </label>
@@ -667,21 +737,21 @@ export default function Home() {
                         rows={4}
                         value={contactMessage}
                         onChange={(e) => setContactMessage(e.target.value)}
-                        placeholder="Share architecture context, timeline, or collaboration goals..."
-                        className="w-full rounded-[8px] border border-[#393143] bg-[#0D0B12] px-3.5 py-2.5 text-sm text-[#F3EEF8] placeholder:text-[#766C83] focus:border-[#BCA5D4] focus:outline-none"
+                        placeholder="Share project scope, architecture context, or timeline..."
+                        className="w-full rounded-[4px] border border-white/[0.12] bg-[#0A0A0C] px-3.5 py-2.5 text-sm text-[#F4F1EA] placeholder:text-[#6C6863] focus:border-[#C4B0DC] focus:outline-none"
                         required
                       />
                     </label>
 
                     {contactError && (
-                      <p role="alert" className="text-xs font-mono text-[#D2BCE8]">
+                      <p role="alert" className="text-xs font-mono text-[#D9CAE8]">
                         {contactError}
                       </p>
                     )}
 
                     <div className="flex items-center justify-between gap-4 pt-1">
-                      <span className="font-mono text-xs text-[#766C83]">
-                        Response within 24–48h
+                      <span className="font-mono text-xs text-[#6C6863]">
+                        Direct dispatch
                       </span>
                       <button type="submit" className="btn-primary">
                         <span>Send message</span>
@@ -693,22 +763,20 @@ export default function Home() {
               </div>
             </div>
 
-            <footer className="mt-24 flex flex-wrap items-center justify-between gap-6 border-t border-[#393143] pt-6 text-xs font-mono uppercase tracking-[0.08em] text-[#ADA4B8]">
-              <span>
-                {IDENTITY.monogram} · {IDENTITY.name}
-              </span>
+            <footer className="mt-20 flex flex-wrap items-center justify-between gap-6 border-t border-white/[0.1] pt-6 text-xs font-mono text-[#A19D97]">
+              <span>{IDENTITY.name}</span>
               <div className="flex flex-wrap items-center gap-6">
                 <a
                   href={IDENTITY.github}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[#ADA4B8] no-underline hover:text-[#BCA5D4]"
+                  className="text-[#A19D97] no-underline hover:text-[#C4B0DC]"
                 >
                   GitHub
                 </a>
                 <a
                   href="#top"
-                  className="inline-flex items-center gap-1.5 text-[#F3EEF8] no-underline hover:text-[#BCA5D4]"
+                  className="inline-flex items-center gap-1.5 text-[#F4F1EA] no-underline hover:text-[#C4B0DC]"
                 >
                   <span>Back to top</span>
                   <ArrowUp size={14} strokeWidth={1.6} aria-hidden="true" />

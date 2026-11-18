@@ -38,11 +38,11 @@ export function ProjectFlyout({ project, onClose }: ProjectFlyoutProps) {
         gsap.fromTo(
           overlayRef.current,
           { opacity: 0 },
-          { opacity: 1, duration: 0.35, ease: "power2.out" }
+          { opacity: 1, duration: 0.32, ease: "power2.out" }
         );
         gsap.fromTo(
           panelRef.current,
-          { xPercent: 8, opacity: 0, clipPath: "inset(0% 0% 0% 12%)" },
+          { xPercent: 6, opacity: 0, clipPath: "inset(0% 0% 0% 10%)" },
           {
             xPercent: 0,
             opacity: 1,
@@ -56,12 +56,12 @@ export function ProjectFlyout({ project, onClose }: ProjectFlyoutProps) {
         if (staggerItems && staggerItems.length > 0) {
           gsap.fromTo(
             staggerItems,
-            { opacity: 0, y: 14 },
+            { opacity: 0, y: 12 },
             {
               opacity: 1,
               y: 0,
-              duration: 0.45,
-              delay: 0.14,
+              duration: 0.42,
+              delay: 0.12,
               stagger: MOTION_STAGGER.tight,
               ease: MOTION_EASE.editorial,
               clearProps: "transform,opacity",
@@ -95,22 +95,20 @@ export function ProjectFlyout({ project, onClose }: ProjectFlyoutProps) {
       aria-labelledby="flyout-project-title"
       data-testid="project-flyout"
     >
-      {/* Overlay */}
       <div
         ref={overlayRef}
-        className="fixed inset-0 bg-[#0D0B12]/80"
+        className="fixed inset-0 bg-[#0A0A0C]/80"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Panel */}
       <div
         ref={panelRef}
-        className="relative z-10 flex h-full w-full max-w-[720px] flex-col overflow-y-auto border-l border-[#393143] bg-[#17131F] p-6 sm:p-10 text-[#F3EEF8]"
+        className="relative z-10 flex h-full w-full max-w-[720px] flex-col overflow-y-auto border-l border-white/[0.1] bg-[#121216] p-6 sm:p-10 text-[#F4F1EA]"
       >
         <div
           data-flyout-stagger
-          className="flex items-center justify-between gap-4 border-b border-[#393143] pb-5"
+          className="flex items-center justify-between gap-4 border-b border-white/[0.1] pb-5"
         >
           <div className="flex items-center gap-3 type-tech-label">
             <span>Case {project.index}</span>
@@ -124,7 +122,7 @@ export function ProjectFlyout({ project, onClose }: ProjectFlyoutProps) {
             ref={closeBtnRef}
             type="button"
             onClick={onClose}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-[8px] border border-[#393143] bg-[#25202E] text-[#F3EEF8] transition-colors duration-200 hover:border-[#BCA5D4] hover:text-[#BCA5D4]"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-[4px] border border-white/[0.12] bg-[#1B1A20] text-[#F4F1EA] transition-colors duration-200 hover:border-[#C4B0DC] hover:text-[#C4B0DC]"
             aria-label={`Close ${project.title} details`}
           >
             <X size={18} strokeWidth={1.6} />
@@ -133,20 +131,19 @@ export function ProjectFlyout({ project, onClose }: ProjectFlyoutProps) {
 
         <div className="mt-7 space-y-7">
           <div data-flyout-stagger>
-            <p className="type-tech-label text-[#BCA5D4] mb-2">{project.category}</p>
-            <h3 id="flyout-project-title" className="type-h2 text-[#F3EEF8]">
+            <p className="type-tech-label text-[#C4B0DC] mb-2">{project.category}</p>
+            <h3 id="flyout-project-title" className="type-h2 text-[#F4F1EA]">
               {project.title}{" "}
               <span className="type-serif-accent font-normal">{project.serifAccent}</span>
             </h3>
-            <p className="mt-3 text-base leading-relaxed text-[#ADA4B8] prose-measure">
+            <p className="mt-3 text-base leading-relaxed text-[#A19D97] prose-measure">
               {project.summary}
             </p>
           </div>
 
-          {/* Media */}
           <div
             data-flyout-stagger
-            className="relative aspect-[16/9] w-full overflow-hidden rounded-[12px] border border-[#393143] bg-[#0D0B12]"
+            className="relative aspect-[16/9] w-full overflow-hidden rounded-[6px] border border-white/[0.1] bg-[#0A0A0C]"
           >
             <Image
               src={project.image}
@@ -158,31 +155,29 @@ export function ProjectFlyout({ project, onClose }: ProjectFlyoutProps) {
             />
           </div>
 
-          {/* Metrics Row */}
           <div
             data-flyout-stagger
-            className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-y border-[#393143] py-5"
+            className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-y border-white/[0.1] py-5"
           >
             {project.metrics.map((metric) => (
               <div key={metric.label}>
-                <div className="type-tech-label text-[#766C83]">{metric.label}</div>
-                <div className="mt-1 font-mono text-2xl font-medium tabular-nums text-[#F3EEF8]">
+                <div className="type-tech-label text-[#6C6863]">{metric.label}</div>
+                <div className="mt-1 font-mono text-2xl font-medium tabular-nums text-[#F4F1EA]">
                   {metric.value}
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Architecture Breakdown */}
           <div data-flyout-stagger>
-            <h4 className="type-tech-label text-[#BCA5D4] mb-3">Architecture Decisions</h4>
-            <ul className="space-y-3 border-t border-[#393143]/70 pt-3 list-none p-0 m-0">
+            <h4 className="type-tech-label text-[#C4B0DC] mb-3">Architecture Notes</h4>
+            <ul className="space-y-3 border-t border-white/[0.08] pt-3 list-none p-0 m-0">
               {project.architecture.map((point, idx) => (
                 <li
                   key={idx}
-                  className="grid grid-cols-[28px_1fr] gap-3 text-sm sm:text-base leading-relaxed text-[#ADA4B8]"
+                  className="grid grid-cols-[28px_1fr] gap-3 text-sm sm:text-base leading-relaxed text-[#A19D97]"
                 >
-                  <span className="font-mono text-xs text-[#766C83] pt-1 tabular-nums">
+                  <span className="font-mono text-xs text-[#6C6863] pt-1 tabular-nums">
                     0{idx + 1}
                   </span>
                   <span>{point}</span>
@@ -191,26 +186,25 @@ export function ProjectFlyout({ project, onClose }: ProjectFlyoutProps) {
             </ul>
           </div>
 
-          {/* Outcome & Stack */}
           <div
             data-flyout-stagger
-            className="rounded-[12px] border border-[#393143] bg-[#0D0B12] p-5 space-y-4"
+            className="border-t border-white/[0.1] pt-5 space-y-4"
           >
             <div>
-              <div className="type-tech-label text-[#766C83]">Measured Outcome</div>
-              <p className="mt-1.5 text-sm sm:text-base text-[#F3EEF8] leading-relaxed">
+              <div className="type-tech-label text-[#6C6863]">Outcome</div>
+              <p className="mt-1.5 text-sm sm:text-base text-[#F4F1EA] leading-relaxed">
                 {project.outcome}
               </p>
             </div>
-            <div className="border-t border-[#393143]/70 pt-4 flex flex-wrap items-center justify-between gap-4">
-              <div className="text-xs font-mono text-[#ADA4B8] tracking-[0.04em]">
+            <div className="border-t border-white/[0.08] pt-4 flex flex-wrap items-center justify-between gap-4">
+              <div className="text-xs font-mono text-[#A19D97]">
                 {project.stack.join(" · ")}
               </div>
               <a
                 href={`https://${project.repoSlug}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 font-mono text-xs uppercase tracking-[0.08em] text-[#BCA5D4] no-underline hover:text-[#D2BCE8] whitespace-nowrap shrink-0"
+                className="inline-flex items-center gap-1.5 font-mono text-xs text-[#C4B0DC] no-underline hover:text-[#D9CAE8] whitespace-nowrap shrink-0"
               >
                 <span>Source Repository</span>
                 <ArrowUpRight size={14} strokeWidth={1.6} aria-hidden="true" />

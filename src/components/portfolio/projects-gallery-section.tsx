@@ -1,22 +1,31 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useMemo,
+  useState,
+  type MutableRefObject,
+  type RefObject,
+} from "react";
 import { ChevronLeft, ChevronRight, MoveUpRight, Pause, Play } from "lucide-react";
 import { PROJECTS, type ProjectCaseStudy } from "@/data/portfolio";
 import { CircularGallery, type GalleryItem } from "@/components/ui/circular-gallery";
-import { AsciiScramble } from "@/components/motion/ascii-scramble";
-import { MaskedLineReveal } from "@/components/motion/masked-line-reveal";
 
 interface ProjectsGallerySectionProps {
   selectedProject: ProjectCaseStudy | null;
   onSelectProject: (project: ProjectCaseStudy) => void;
+  scrollTargetRef: RefObject<HTMLElement | null>;
+  carouselMixRef: MutableRefObject<number>;
+  hudRef: RefObject<HTMLDivElement | null>;
 }
 
 export function ProjectsGallerySection({
   selectedProject,
   onSelectProject,
+  scrollTargetRef,
+  carouselMixRef,
+  hudRef,
 }: ProjectsGallerySectionProps) {
-  const runwayRef = useRef<HTMLElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [manualOffsetDeg, setManualOffsetDeg] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -49,7 +58,6 @@ export function ProjectsGallerySection({
 
   const handleStep = useCallback(
     (direction: -1 | 1) => {
-      // Direction +1 advances to the next project by rotating the ring -angleStep
       setManualOffsetDeg((prev) => prev - direction * angleStep);
     },
     [angleStep]
@@ -68,82 +76,89 @@ export function ProjectsGallerySection({
   );
 
   return (
-    <section
-      ref={runwayRef}
-      id="projects"
-      aria-labelledby="projects-heading"
-      className="section-band section-band--elevated !py-0 min-h-[145vh] lg:min-h-[185vh]"
-    >
-      <div className="sticky top-0 flex min-h-[100svh] flex-col justify-between pt-20 pb-8 lg:pt-24 lg:pb-10">
-        {/* Top Header */}
-        <div className="page-container">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-end">
-            <div className="lg:col-span-2">
-              <AsciiScramble text="02 / SELECTED WORK" className="type-tech-label" />
-            </div>
-            <div className="lg:col-span-6">
-              <MaskedLineReveal
-                as="h2"
-                id="projects-heading"
-                className="type-h2 text-[#F3EEF8]"
-                lines={[
-                  "Systems built for",
-                  <>
-                    clarity under <em className="type-serif-accent font-medium">scale.</em>
-                  </>,
-                ]}
-              />
-            </div>
-            <div className="lg:col-span-4">
-              <p className="text-sm text-[#ADA4B8] leading-relaxed">
-                Scroll, drag, or step through the 3D carousel and select any system card to inspect
-                architecture decisions and production metrics.
-              </p>
+    <>
+      {/* 3D Circular Ring Stages (Back hemisphere behind bust, Front hemisphere in front) */}
+      <CircularGallery
+        items={galleryItems}
+        radius={510}
+        tiltDeg={-9}
+        autoRotateSpeed={0.2}
+        scrollTargetRef={scrollTargetRef}
+        carouselMixRef={carouselMixRef}
+        manualOffsetDeg={manualOffsetDeg}
+        paused={paused || Boolean(selectedProject)}
+        selectedItemId={selectedProject?.id ?? null}
+        onActiveIndexChange={setActiveIndex}
+        onSelectItem={(_, idx) => {
+          const project = PROJECTS[idx];
+          if (project) onSelectProject(project);
+        }}
+        data-testid="projects-circular-gallery"
+      />
+
+      {/* Top & Bottom Selected Work HUD (revealed once bust centers) */}
+      <div
+        ref={hudRef}
+        data-testid="projects-hud"
+        className="pointer-events-none absolute inset-0 z-[20] flex flex-col justify-between will-change-[transform,opacity]"
+        style={{ opacity: 0, visibility: "hidden" }}
+      >
+        {/* Top Header Row with gentle contrast veil over upper glyphs */}
+        <div
+          className="pt-[84px] pb-6 lg:pt-24 lg:pb-8"
+          style={{
+            background:
+              "linear-gradient(to bottom, rgba(10,10,12,0.88) 0%, rgba(10,10,12,0.52) 64%, transparent 100%)",
+          }}
+        >
+          <div className="page-container">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-8 items-end">
+              <div className="lg:col-span-2">
+                <span className="type-tech-label text-[#C4B0DC]">01. Selected Work</span>
+              </div>
+              <div className="lg:col-span-6">
+                <h2
+                  id="projects-heading"
+                  className="text-2xl sm:text-3xl lg:text-[2.35rem] font-semibold leading-[1.08] tracking-[-0.035em] text-[#F4F1EA]"
+                >
+                  Production systems, built to hold{" "}
+                  <em className="type-serif-accent font-medium">latency.</em>
+                </h2>
+              </div>
+              <div className="hidden sm:block lg:col-span-4">
+                <p className="text-xs sm:text-sm text-[#A19D97] leading-relaxed">
+                  Scroll or drag to orbit projects around the sculpture. Select any card for
+                  architecture notes.
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* 3D Circular Gallery Stage */}
+        {/* Bottom Case Controls Dock with crisp obsidian gradient backing */}
         <div
-          className="relative my-2 h-[370px] sm:h-[480px] lg:h-[540px] w-full will-change-transform"
-          data-testid="projects-circular-gallery"
-          data-parallax="gallery-ring"
+          className="pt-8 pb-5 lg:pt-10 lg:pb-7"
+          style={{
+            background:
+              "linear-gradient(to top, rgba(10,10,12,0.94) 0%, rgba(10,10,12,0.72) 58%, transparent 100%)",
+          }}
         >
-          <CircularGallery
-            items={galleryItems}
-            radius={460}
-            autoRotateSpeed={0.22}
-            scrollTargetRef={runwayRef}
-            manualOffsetDeg={manualOffsetDeg}
-            paused={paused || Boolean(selectedProject)}
-            selectedItemId={selectedProject?.id ?? null}
-            onActiveIndexChange={setActiveIndex}
-            onSelectItem={(_, idx) => {
-              const project = PROJECTS[idx];
-              if (project) onSelectProject(project);
-            }}
-          />
-        </div>
+          <div className="page-container">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 border-t border-white/[0.12] pt-3.5 sm:pt-4">
+              <div className="flex items-baseline gap-3 sm:gap-4 min-w-0">
+                <span className="font-mono text-xs text-[#C4B0DC] tabular-nums shrink-0">
+                  {activeProject.index} / {String(PROJECTS.length).padStart(2, "0")}
+                </span>
+                <span className="text-base sm:text-lg font-semibold tracking-[-0.02em] text-[#F4F1EA] whitespace-nowrap shrink-0">
+                  {activeProject.title}{" "}
+                  <em className="type-serif-accent font-normal">{activeProject.serifAccent}</em>
+                </span>
+                <span className="hidden xl:inline font-mono text-xs text-[#A19D97] truncate max-w-[380px]">
+                  {activeProject.summary}
+                </span>
+              </div>
 
-        {/* Bottom Interactive Controls & Active Case Readout */}
-        <div className="page-container">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-t border-[#393143] pt-5">
-            {/* Active Case Info */}
-            <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-4 min-w-0">
-              <span className="font-mono text-xs uppercase tracking-[0.08em] text-[#BCA5D4] tabular-nums shrink-0">
-                {activeProject.index} / {String(PROJECTS.length).padStart(2, "0")}
-              </span>
-              <span className="text-lg font-semibold tracking-[-0.02em] text-[#F3EEF8] whitespace-nowrap shrink-0">
-                {activeProject.title}{" "}
-                <em className="type-serif-accent font-normal">{activeProject.serifAccent}</em>
-              </span>
-              <span className="hidden 2xl:inline font-mono text-xs text-[#766C83] truncate max-w-[320px]">
-                {activeProject.summary}
-              </span>
-            </div>
-
-            {/* Carousel Controls + Quick Selectors */}
-            <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <div className="pointer-events-auto flex flex-wrap items-center gap-2 shrink-0">
               <div
                 className="hidden sm:flex items-center gap-1 mr-1"
                 role="group"
@@ -158,10 +173,10 @@ export function ProjectsGallerySection({
                       onClick={() => handleJumpToIndex(idx)}
                       aria-label={`Rotate to ${project.title}`}
                       aria-pressed={isCurrent}
-                      className={`h-9 min-w-[36px] px-2 rounded-[8px] font-mono text-xs tabular-nums transition-colors duration-200 cursor-pointer ${
+                      className={`h-9 min-w-[36px] px-2 rounded-[4px] font-mono text-xs tabular-nums transition-colors duration-200 cursor-pointer ${
                         isCurrent
-                          ? "bg-[#BCA5D4] text-[#0D0B12] font-medium"
-                          : "border border-[#393143] bg-[#17131F] text-[#ADA4B8] hover:border-[#BCA5D4] hover:text-[#F3EEF8]"
+                          ? "bg-[#C4B0DC] text-[#0A0A0C] font-medium"
+                          : "border border-white/[0.1] bg-[#121216] text-[#A19D97] hover:border-[#C4B0DC] hover:text-[#F4F1EA]"
                       }`}
                     >
                       {project.index}
@@ -173,7 +188,7 @@ export function ProjectsGallerySection({
               <button
                 type="button"
                 onClick={() => handleStep(-1)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-[8px] border border-[#393143] bg-[#17131F] text-[#F3EEF8] transition-colors duration-200 hover:border-[#BCA5D4] hover:text-[#BCA5D4] cursor-pointer"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-[4px] border border-white/[0.1] bg-[#121216] text-[#F4F1EA] transition-colors duration-200 hover:border-[#C4B0DC] hover:text-[#C4B0DC] cursor-pointer"
                 aria-label="Previous project"
               >
                 <ChevronLeft size={16} strokeWidth={1.6} />
@@ -182,7 +197,7 @@ export function ProjectsGallerySection({
               <button
                 type="button"
                 onClick={() => handleStep(1)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-[8px] border border-[#393143] bg-[#17131F] text-[#F3EEF8] transition-colors duration-200 hover:border-[#BCA5D4] hover:text-[#BCA5D4] cursor-pointer"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-[4px] border border-white/[0.1] bg-[#121216] text-[#F4F1EA] transition-colors duration-200 hover:border-[#C4B0DC] hover:text-[#C4B0DC] cursor-pointer"
                 aria-label="Next project"
               >
                 <ChevronRight size={16} strokeWidth={1.6} />
@@ -191,7 +206,7 @@ export function ProjectsGallerySection({
               <button
                 type="button"
                 onClick={() => setPaused((p) => !p)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-[8px] border border-[#393143] bg-[#17131F] text-[#F3EEF8] transition-colors duration-200 hover:border-[#BCA5D4] hover:text-[#BCA5D4] cursor-pointer"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-[4px] border border-white/[0.1] bg-[#121216] text-[#F4F1EA] transition-colors duration-200 hover:border-[#C4B0DC] hover:text-[#C4B0DC] cursor-pointer"
                 aria-label={paused ? "Resume gallery rotation" : "Pause gallery rotation"}
                 aria-pressed={paused}
               >
@@ -212,8 +227,9 @@ export function ProjectsGallerySection({
               </button>
             </div>
           </div>
+          </div>
         </div>
       </div>
-    </section>
+    </>
   );
 }

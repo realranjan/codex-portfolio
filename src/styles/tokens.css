@@ -1,58 +1,58 @@
 :root {
-  /* Color Palette — Dark Neo-Classical */
-  --bg-primary: #0D0B12;
-  --bg-elevated: #17131F;
-  --bg-surface: #25202E;
+  /* Color Palette — Gallery Obsidian & Pentelic Limestone */
+  --bg-primary: #0a0a0c;
+  --bg-elevated: #121216;
+  --bg-surface: #1b1a20;
 
-  --text-primary: #F3EEF8;
-  --text-secondary: #ADA4B8;
-  --text-muted: #766C83;
+  --text-primary: #f4f1ea;
+  --text-secondary: #a19d97;
+  --text-muted: #6c6863;
 
-  --accent-primary: #BCA5D4;
-  --accent-soft: #D2BCE8;
+  --accent-primary: #c4b0dc;
+  --accent-soft: #d9cae8;
 
-  --border-subtle: #393143;
-  --border-strong: rgba(188, 165, 212, 0.32);
+  --border-subtle: rgba(244, 241, 234, 0.1);
+  --border-strong: rgba(196, 176, 220, 0.36);
 
   /* Font Scale */
-  --font-display: clamp(3.25rem, 8vw, 9rem);
-  --font-h1: clamp(2.75rem, 5.5vw, 6.5rem);
-  --font-h2: clamp(2rem, 3.4vw, 4rem);
-  --font-h3: clamp(1.5rem, 2.5vw, 2.75rem);
+  --font-display: clamp(3rem, 7.2vw, 7.75rem);
+  --font-h1: clamp(2.5rem, 5vw, 5.75rem);
+  --font-h2: clamp(1.9rem, 3.2vw, 3.6rem);
+  --font-h3: clamp(1.4rem, 2.2vw, 2.35rem);
 
-  --font-intro: clamp(1.125rem, 1.8vw, 1.75rem);
-  --font-body: clamp(1rem, 1.15vw, 1.125rem);
+  --font-intro: clamp(1.125rem, 1.75vw, 1.65rem);
+  --font-body: clamp(0.975rem, 1.1vw, 1.0625rem);
   --font-small: 0.875rem;
   --font-caption: 0.75rem;
 
   /* Layout & Gutters */
-  --container-max: 1440px;
-  --gutter-x: clamp(64px, 5.5vw, 96px);
-  --section-py: clamp(88px, 8vw, 136px);
+  --container-max: 1400px;
+  --gutter-x: clamp(56px, 5vw, 88px);
+  --section-py: clamp(80px, 7.5vw, 128px);
 
-  /* Radii (8px - 16px) */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+  /* Sharp Architectural Radii */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
 
   /* Motion Tokens */
-  --motion-fast: 200ms;
-  --motion-standard: 750ms;
-  --motion-editorial: 1050ms;
-  --motion-flyout: 550ms;
+  --motion-fast: 180ms;
+  --motion-standard: 700ms;
+  --motion-editorial: 950ms;
+  --motion-flyout: 500ms;
   --ease-editorial: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-ui: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @media (max-width: 1279px) {
   :root {
-    --gutter-x: clamp(32px, 4.5vw, 48px);
+    --gutter-x: clamp(28px, 4.5vw, 48px);
   }
 }
 
 @media (max-width: 767px) {
   :root {
     --gutter-x: clamp(20px, 5vw, 24px);
-    --section-py: 72px;
+    --section-py: 68px;
   }
 }

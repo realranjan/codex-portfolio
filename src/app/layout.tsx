@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
+import { Cormorant_Garamond, IBM_Plex_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import "lenis/dist/lenis.css";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
+const plusJakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   display: "swap",
@@ -33,19 +33,20 @@ const siteUrl =
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "Ranjan Vernekar — Systems, AI & Spatial Engineering",
+  title: "Ranjan Vernekar — Systems, AI & Graphics Engineering",
   description:
-    "Cinematic engineering portfolio of Ranjan Vernekar: distributed AI infrastructure, full-stack architecture, and real-time spatial graphics.",
+    "Engineering portfolio of Ranjan Vernekar: distributed inference infrastructure, full-stack systems, and real-time WebGL graphics.",
   openGraph: {
-    title: "Ranjan Vernekar — Systems, AI & Spatial Engineering",
+    title: "Ranjan Vernekar — Systems, AI & Graphics Engineering",
     description:
-      "Cinematic engineering portfolio of Ranjan Vernekar: distributed AI infrastructure, full-stack architecture, and real-time spatial graphics.",
+      "Engineering portfolio of Ranjan Vernekar: distributed inference infrastructure, full-stack systems, and real-time WebGL graphics.",
     type: "website",
-    images: [{ url: "/ascii-art-poster.webp", width: 1920, height: 1072 }],
   },
   twitter: {
-    card: "summary_large_image",
-    images: ["/ascii-art-poster.webp"],
+    card: "summary",
+    title: "Ranjan Vernekar — Systems, AI & Graphics Engineering",
+    description:
+      "Engineering portfolio of Ranjan Vernekar: distributed inference infrastructure, full-stack systems, and real-time WebGL graphics.",
   },
 };
 
@@ -53,9 +54,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${spaceGrotesk.variable} ${cormorantGaramond.variable} ${ibmPlexMono.variable} h-full antialiased`}
+      className={`${plusJakarta.variable} ${cormorantGaramond.variable} ${ibmPlexMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#0D0B12] text-[#F3EEF8]">
+      <body className="min-h-full flex flex-col bg-[#0A0A0C] text-[#F4F1EA]">
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>

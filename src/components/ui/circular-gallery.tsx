@@ -6,6 +6,7 @@ import React, {
   useRef,
   useState,
   type HTMLAttributes,
+  type MutableRefObject,
   type RefObject,
 } from "react";
 import Image from "next/image";
@@ -39,10 +40,14 @@ export interface CircularGalleryProps extends HTMLAttributes<HTMLDivElement> {
   items: GalleryItem[];
   /** Controls how far the items are from the center on desktop viewports. */
   radius?: number;
+  /** Orbital plane pitch tilt in degrees (negative dips the front arc slightly down). */
+  tiltDeg?: number;
   /** Controls the speed of auto-rotation in degrees per frame when not scrolling. */
   autoRotateSpeed?: number;
   /** Optional sticky runway container used to drive 0..360deg rotation across the section. */
   scrollTargetRef?: RefObject<HTMLElement | null>;
+  /** Optional 0..1 ref controlling carousel fade/scale bloom inside a shared 3D stage. */
+  carouselMixRef?: MutableRefObject<number>;
   /** Optional external rotational offset (e.g. from Next/Previous buttons). */
   manualOffsetDeg?: number;
   /** Callback when a card is activated (ignores pointer drag gestures). */
@@ -60,9 +65,11 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
     {
       items,
       className,
-      radius = 500,
-      autoRotateSpeed = 0.22,
+      radius = 460,
+      tiltDeg = -11,
+      autoRotateSpeed = 0.2,
       scrollTargetRef,
+      carouselMixRef,
       manualOffsetDeg = 0,
       onSelectItem,
       onActiveIndexChange,
@@ -73,14 +80,19 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
     forwardedRef
   ) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
-    const ringRef = useRef<HTMLDivElement | null>(null);
-    const cardRefs = useRef<Array<HTMLDivElement | null>>([]);
-    const [inView, setInView] = useState(true);
+    const backStageRef = useRef<HTMLDivElement | null>(null);
+    const frontStageRef = useRef<HTMLDivElement | null>(null);
+    const backRingRef = useRef<HTMLDivElement | null>(null);
+    const frontRingRef = useRef<HTMLDivElement | null>(null);
+    const backCardRefs = useRef<Array<HTMLDivElement | null>>([]);
+    const frontCardRefs = useRef<Array<HTMLDivElement | null>>([]);
+    const frontFaceRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
     const [stageWidth, setStageWidth] = useState(1200);
     const [frontIndex, setFrontIndex] = useState(0);
     const [failedUrls, setFailedUrls] = useState<Record<string, boolean>>({});
 
-    // Imperative rotation refs so rAF runs at 60fps with zero React churn or fighting CSS transitions
+    // Imperative rotation & mix refs so rAF runs at 60fps with zero React churn
     const autoRotRef = useRef(0);
     const scrollRotRef = useRef(0);
     const dragOffsetRef = useRef(0);
@@ -89,6 +101,7 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
     const isDraggingRef = useRef(false);
     const pausedRef = useRef(paused);
     const autoSpeedRef = useRef(autoRotateSpeed);
+    const tiltDegRef = useRef(tiltDeg);
     const itemsLenRef = useRef(items.length);
 
     const dragStartXRef = useRef(0);
@@ -110,6 +123,10 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
     }, [autoRotateSpeed]);
 
     useEffect(() => {
+      tiltDegRef.current = tiltDeg;
+    }, [tiltDeg]);
+
+    useEffect(() => {
       itemsLenRef.current = items.length;
     }, [items.length]);
 
@@ -126,7 +143,7 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
       }
     };
 
-    // Track stage width for responsive 3D radius and card dimensions
+    // Track stage width for responsive 3D orbit radius and card dimensions
     useEffect(() => {
       const node = containerRef.current;
       if (!node) return;
@@ -146,22 +163,7 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
       return () => observer.disconnect();
     }, []);
 
-    // Track visibility in viewport
-    useEffect(() => {
-      const node = containerRef.current;
-      if (!node || typeof IntersectionObserver === "undefined") return;
-
-      const observer = new IntersectionObserver(
-        ([entry]) => {
-          setInView(entry.isIntersecting);
-        },
-        { threshold: 0.02 }
-      );
-      observer.observe(node);
-      return () => observer.disconnect();
-    }, []);
-
-    // Handle scroll-driven rotation cleanly on Lenis / native scroll
+    // Scroll-driven rotation across the Projects orbit runway
     useEffect(() => {
       const updateScrollRotation = () => {
         const targetEl = scrollTargetRef?.current;
@@ -183,12 +185,14 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
 
       updateScrollRotation();
       window.addEventListener("scroll", updateScrollRotation, { passive: true });
+      window.addEventListener("resize", updateScrollRotation);
       return () => {
         window.removeEventListener("scroll", updateScrollRotation);
+        window.removeEventListener("resize", updateScrollRotation);
       };
     }, [scrollTargetRef]);
 
-    // Continuous 60fps rAF loop for smooth auto-rotation + eased step/scroll interpolation
+    // Continuous 60fps loop synchronizing front hemisphere (z > bust) & back hemisphere (z < bust)
     useEffect(() => {
       const reduced =
         typeof window !== "undefined" &&
@@ -197,20 +201,58 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
       let rafId = 0;
       let lastTime = performance.now();
 
-      const applyRotationToDOM = (deg: number) => {
-        if (ringRef.current) {
-          ringRef.current.style.transform = `rotateY(${deg.toFixed(3)}deg)`;
+      const applyRotationToDOM = (deg: number, mix: number) => {
+        const clampedMix = Math.min(1, Math.max(0, mix));
+        const ringScale = 0.86 + 0.14 * clampedMix;
+        const interactive = clampedMix >= 0.35;
+        const ringTransform = `rotateX(${tiltDegRef.current}deg) rotateY(${deg.toFixed(3)}deg)`;
+
+        if (backRingRef.current) {
+          backRingRef.current.style.transform = ringTransform;
         }
+        if (frontRingRef.current) {
+          frontRingRef.current.style.transform = ringTransform;
+        }
+
+        if (backStageRef.current) {
+          backStageRef.current.style.opacity = clampedMix.toFixed(3);
+          backStageRef.current.style.visibility = clampedMix > 0.01 ? "visible" : "hidden";
+          backStageRef.current.style.transform = `scale(${ringScale.toFixed(4)})`;
+        }
+        if (frontStageRef.current) {
+          frontStageRef.current.style.opacity = clampedMix.toFixed(3);
+          frontStageRef.current.style.visibility = clampedMix > 0.01 ? "visible" : "hidden";
+          frontStageRef.current.style.pointerEvents = interactive ? "auto" : "none";
+          frontStageRef.current.style.transform = `scale(${ringScale.toFixed(4)})`;
+        }
+
         if (containerRef.current) {
           containerRef.current.dataset.rotation = deg.toFixed(1);
+          containerRef.current.dataset.carouselMix = clampedMix.toFixed(2);
         }
 
         const total = itemsLenRef.current;
         for (let i = 0; i < total; i++) {
-          const cardEl = cardRefs.current[i];
-          if (!cardEl) continue;
-          const { opacity } = computeGalleryCardTransform(i, total, deg);
-          cardEl.style.opacity = opacity.toFixed(3);
+          const { opacity, normalizedAngle } = computeGalleryCardTransform(i, total, deg);
+          const isBackHemisphere = normalizedAngle > 90;
+
+          const backEl = backCardRefs.current[i];
+          if (backEl) {
+            backEl.style.visibility = isBackHemisphere ? "visible" : "hidden";
+            backEl.style.opacity = (opacity * 0.56).toFixed(3);
+          }
+
+          const frontEl = frontCardRefs.current[i];
+          if (frontEl) {
+            frontEl.style.visibility = isBackHemisphere ? "hidden" : "visible";
+            frontEl.style.opacity = opacity.toFixed(3);
+          }
+
+          const frontBtn = frontFaceRefs.current[i];
+          if (frontBtn) {
+            frontBtn.style.pointerEvents =
+              !isBackHemisphere && interactive ? "auto" : "none";
+          }
         }
 
         const nextFront = getFrontGalleryIndex(total, deg);
@@ -221,20 +263,20 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
         }
       };
 
-      // Apply immediate initial transform before first rAF tick
-      const initialTarget =
+      const initialMix = carouselMixRef ? carouselMixRef.current : 1;
+      currentRotRef.current =
         scrollRotRef.current +
         autoRotRef.current +
         dragOffsetRef.current +
         manualOffsetRef.current;
-      currentRotRef.current = initialTarget;
-      applyRotationToDOM(currentRotRef.current);
+      applyRotationToDOM(currentRotRef.current, initialMix);
 
       const step = (now: number) => {
         const dt = Math.min(64, Math.max(0, now - lastTime));
         lastTime = now;
 
-        if (!reduced && inView && !pausedRef.current && !isDraggingRef.current) {
+        const mix = carouselMixRef ? carouselMixRef.current : 1;
+        if (!reduced && mix > 0.08 && !pausedRef.current && !isDraggingRef.current) {
           autoRotRef.current += autoSpeedRef.current * (dt / 16.667);
         }
 
@@ -251,7 +293,7 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
           currentRotRef.current += (target - currentRotRef.current) * alpha;
         }
 
-        applyRotationToDOM(currentRotRef.current);
+        applyRotationToDOM(currentRotRef.current, mix);
         rafId = requestAnimationFrame(step);
       };
 
@@ -259,32 +301,33 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
       return () => {
         cancelAnimationFrame(rafId);
       };
-    }, [inView, items.length]);
+    }, [carouselMixRef, items.length]);
 
     const { cardWidth, cardHeight, effectiveRadius } = useMemo(() => {
       if (stageWidth < 640) {
         return {
-          cardWidth: 224,
-          cardHeight: 304,
-          effectiveRadius: Math.min(radius, Math.max(195, Math.round(stageWidth * 0.54))),
+          cardWidth: 178,
+          cardHeight: 232,
+          effectiveRadius: Math.min(radius, Math.max(180, Math.round(stageWidth * 0.49))),
         };
       }
       if (stageWidth < 1024) {
         return {
-          cardWidth: 264,
-          cardHeight: 356,
-          effectiveRadius: Math.min(radius, Math.max(290, Math.round(stageWidth * 0.42))),
+          cardWidth: 222,
+          cardHeight: 286,
+          effectiveRadius: Math.min(radius, Math.max(305, Math.round(stageWidth * 0.4))),
         };
       }
       return {
-        cardWidth: 296,
-        cardHeight: 396,
-        effectiveRadius: Math.min(radius, Math.max(380, Math.round(stageWidth * 0.36))),
+        cardWidth: 244,
+        cardHeight: 312,
+        effectiveRadius: Math.min(radius, Math.max(430, Math.round(stageWidth * 0.35))),
       };
     }, [stageWidth, radius]);
 
     const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
       if (e.button !== 0) return;
+      if (carouselMixRef && carouselMixRef.current < 0.35) return;
       isDraggingRef.current = true;
       dragStartXRef.current = e.clientX;
       dragBaseOffsetRef.current = dragOffsetRef.current;
@@ -303,139 +346,200 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
     };
 
     return (
+      /* Intentionally NO z-index, transform, opacity, or perspective on root so back (z-2) & front (z-12) stages interleave around ParticlePortrait (z-5) */
       <div
         ref={assignRefs}
         role="region"
-        aria-label="Circular 3D Gallery"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerEnd}
-        onPointerCancel={handlePointerEnd}
-        onPointerLeave={handlePointerEnd}
-        className={cn(
-          "relative w-full h-full flex items-center justify-center overflow-hidden select-none touch-pan-y cursor-grab active:cursor-grabbing",
-          className
-        )}
-        style={{ perspective: "2000px" }}
+        aria-label="Circular 3D Project Gallery"
+        className={cn("absolute inset-0 pointer-events-none select-none", className)}
         {...props}
       >
+        {/* BACK HEMISPHERE STAGE (z-[2]): passes strictly behind the centered 3D bust */}
         <div
-          ref={ringRef}
-          className="relative w-full h-full will-change-transform"
-          style={{
-            transform: "rotateY(0deg)",
-            transformStyle: "preserve-3d",
-          }}
+          ref={backStageRef}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center overflow-hidden"
+          style={{ perspective: "2200px", opacity: 0, visibility: "hidden" }}
         >
-          {items.map((item, i) => {
-            const { itemAngle, opacity } = computeGalleryCardTransform(i, items.length, 0);
-            const isFront = i === frontIndex;
-            const isSelected = selectedItemId !== null && item.id === selectedItemId;
-            const hasFailed = Boolean(failedUrls[item.photo.url]);
-
-            return (
-              <div
-                key={item.id ?? item.photo.url}
-                ref={(el) => {
-                  cardRefs.current[i] = el;
-                }}
-                role="group"
-                aria-label={item.common}
-                style={{
-                  width: `${cardWidth}px`,
-                  height: `${cardHeight}px`,
-                  transform: `rotateY(${itemAngle}deg) translateZ(${effectiveRadius}px)`,
-                  left: "50%",
-                  top: "50%",
-                  marginLeft: `-${cardWidth / 2}px`,
-                  marginTop: `-${cardHeight / 2}px`,
-                  opacity,
-                }}
-                className="absolute"
-              >
-                <button
-                  id={item.id ? `project-trigger-${item.id}` : undefined}
-                  type="button"
-                  onClick={() => {
-                    if (dragDistanceRef.current >= 8) return;
-                    onSelectItem?.(item, i);
+          <div
+            ref={backRingRef}
+            className="relative h-full w-full will-change-transform"
+            style={{
+              transform: `rotateX(${tiltDeg}deg) rotateY(0deg)`,
+              transformStyle: "preserve-3d",
+            }}
+          >
+            {items.map((item, i) => {
+              const { itemAngle } = computeGalleryCardTransform(i, items.length, 0);
+              return (
+                <div
+                  key={`back-${item.id ?? item.photo.url}`}
+                  ref={(el) => {
+                    backCardRefs.current[i] = el;
                   }}
-                  aria-label={`Inspect ${item.common} case study`}
-                  aria-current={isFront ? "true" : undefined}
-                  className={cn(
-                    "group relative block w-full h-full text-left rounded-[16px] overflow-hidden border bg-card transition-[border-color,box-shadow] duration-200 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#BCA5D4] focus-visible:outline-offset-4",
-                    isSelected || isFront
-                      ? "border-[#BCA5D4]/80 shadow-[0_24px_60px_rgba(0,0,0,0.65)]"
-                      : "border-border shadow-[0_18px_40px_rgba(0,0,0,0.5)] hover:border-[#BCA5D4]/60"
-                  )}
+                  style={{
+                    width: `${cardWidth}px`,
+                    height: `${cardHeight}px`,
+                    transform: `rotateY(${itemAngle}deg) translateZ(${effectiveRadius}px)`,
+                    transformStyle: "preserve-3d",
+                    left: "50%",
+                    top: "53.5%",
+                    marginLeft: `-${cardWidth / 2}px`,
+                    marginTop: `-${cardHeight / 2}px`,
+                  }}
+                  className="absolute"
                 >
-                  {hasFailed ? (
+                  <div
+                    className="absolute inset-0 flex flex-col justify-between rounded-[6px] border border-white/[0.08] bg-[#0E0E13] p-5 shadow-[0_18px_40px_rgba(0,0,0,0.65)]"
+                    style={{
+                      transform: "rotateY(180deg) translateZ(1px)",
+                      backfaceVisibility: "hidden",
+                      WebkitBackfaceVisibility: "hidden",
+                    }}
+                  >
+                    <div className="flex items-center justify-between font-mono text-[11px] text-[#6C6863] tabular-nums">
+                      <span>{item.index ?? String(i + 1).padStart(2, "0")}</span>
+                      <span>{item.binomial}</span>
+                    </div>
+                    <div className="border-t border-white/[0.06] pt-3 font-mono text-[11px] text-[#6C6863]">
+                      {item.common}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* FRONT HEMISPHERE STAGE (z-[12]): orbits in front of the bust & handles card interaction */}
+        <div
+          ref={frontStageRef}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerEnd}
+          onPointerCancel={handlePointerEnd}
+          onPointerLeave={handlePointerEnd}
+          className="absolute inset-0 z-[12] flex items-center justify-center overflow-hidden touch-pan-y cursor-grab active:cursor-grabbing"
+          style={{ perspective: "2200px", opacity: 0, visibility: "hidden", pointerEvents: "none" }}
+        >
+          <div
+            ref={frontRingRef}
+            className="relative h-full w-full will-change-transform"
+            style={{
+              transform: `rotateX(${tiltDeg}deg) rotateY(0deg)`,
+              transformStyle: "preserve-3d",
+            }}
+          >
+            {items.map((item, i) => {
+              const { itemAngle } = computeGalleryCardTransform(i, items.length, 0);
+              const isFront = i === frontIndex;
+              const isSelected = selectedItemId !== null && item.id === selectedItemId;
+              const hasFailed = Boolean(failedUrls[item.photo.url]);
+
+              return (
+                <div
+                  key={item.id ?? item.photo.url}
+                  ref={(el) => {
+                    frontCardRefs.current[i] = el;
+                  }}
+                  role="group"
+                  aria-label={item.common}
+                  style={{
+                    width: `${cardWidth}px`,
+                    height: `${cardHeight}px`,
+                    transform: `rotateY(${itemAngle}deg) translateZ(${effectiveRadius}px)`,
+                    transformStyle: "preserve-3d",
+                    left: "50%",
+                    top: "53.5%",
+                    marginLeft: `-${cardWidth / 2}px`,
+                    marginTop: `-${cardHeight / 2}px`,
+                  }}
+                  className="absolute"
+                >
+                  <button
+                    ref={(el) => {
+                      frontFaceRefs.current[i] = el;
+                    }}
+                    id={item.id ? `project-trigger-${item.id}` : undefined}
+                    type="button"
+                    onClick={() => {
+                      if (dragDistanceRef.current >= 8) return;
+                      onSelectItem?.(item, i);
+                    }}
+                    aria-label={`Inspect ${item.common} case study`}
+                    aria-current={isFront ? "true" : undefined}
+                    className={cn(
+                      "group relative block w-full h-full text-left rounded-[6px] overflow-hidden border bg-[#101014] transition-[border-color,box-shadow] duration-200 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#C4B0DC] focus-visible:outline-offset-4",
+                      isSelected || isFront
+                        ? "border-[#C4B0DC]/75 shadow-[0_24px_64px_rgba(0,0,0,0.78)]"
+                        : "border-white/[0.1] shadow-[0_18px_40px_rgba(0,0,0,0.6)] hover:border-white/25"
+                    )}
+                  >
+                    {hasFailed ? (
+                      <div
+                        className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center"
+                        style={{
+                          background:
+                            "radial-gradient(circle at 50% 35%, rgba(196,176,220,0.12), #121216 72%)",
+                        }}
+                      >
+                        <Layers size={28} strokeWidth={1.5} className="text-[#C4B0DC]" />
+                        <span className="font-mono text-xs tracking-[0.04em] text-[#A19D97]">
+                          {item.common}
+                        </span>
+                      </div>
+                    ) : (
+                      <Image
+                        src={item.photo.url}
+                        alt={item.photo.text}
+                        fill
+                        sizes="(max-width: 640px) 186px, 262px"
+                        referrerPolicy="no-referrer"
+                        onError={() =>
+                          setFailedUrls((prev) => ({ ...prev, [item.photo.url]: true }))
+                        }
+                        className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.03]"
+                        style={{ objectPosition: item.photo.pos || "center" }}
+                      />
+                    )}
+
                     <div
-                      className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center"
-                      style={{
-                        background:
-                          "radial-gradient(circle at 50% 35%, rgba(188,165,212,0.16), #17131F 72%)",
-                      }}
-                    >
-                      <Layers size={28} strokeWidth={1.5} className="text-[#BCA5D4]" />
-                      <span className="font-mono text-xs uppercase tracking-[0.08em] text-[#ADA4B8]">
-                        {item.common}
+                      aria-hidden="true"
+                      className="absolute inset-0 bg-gradient-to-t from-[#0A0A0C] via-[#0A0A0C]/55 to-transparent"
+                    />
+
+                    <div className="absolute top-3.5 left-4 right-4 flex items-center justify-between gap-2 text-[11px] font-mono tracking-[0.04em] text-[#A19D97]">
+                      <span className="tabular-nums text-[#C4B0DC]">
+                        {item.index ?? String(i + 1).padStart(2, "0")}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[#F4F1EA]/85 transition-colors group-hover:text-[#C4B0DC]">
+                        <span>Inspect</span>
+                        <MoveUpRight size={13} strokeWidth={1.6} aria-hidden="true" />
                       </span>
                     </div>
-                  ) : (
-                    <Image
-                      src={item.photo.url}
-                      alt={item.photo.text}
-                      fill
-                      sizes="(max-width: 640px) 224px, 300px"
-                      referrerPolicy="no-referrer"
-                      onError={() =>
-                        setFailedUrls((prev) => ({ ...prev, [item.photo.url]: true }))
-                      }
-                      className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.035]"
-                      style={{ objectPosition: item.photo.pos || "center" }}
-                    />
-                  )}
 
-                  {/* Measured contrast scrim */}
-                  <div
-                    aria-hidden="true"
-                    className="absolute inset-0 bg-gradient-to-t from-[#0D0B12] via-[#0D0B12]/55 to-transparent"
-                  />
-
-                  {/* Top subtle index & action */}
-                  <div className="absolute top-4 left-4 right-4 flex items-center justify-between gap-2 text-[11px] font-mono uppercase tracking-[0.08em] text-[#ADA4B8]">
-                    <span className="tabular-nums text-[#BCA5D4]">
-                      {item.index ?? String(i + 1).padStart(2, "0")}
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-[#F3EEF8]/85 transition-colors group-hover:text-[#BCA5D4]">
-                      <span>Inspect</span>
-                      <MoveUpRight size={13} strokeWidth={1.6} aria-hidden="true" />
-                    </span>
-                  </div>
-
-                  {/* Bottom editorial caption */}
-                  <div className="absolute bottom-0 left-0 right-0 p-5 text-[#F3EEF8]">
-                    <div className="font-mono text-[11px] uppercase tracking-[0.08em] text-[#ADA4B8]">
-                      {item.binomial}
+                    <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 text-[#F4F1EA]">
+                      <div className="font-mono text-[10px] sm:text-[11px] tracking-[0.03em] text-[#A19D97]">
+                        {item.binomial}
+                      </div>
+                      <h3 className="mt-1 text-lg sm:text-xl font-semibold tracking-[-0.025em] leading-tight text-[#F4F1EA]">
+                        {item.common}{" "}
+                        {item.accent ? (
+                          <em className="type-serif-accent font-normal">{item.accent}</em>
+                        ) : null}
+                      </h3>
+                      <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-white/[0.1] pt-2 text-[10px] sm:text-[11px] font-mono text-[#A19D97] tabular-nums">
+                        <span className="truncate">{item.photo.by}</span>
+                        {item.metricValue ? (
+                          <span className="text-[#F4F1EA] shrink-0">{item.metricValue}</span>
+                        ) : null}
+                      </div>
                     </div>
-                    <h3 className="mt-1.5 text-xl sm:text-2xl font-semibold tracking-[-0.03em] leading-tight text-[#F3EEF8]">
-                      {item.common}{" "}
-                      {item.accent ? (
-                        <em className="type-serif-accent font-normal">{item.accent}</em>
-                      ) : null}
-                    </h3>
-                    <div className="mt-3 flex items-center justify-between gap-2 border-t border-[#393143]/80 pt-2.5 text-[11px] font-mono text-[#ADA4B8] tabular-nums">
-                      <span>{item.photo.by}</span>
-                      {item.metricValue ? (
-                        <span className="text-[#BCA5D4]">{item.metricValue}</span>
-                      ) : null}
-                    </div>
-                  </div>
-                </button>
-              </div>
-            );
-          })}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     );
