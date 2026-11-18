@@ -39,24 +39,24 @@ const LightRays = dynamic(() => import("@/components/light-rays"), {
 });
 
 const SCULPTURE_MODES: readonly {
-  id: "relief" | "dense" | "disperse";
+  id: "reveal" | "samurai" | "cute";
   label: string;
   values: SpatialControlValues;
 }[] = [
   {
-    id: "relief",
-    label: "Ascii",
-    values: { densityScale: 1.0, lightAzimuth: 0, dispersionBoost: 0 },
+    id: "reveal",
+    label: "Hover Reveal",
+    values: { layerMode: "reveal", lightAzimuth: 0 },
   },
   {
-    id: "dense",
-    label: "Dense",
-    values: { densityScale: 1.85, lightAzimuth: 0.75, dispersionBoost: -0.04 },
+    id: "samurai",
+    label: "Samurai",
+    values: { layerMode: "samurai", lightAzimuth: 0.45 },
   },
   {
-    id: "disperse",
-    label: "Disperse",
-    values: { densityScale: 1.25, lightAzimuth: -0.95, dispersionBoost: 0.65 },
+    id: "cute",
+    label: "Cute Cat",
+    values: { layerMode: "cute", lightAzimuth: -0.35 },
   },
 ];
 
@@ -83,7 +83,7 @@ export default function Home() {
   const carouselMixRef = useRef<number>(0);
   const spatialControlsRef = useRef<SpatialControlValues>(SCULPTURE_MODES[0].values);
 
-  const [sculptureMode, setSculptureMode] = useState<"relief" | "dense" | "disperse">("relief");
+  const [sculptureMode, setSculptureMode] = useState<"reveal" | "samurai" | "cute">("reveal");
   const [selectedProject, setSelectedProject] = useState<ProjectCaseStudy | null>(null);
   const [lastTriggerId, setLastTriggerId] = useState<string | null>(null);
   const [resumeOpen, setResumeOpen] = useState(false);
@@ -436,13 +436,13 @@ export default function Home() {
 
               <div className="page-container pointer-events-none">
                 <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.1] pt-4 text-xs font-mono text-[#A19D97]">
-                  <span>Drag sculpture to orbit · Hover to reveal texture · Scroll to orbit projects</span>
+                  <span>Hover cat to reveal inner layer · Move pointer to guide both heads · Drag to orbit</span>
 
                   <div
                     ref={heroDockRef}
                     className="pointer-events-auto flex items-center gap-1 rounded-[4px] border border-white/[0.1] bg-[#0A0A0C]/85 p-1"
                     role="group"
-                    aria-label="Sculpture shader mode"
+                    aria-label="Cat layer mode"
                   >
                     {SCULPTURE_MODES.map((mode) => {
                       const active = sculptureMode === mode.id;

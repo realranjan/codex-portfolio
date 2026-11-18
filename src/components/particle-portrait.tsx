@@ -4,20 +4,28 @@ import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
-import { MeshSurfaceSampler } from "three/addons/math/MeshSurfaceSampler.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+import {
+  CAT_MODEL_HEIGHT,
+  STAGE_CENTER_Y,
+  classifyCuteSegment,
+  classifySamuraiSegment,
+  computeDualLayerAlignment,
+  computeSegmentedLookAngles,
+} from "@/lib/cat-rig";
 import {
   computeHeroToCarouselState,
   computeSpatialScrollState,
 } from "@/lib/motion";
 
-const COUNT = 66000;
-const MODEL = "/cute-cat.glb";
-const GLYPHS = ".,:;i1tfLCG08@#%";
+const SAMURAI_MODEL = "/samurai-cat.glb";
+const CUTE_MODEL = "/cute-cat-segmented.glb";
+
+export type CatLayerMode = "reveal" | "cute" | "samurai";
 
 export interface SpatialControlValues {
-  densityScale: number;
+  layerMode: CatLayerMode;
   lightAzimuth: number;
-  dispersionBoost: number;
 }
 
 interface ParticlePortraitProps {
@@ -25,6 +33,13 @@ interface ParticlePortraitProps {
   projectsProgressRef?: MutableRefObject<number>;
   centerMixRef?: MutableRefObject<number>;
   controlsRef?: MutableRefObject<SpatialControlValues>;
+}
+
+interface RevealUniforms {
+  uRevealCenter: { value: THREE.Vector2 };
+  uRevealRadius: { value: number };
+  uRevealMix: { value: number };
+  uFullCutaway: { value: number };
 }
 
 function detectSoftwareWebGL(): boolean {
@@ -42,277 +57,263 @@ function detectSoftwareWebGL(): boolean {
   }
 }
 
-function makeGlyphAtlas(): THREE.CanvasTexture {
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = 256;
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("Could not draw ASCII atlas");
-  context.clearRect(0, 0, 256, 256);
-  context.fillStyle = "#ffffff";
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.font = "bold 48px monospace";
-  for (let i = 0; i < GLYPHS.length; i++) {
-    context.fillText(GLYPHS[i], ((i % 4) + 0.5) * 64, (Math.floor(i / 4) + 0.51) * 64);
+async function fetchGlbWithProgress(
+  url: string,
+  signal: AbortSignal,
+  onBytes: (loaded: number, total: number) => void
+): Promise<ArrayBuffer> {
+  const response = await fetch(url, { signal });
+  if (!response.ok || !response.body) {
+    throw new Error(`Failed to download ${url}`);
   }
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.minFilter = THREE.LinearFilter;
-  texture.magFilter = THREE.LinearFilter;
-  texture.generateMipmaps = false;
-  return texture;
+  const total = Number(response.headers.get("Content-Length")) || 8_300_000;
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let loaded = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    loaded += value.length;
+    onBytes(loaded, total);
+  }
+
+  const bytes = new Uint8Array(loaded);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return bytes.buffer;
 }
 
-const vertexShader = /* glsl */ `
-attribute vec3 aNormal;
-attribute float aRand;
-attribute float aPart;
-uniform float uTime, uAssemble, uSize, uGlint, uShine, uRingRadius, uKeep, uHoverOn, uHoverRadius, uDispersion, uPulseAge;
-uniform vec2 uHead;
-uniform vec2 uHover, uViewport, uPulseOrigin;
-uniform vec3 uLight;
-varying float vBrightness, vAlpha, vShine, vGlint, vPart, vGlyph, vReveal, vScatterGlow;
-mat3 rotX(float a) { float c=cos(a), s=sin(a); return mat3(1.,0.,0., 0.,c,s, 0.,-s,c); }
-mat3 rotY(float a) { float c=cos(a), s=sin(a); return mat3(c,0.,-s, 0.,1.,0., s,0.,c); }
-void main() {
-  float head = smoothstep(-0.75, 0.05, position.y);
-  mat3 turn = rotY(uHead.x * (0.34 + 0.66 * head)) * rotX(uHead.y * (0.28 + 0.72 * head));
-  vec3 pivot = vec3(0., -0.55, 0.);
-  vec3 home = turn * (position - pivot) + pivot;
-  vec3 n = normalize(turn * aNormal);
-  home += n * sin(uTime * 1.6 + aRand * 60.) * 0.009 * uDispersion;
-  home += n * (uDispersion - 1.) * 0.2 * (0.3 + aRand * 0.7);
-  float r2 = fract(sin(aRand * 91.7) * 43758.5453);
-  float t = clamp((uAssemble - aRand * 0.45) / 0.55, 0., 1.);
-  float e = t < 0.5 ? 4. * t * t * t : 1. - pow(-2. * t + 2., 3.) / 2.;
-  float angle = aRand * 6.2831853;
-  vec3 start = vec3(cos(angle) * uRingRadius, sin(angle) * uRingRadius - 0.15, 0.);
-  vec3 p = mix(start, home, e) + vec3(sin(aRand * 40. + uTime * 0.3), cos(aRand * 31.), 0.9 + r2 * 1.4) * sin(e * 3.14159) * 0.45;
-  vec4 mvPre = modelViewMatrix * vec4(p, 1.);
-  vec4 clipPre = projectionMatrix * mvPre;
-  vec2 screenPre = (clipPre.xy / clipPre.w * 0.5 + 0.5) * uViewport;
-  float hoverDist = distance(screenPre, uHover);
-  float scatter = (1. - smoothstep(0., uHoverRadius * 1.65, hoverDist)) * uHoverOn;
-  float pulseWave = 0.;
-  if (uPulseAge > 0. && uPulseAge < 1.6) {
-    float pulseDist = distance(screenPre, uPulseOrigin);
-    float ringPos = uPulseAge * 420.;
-    pulseWave = exp(-pow((pulseDist - ringPos) / 75., 2.)) * (1. - uPulseAge / 1.6);
+function applyTextureSafeguards(
+  material: THREE.Material,
+  maxAnisotropy: number,
+  revealUniforms?: RevealUniforms
+): THREE.MeshStandardMaterial {
+  const cloned = material.clone() as THREE.MeshStandardMaterial;
+  cloned.color.setHex(0xffffff);
+  cloned.transparent = false;
+  cloned.depthWrite = true;
+  cloned.opacity = 1;
+
+  if (typeof cloned.metalness === "number") {
+    cloned.metalness = Math.min(cloned.metalness, 0.72);
   }
-  p += n * (scatter * 0.18 * (0.35 + r2 * 0.85) + pulseWave * 0.24 * (0.4 + aRand));
-  vec3 toLight = uLight - home;
-  float lit = max(dot(n, normalize(toLight)), 0.) / (1. + dot(toLight, toLight) * 0.3);
-  float key = max(dot(n, normalize(vec3(0.5, 0.6, 0.7))), 0.);
-  float facing = n.z;
-  float rim = pow(1. - abs(facing), 2.6);
-  float b = (0.28 + key * 0.28 + lit * 1.08 + rim * 0.30) * mix(0.45, 1., smoothstep(-0.3, 0.25, facing));
-  if (aPart > 0.5) b *= 0.9;
-  b *= 0.74 + r2 * 0.46;
-  float glint = aPart > 0.5 ? 1. - smoothstep(0., 0.12, abs(position.x - uGlint)) : 0.;
-  float band = home.y - home.x * 0.5 - uShine;
-  float shine = exp(-band * band * 4.);
-  b += glint * 0.75 + shine * 1.05 + scatter * 0.65 + pulseWave * 0.95;
-  vec4 mv = modelViewMatrix * vec4(p, 1.);
-  gl_Position = projectionMatrix * mv;
-  gl_PointSize = min(18., uSize * (1.16 + r2 * 0.24 + scatter * 0.28) / max(0.1, -mv.z));
-  vec2 screen = (gl_Position.xy / gl_Position.w * 0.5 + 0.5) * uViewport;
-  vReveal = uHoverOn * (1. - smoothstep(uHoverRadius * 0.44, uHoverRadius * 0.96, distance(screen, uHover)));
-  vScatterGlow = clamp(scatter + pulseWave, 0., 1.);
-  vGlyph = floor(clamp((b * 0.54 + r2 * 0.18), 0., 0.999) * 16.);
-  vBrightness = min(b, 1.75);
-  vAlpha = mix(0.75, 1., e) * step(aRand, uKeep);
-  vShine = shine;
-  vGlint = glint;
-  vPart = aPart;
-}`;
+  if (typeof cloned.roughness === "number") {
+    cloned.roughness = Math.max(cloned.roughness, 0.22);
+  }
+  cloned.envMapIntensity = 1.15;
 
-const fragmentShader = /* glsl */ `
-uniform vec3 uInk, uAccent, uIvory;
-uniform sampler2D uGlyphAtlas;
-varying float vBrightness, vAlpha, vShine, vGlint, vPart, vGlyph, vReveal, vScatterGlow;
-void main() {
-  if (vAlpha < 0.01) discard;
-  vec2 cell = vec2(mod(vGlyph, 4.), 3. - floor(vGlyph / 4.));
-  vec2 uv = (cell + vec2(gl_PointCoord.x, 1. - gl_PointCoord.y)) / 4.;
-  float glyph = texture2D(uGlyphAtlas, uv).a;
-  if (glyph < 0.08) discard;
-  float alpha = glyph * vAlpha * (1. - vReveal * 0.98);
-  if (alpha < 0.01) discard;
-  vec3 ink = mix(uInk, uIvory, clamp(vShine * 0.55 + vScatterGlow * 0.40, 0., 1.));
-  if (vPart > 0.5) ink = mix(ink, uAccent, 0.35);
-  ink = mix(ink, uAccent, clamp(vGlint * 0.72 + vScatterGlow * 0.52, 0., 1.));
-  gl_FragColor = vec4(ink * vBrightness, alpha);
-}`;
+  const configureTex = (tex: THREE.Texture | null | undefined, isColor: boolean) => {
+    if (!tex) return;
+    if (isColor) tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = maxAnisotropy;
+    tex.needsUpdate = true;
+  };
+  configureTex(cloned.map, true);
+  configureTex(cloned.emissiveMap, true);
+  configureTex(cloned.normalMap, false);
+  configureTex(cloned.roughnessMap, false);
+  configureTex(cloned.metalnessMap, false);
+  configureTex(cloned.aoMap, false);
 
-const surfaceVertexShader = /* glsl */ `
-uniform vec2 uHead;
-varying vec3 vNormal;
-varying vec3 vWorldPos;
-varying vec2 vUv;
-mat3 rotX(float a) { float c=cos(a), s=sin(a); return mat3(1.,0.,0., 0.,c,s, 0.,-s,c); }
-mat3 rotY(float a) { float c=cos(a), s=sin(a); return mat3(c,0.,-s, 0.,1.,0., s,0.,c); }
-void main() {
-  float head = smoothstep(-0.75, 0.05, position.y);
-  mat3 turn = rotY(uHead.x * (0.34 + 0.66 * head)) * rotX(uHead.y * (0.28 + 0.72 * head));
-  vec3 pivot = vec3(0., -0.55, 0.);
-  vec3 p = turn * (position - pivot) + pivot;
-  vNormal = normalize(turn * normal);
-  vWorldPos = (modelMatrix * vec4(p, 1.)).xyz;
-  vUv = uv;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.);
-}`;
+  if (revealUniforms) {
+    cloned.customProgramCacheKey = () => "samurai-hover-reveal-v1";
+    cloned.onBeforeCompile = (shader) => {
+      shader.uniforms.uRevealCenter = revealUniforms.uRevealCenter;
+      shader.uniforms.uRevealRadius = revealUniforms.uRevealRadius;
+      shader.uniforms.uRevealMix = revealUniforms.uRevealMix;
+      shader.uniforms.uFullCutaway = revealUniforms.uFullCutaway;
 
-const surfaceFragmentShader = /* glsl */ `
-uniform vec2 uHover;
-uniform vec3 uLight;
-uniform float uHoverOn, uHoverRadius, uAssemble, uHasTextures;
-uniform sampler2D uBaseColorMap, uNormalMap, uOrmMap;
-varying vec3 vNormal;
-varying vec3 vWorldPos;
-varying vec2 vUv;
+      shader.fragmentShader = shader.fragmentShader
+        .replace(
+          "#include <common>",
+          `#include <common>
+uniform vec2 uRevealCenter;
+uniform float uRevealRadius;
+uniform float uRevealMix;
+uniform float uFullCutaway;`
+        )
+        .replace(
+          "#include <dithering_fragment>",
+          `if (uFullCutaway > 0.99) discard;
+if (uRevealMix > 0.01) {
+  float revealR = uRevealRadius * uRevealMix;
+  float distToPointer = distance(gl_FragCoord.xy, uRevealCenter);
+  if (distToPointer < revealR) discard;
+  float rimWidth = max(4.0, revealR * 0.06);
+  float edgeGlow = 1.0 - smoothstep(revealR, revealR + rimWidth, distToPointer);
+  gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.77, 0.69, 0.86), edgeGlow * 0.82 * uRevealMix);
+}
+#include <dithering_fragment>`
+        );
+    };
+  }
 
-vec3 perturbNormal(vec3 N, vec3 worldPos, vec2 uv, vec3 mapN) {
-  vec3 q0 = dFdx(worldPos);
-  vec3 q1 = dFdy(worldPos);
-  vec2 st0 = dFdx(uv);
-  vec2 st1 = dFdy(uv);
-  vec3 Nperp = normalize(N);
-  float det = st0.s * st1.t - st1.s * st0.t;
-  if (abs(det) < 1e-7) return Nperp;
-  vec3 T = normalize(q0 * st1.t - q1 * st0.t);
-  vec3 B = normalize(-q0 * st1.s + q1 * st0.s);
-  if (dot(T, T) < 1e-6 || dot(B, B) < 1e-6) return Nperp;
-  float facing = step(0., det) * 2. - 1.;
-  mat3 TBN = mat3(T * facing, B * facing, Nperp);
-  return normalize(TBN * (mapN * 2. - 1.));
+  cloned.needsUpdate = true;
+  return cloned;
 }
 
-void main() {
-  vec3 geomN = normalize(vNormal);
-  float rim = pow(1. - abs(geomN.z), 2.4);
-  float spotlight = (1. - smoothstep(uHoverRadius * 0.42, uHoverRadius * 1.05, distance(gl_FragCoord.xy, uHover))) * uHoverOn;
-  float baseAlpha = clamp(0.05 + rim * 0.16, 0., 0.22) * uAssemble;
-  float reveal = max(baseAlpha, spotlight * uAssemble);
-  if (reveal < 0.01) discard;
+function measureRotatedSceneBounds(
+  root: THREE.Object3D,
+  facingRotationY: number
+): { min: [number, number, number]; max: [number, number, number] } {
+  root.updateMatrixWorld(true);
+  const rotMat = new THREE.Matrix4().makeRotationY(facingRotationY);
+  const fullBox = new THREE.Box3();
+  const tempBox = new THREE.Box3();
 
-  vec3 N = geomN;
-  vec3 albedo = vec3(0.84, 0.80, 0.90);
-  float ao = 1.0;
-  float roughness = 0.65;
-  float metalness = 0.0;
+  root.traverse((obj) => {
+    if (!(obj as THREE.Mesh).isMesh) return;
+    const mesh = obj as THREE.Mesh;
+    const geom = mesh.geometry.clone();
+    geom.applyMatrix4(mesh.matrixWorld);
+    geom.applyMatrix4(rotMat);
+    geom.computeBoundingBox();
+    if (geom.boundingBox) {
+      tempBox.copy(geom.boundingBox);
+      fullBox.union(tempBox);
+    }
+    geom.dispose();
+  });
 
-  if (uHasTextures > 0.5) {
-    albedo = texture2D(uBaseColorMap, vUv).rgb;
-    vec3 orm = texture2D(uOrmMap, vUv).rgb;
-    ao = mix(0.5, 1.0, orm.r);
-    roughness = clamp(orm.g, 0.18, 0.98);
-    metalness = orm.b;
-    vec3 mapN = texture2D(uNormalMap, vUv).xyz;
-    N = normalize(mix(geomN, perturbNormal(geomN, vWorldPos, vUv, mapN), 0.72 * spotlight));
-  }
-
-  vec3 viewDir = normalize(cameraPosition - vWorldPos);
-  vec3 spotDir = normalize(uLight - vWorldPos);
-  vec3 keyDir = normalize(vec3(0.45, 0.72, 0.85));
-  vec3 fillDir = normalize(vec3(-0.65, 0.2, 0.65));
-
-  float key = max(dot(N, keyDir), 0.);
-  float fill = max(dot(N, fillDir), 0.);
-  float spot = max(dot(N, spotDir), 0.);
-
-  vec3 H = normalize(keyDir + viewDir);
-  float shininess = mix(48., 8., roughness);
-  float spec = pow(max(dot(N, H), 0.), shininess) * mix(0.28, 0.75, 1. - roughness) * mix(0.35, 1.0, metalness + 0.25);
-
-  vec3 diffuse = albedo * ao * (0.42 + key * 0.68 + fill * 0.24 + spot * 0.42);
-  vec3 litColor = diffuse + vec3(1.0, 0.98, 0.96) * spec;
-  litColor += vec3(0.76, 0.66, 0.88) * rim * 0.30;
-
-  // Outside the spotlight reveal, keep a dim obsidian silhouette behind the ASCII cloud
-  vec3 ghostTint = vec3(0.18, 0.15, 0.24) + vec3(0.74, 0.65, 0.83) * rim * 0.45;
-  vec3 finalLinear = mix(ghostTint, litColor, smoothstep(0.05, 0.75, spotlight));
-
-  // Encode linear -> sRGB since ShaderMaterial bypasses renderer tone/colorSpace pass
-  vec3 finalSrgb = uHasTextures > 0.5 ? pow(max(finalLinear, vec3(0.)), vec3(1. / 2.2)) : finalLinear;
-  gl_FragColor = vec4(finalSrgb, reveal);
-}`;
-
-type Dot = { p: THREE.Vector3; n: THREE.Vector3; part: number };
-
-function normalizeModelGeometry(rawMesh: THREE.Mesh): THREE.BufferGeometry {
-  rawMesh.updateWorldMatrix(true, false);
-  const geometry = rawMesh.geometry.clone().applyMatrix4(rawMesh.matrixWorld);
-  if (!geometry.getAttribute("normal")) geometry.computeVertexNormals();
-  const pos = geometry.getAttribute("position") as THREE.BufferAttribute;
-  const box = new THREE.Box3().setFromBufferAttribute(pos);
-  const size = box.getSize(new THREE.Vector3());
-  const center = box.getCenter(new THREE.Vector3());
-  const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-  const scale = 2.45 / maxDim;
-  geometry.translate(-center.x, -center.y, -center.z);
-  geometry.scale(scale, scale, scale);
-  geometry.translate(0, -0.12, 0);
-  return geometry;
+  return {
+    min: [fullBox.min.x, fullBox.min.y, fullBox.min.z],
+    max: [fullBox.max.x, fullBox.max.y, fullBox.max.z],
+  };
 }
 
-function buildDots(geometry: THREE.BufferGeometry): THREE.BufferGeometry {
-  const sampler = new MeshSurfaceSampler(new THREE.Mesh(geometry)).build();
-  const p = new THREE.Vector3();
-  const n = new THREE.Vector3();
-  const candidates: Dot[] = [];
-  const bins = new Map<string, Dot[]>();
+function buildSegmentedCatRig(params: {
+  sourceRoot: THREE.Object3D;
+  facingRotationY: number;
+  centerOffset: readonly [number, number, number];
+  scale: number;
+  neckPivotY: number;
+  classify: (name: string, centerY: number) => "head" | "body";
+  maxAnisotropy: number;
+  revealUniforms?: RevealUniforms;
+}) {
+  const {
+    sourceRoot,
+    facingRotationY,
+    centerOffset,
+    scale,
+    neckPivotY,
+    classify,
+    maxAnisotropy,
+    revealUniforms,
+  } = params;
 
-  for (let i = 0; i < COUNT * 4; i++) {
-    sampler.sample(p, n);
-    const part = p.y > 0.28 || Math.abs(n.z) < 0.32 ? 1 : 0;
-    const dot = { p: p.clone(), n: n.clone(), part };
-    candidates.push(dot);
-    const key = `${Math.floor(p.x / 0.036)},${Math.floor(p.y / 0.036)},${Math.floor(p.z / 0.036)}`;
-    const bin = bins.get(key);
-    if (bin) bin.push(dot);
-    else bins.set(key, [dot]);
-  }
+  sourceRoot.updateMatrixWorld(true);
+  const rootGroup = new THREE.Group();
+  const bodyGroup = new THREE.Group();
+  const neckPivot = new THREE.Group();
+  neckPivot.position.set(0, neckPivotY, 0);
+  const headGroup = new THREE.Group();
+  headGroup.rotation.order = "YXZ";
+  bodyGroup.rotation.order = "YXZ";
+  rootGroup.rotation.order = "YXZ";
 
-  let lo = 1;
-  let hi = 100;
-  while (lo < hi) {
-    const mid = Math.floor((lo + hi) / 2);
-    let total = 0;
-    for (const bin of bins.values()) total += Math.min(bin.length, mid);
-    if (total >= COUNT * 1.45) hi = mid;
-    else lo = mid + 1;
-  }
+  neckPivot.add(headGroup);
+  rootGroup.add(bodyGroup);
+  rootGroup.add(neckPivot);
 
-  const pool: Dot[] = [];
-  for (const bin of bins.values()) pool.push(...bin.slice(0, lo));
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
-  }
+  const geometries: THREE.BufferGeometry[] = [];
+  const materials: THREE.Material[] = [];
+  const rotMat = new THREE.Matrix4().makeRotationY(facingRotationY);
 
-  const dots = pool.slice(0, COUNT);
-  while (dots.length < COUNT && candidates.length > 0) {
-    dots.push(candidates[Math.floor(Math.random() * candidates.length)]);
-  }
+  sourceRoot.traverse((obj) => {
+    if (!(obj as THREE.Mesh).isMesh) return;
+    const srcMesh = obj as THREE.Mesh;
 
-  const positions = new Float32Array(COUNT * 3);
-  const normals = new Float32Array(COUNT * 3);
-  const randoms = new Float32Array(COUNT);
-  const parts = new Float32Array(COUNT);
+    const geom = srcMesh.geometry.clone();
+    geom.applyMatrix4(srcMesh.matrixWorld);
+    geom.applyMatrix4(rotMat);
+    geom.translate(centerOffset[0], centerOffset[1], centerOffset[2]);
+    geom.computeBoundingBox();
+    const rawBox = geom.boundingBox ?? new THREE.Box3();
+    const unscaledCenterY = (rawBox.min.y + rawBox.max.y) * 0.5;
 
-  for (let i = 0; i < COUNT; i++) {
-    const d = dots[i];
-    positions.set([d.p.x, d.p.y, d.p.z], i * 3);
-    normals.set([d.n.x, d.n.y, d.n.z], i * 3);
-    randoms[i] = Math.random();
-    parts[i] = d.part;
-  }
+    geom.scale(scale, scale, scale);
+    geom.translate(0, STAGE_CENTER_Y, 0);
+    if (!geom.getAttribute("normal")) {
+      geom.computeVertexNormals();
+    }
 
-  const result = new THREE.BufferGeometry();
-  result.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  result.setAttribute("aNormal", new THREE.BufferAttribute(normals, 3));
-  result.setAttribute("aRand", new THREE.BufferAttribute(randoms, 1));
-  result.setAttribute("aPart", new THREE.BufferAttribute(parts, 1));
-  return result;
+    const role = classify(srcMesh.name, unscaledCenterY);
+    if (role === "head") {
+      geom.translate(0, -neckPivotY, 0);
+    }
+
+    geometries.push(geom);
+
+    const srcMat = Array.isArray(srcMesh.material)
+      ? srcMesh.material[0]
+      : srcMesh.material;
+    const nextMat = srcMat
+      ? applyTextureSafeguards(srcMat, maxAnisotropy, revealUniforms)
+      : applyTextureSafeguards(
+          new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.55 }),
+          maxAnisotropy,
+          revealUniforms
+        );
+    materials.push(nextMat);
+
+    const mesh = new THREE.Mesh(geom, nextMat);
+    mesh.name = srcMesh.name;
+    mesh.frustumCulled = false;
+
+    if (role === "head") {
+      headGroup.add(mesh);
+    } else {
+      bodyGroup.add(mesh);
+    }
+  });
+
+  return {
+    rootGroup,
+    bodyGroup,
+    headGroup,
+    dispose: () => {
+      for (const g of geometries) g.dispose();
+      for (const m of materials) {
+        const std = m as THREE.MeshStandardMaterial;
+        std.map?.dispose();
+        std.normalMap?.dispose();
+        std.roughnessMap?.dispose();
+        std.metalnessMap?.dispose();
+        std.aoMap?.dispose();
+        std.emissiveMap?.dispose();
+        m.dispose();
+      }
+    },
+  };
+}
+
+function attachStudioLights(scene: THREE.Scene) {
+  const hemi = new THREE.HemisphereLight(0xeae2f8, 0x1d1a26, 1.05);
+  scene.add(hemi);
+
+  const key = new THREE.DirectionalLight(0xfff5ea, 1.85);
+  key.position.set(2.4, 3.6, 5.2);
+  scene.add(key);
+
+  const fill = new THREE.DirectionalLight(0xc4b0dc, 0.95);
+  fill.position.set(-4.2, 1.4, 3.2);
+  scene.add(fill);
+
+  const rim = new THREE.DirectionalLight(0xd9cae8, 1.3);
+  rim.position.set(0.2, 2.8, -4.6);
+  scene.add(rim);
+
+  const pointerLight = new THREE.PointLight(0xe9defa, 1.75, 12, 1.5);
+  pointerLight.position.set(0, 1.2, 3.2);
+  scene.add(pointerLight);
+
+  return { pointerLight };
 }
 
 export default function ParticlePortrait({
@@ -336,13 +337,13 @@ export default function ParticlePortrait({
     let renderer: THREE.WebGLRenderer | undefined;
     let frameId = 0;
     let cleaned = false;
-    let portrait: THREE.BufferGeometry | undefined;
-    let surfaceGeometry: THREE.BufferGeometry | undefined;
-    let glyphAtlas: THREE.CanvasTexture | undefined;
+
     const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const pointer = new THREE.Vector2();
+    const pointer = new THREE.Vector2(0, 0);
     let pointerActive = false;
-    let touchUntil = 0;
+    let pointerMoved = false;
+    let overDomControl = false;
+    let touchRevealUntil = 0;
     let dragging = false;
     let dragStartX = 0;
     let dragStartY = 0;
@@ -352,9 +353,6 @@ export default function ParticlePortrait({
     let targetOrbitPitch = 0;
     let currentOrbitYaw = 0;
     let currentOrbitPitch = 0;
-    let dragMoved = 0;
-    let pulseStartTime = -10;
-    const pulseOrigin = new THREE.Vector2(-1000, -1000);
 
     const heroInteractionRoot: EventTarget =
       container.closest(".hero-section") ?? container;
@@ -374,26 +372,40 @@ export default function ParticlePortrait({
       return inside;
     };
 
-    const syncTelemetry = (activeState: boolean, yawValue: number) => {
+    const syncTelemetry = (
+      activeState: boolean,
+      hoveredState: boolean,
+      yawValue: number,
+      mode: CatLayerMode
+    ) => {
       if (!rootRef.current) return;
       rootRef.current.dataset.hoverActive = activeState ? "true" : "false";
+      rootRef.current.dataset.modelHovered = hoveredState ? "true" : "false";
+      rootRef.current.dataset.layerMode = mode;
       rootRef.current.dataset.orbitRad = yawValue.toFixed(3);
     };
 
     const onWindowMove = (event: PointerEvent) => {
       const inside = updatePointerFromClient(event.clientX, event.clientY);
+      pointerMoved = true;
       pointerActive = inside || dragging;
+      const targetEl = event.target as HTMLElement | null;
+      overDomControl = Boolean(
+        targetEl?.closest("a, button, input, textarea, select, label, [role='button']")
+      );
+
       if (dragging) {
         const dx = event.clientX - dragStartX;
         const dy = event.clientY - dragStartY;
-        dragMoved = Math.max(dragMoved, Math.hypot(dx, dy));
         targetOrbitYaw = orbitBaseYaw + dx * 0.0085;
-        targetOrbitPitch = Math.max(-0.55, Math.min(0.55, orbitBasePitch - dy * 0.0045));
+        targetOrbitPitch = Math.max(
+          -0.48,
+          Math.min(0.48, orbitBasePitch - dy * 0.0045)
+        );
       }
       if (event.pointerType === "touch" && inside) {
-        touchUntil = performance.now() + 1500;
+        touchRevealUntil = performance.now() + 2400;
       }
-      syncTelemetry(pointerActive, dragging ? targetOrbitYaw : currentOrbitYaw);
     };
 
     const onStageDown = (event: PointerEvent) => {
@@ -404,52 +416,47 @@ export default function ParticlePortrait({
       );
       if (curState.carouselMix >= 0.35) return;
       const targetEl = event.target as HTMLElement | null;
-      if (targetEl?.closest("a, button, input, textarea, select, label, [role='button']")) {
+      if (
+        targetEl?.closest(
+          "a, button, input, textarea, select, label, [role='button']"
+        )
+      ) {
         return;
       }
       updatePointerFromClient(event.clientX, event.clientY);
+      pointerMoved = true;
       pointerActive = true;
       dragging = true;
       dragStartX = event.clientX;
       dragStartY = event.clientY;
       orbitBaseYaw = targetOrbitYaw;
       orbitBasePitch = targetOrbitPitch;
-      dragMoved = 0;
-      if (event.pointerType === "touch") touchUntil = performance.now() + 1500;
-      syncTelemetry(true, targetOrbitYaw);
+      if (event.pointerType === "touch") {
+        touchRevealUntil = performance.now() + 2400;
+      }
       try {
         container.setPointerCapture(event.pointerId);
       } catch {
-        // Ignore capture failures in synthetic events
+        // Ignore capture failure on synthetic events
       }
     };
 
     const onStageUp = (event: PointerEvent) => {
       if (!dragging) return;
       dragging = false;
-      const rect = container.getBoundingClientRect();
-      const dpr = renderer?.getPixelRatio() ?? 1;
-      if (dragMoved < 10 && rect.width > 0 && rect.height > 0) {
-        pulseOrigin.set(
-          (event.clientX - rect.left) * dpr,
-          (rect.bottom - event.clientY) * dpr
-        );
-        pulseStartTime = performance.now() * 0.001;
-      }
-      syncTelemetry(pointerActive, targetOrbitYaw);
       try {
         if (container.hasPointerCapture(event.pointerId)) {
           container.releasePointerCapture(event.pointerId);
         }
       } catch {
-        // Ignore release errors
+        // Ignore capture release failures
       }
     };
 
     const onWindowLeave = () => {
       if (!dragging) {
         pointerActive = false;
-        syncTelemetry(false, currentOrbitYaw);
+        overDomControl = false;
       }
     };
 
@@ -481,199 +488,137 @@ export default function ParticlePortrait({
         }
 
         const isSoftwareGl = detectSoftwareWebGL();
-        const response = await fetch(MODEL, { signal: controller.signal });
-        if (!response.ok || !response.body) throw new Error("Model download failed");
-        const total = Number(response.headers.get("Content-Length")) || 1481612;
-        const reader = response.body.getReader();
-        const chunks: Uint8Array[] = [];
-        let loaded = 0;
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          chunks.push(value);
-          loaded += value.length;
-          setProgress(Math.min(95, Math.round((loaded / total) * 95)));
-        }
-        const bytes = new Uint8Array(loaded);
-        let offset = 0;
-        for (const chunk of chunks) {
-          bytes.set(chunk, offset);
-          offset += chunk.length;
-        }
+        let samuraiLoaded = 0;
+        let samuraiTotal = 8_651_784;
+        let cuteLoaded = 0;
+        let cuteTotal = 8_026_276;
+
+        const updateFetchProgress = () => {
+          const combined = (samuraiLoaded + cuteLoaded) / Math.max(1, samuraiTotal + cuteTotal);
+          setProgress(Math.min(95, Math.round(combined * 95)));
+        };
+
+        const [samuraiBuffer, cuteBuffer] = await Promise.all([
+          fetchGlbWithProgress(SAMURAI_MODEL, controller.signal, (l, t) => {
+            samuraiLoaded = l;
+            samuraiTotal = t;
+            updateFetchProgress();
+          }),
+          fetchGlbWithProgress(CUTE_MODEL, controller.signal, (l, t) => {
+            cuteLoaded = l;
+            cuteTotal = t;
+            updateFetchProgress();
+          }),
+        ]);
+
         await MeshoptDecoder.ready;
         const loader = new GLTFLoader();
         loader.setMeshoptDecoder(MeshoptDecoder);
-        const gltf = await loader.parseAsync(bytes.buffer, "");
-        let mesh: THREE.Mesh | undefined;
-        gltf.scene.traverse((object) => {
-          if (!mesh && (object as THREE.Mesh).isMesh) mesh = object as THREE.Mesh;
-        });
-        if (!mesh) throw new Error("No mesh in model");
 
-        surfaceGeometry = normalizeModelGeometry(mesh);
-        portrait = buildDots(surfaceGeometry);
+        const [samuraiGltf, cuteGltf] = await Promise.all([
+          loader.parseAsync(samuraiBuffer, ""),
+          loader.parseAsync(cuteBuffer, ""),
+        ]);
 
-        const stdMat = (
-          Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
-        ) as THREE.MeshStandardMaterial | undefined;
-        const fallbackMap = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
-        fallbackMap.needsUpdate = true;
-        const fallbackNormal = new THREE.DataTexture(new Uint8Array([128, 128, 255, 255]), 1, 1);
-        fallbackNormal.needsUpdate = true;
-        const fallbackOrm = new THREE.DataTexture(new Uint8Array([255, 180, 0, 255]), 1, 1);
-        fallbackOrm.needsUpdate = true;
-
-        const baseColorMap = stdMat?.map ?? fallbackMap;
-        const normalMap = stdMat?.normalMap ?? fallbackNormal;
-        const ormMap = stdMat?.roughnessMap ?? fallbackOrm;
-        const hasTextures = stdMat?.map ? 1 : 0;
-
-        const bustBox = new THREE.Box3().setFromBufferAttribute(
-          surfaceGeometry.getAttribute("position") as THREE.BufferAttribute
-        );
-        const bustCenter = bustBox.getCenter(new THREE.Vector3());
-        glyphAtlas = makeGlyphAtlas();
         if (cleaned) return;
         setProgress(100);
         if (!reduced && !isSoftwareGl) {
-          await new Promise((resolve) => setTimeout(resolve, 260));
+          await new Promise((resolve) => setTimeout(resolve, 160));
         }
         if (cleaned) return;
 
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
         renderer = new THREE.WebGLRenderer({
-          antialias: false,
+          antialias: !isSoftwareGl,
           alpha: true,
           powerPreference: "high-performance",
         });
         renderer.setClearColor("#0D0B12", 0);
+        renderer.autoClear = false;
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.06;
         stage.appendChild(renderer.domElement);
 
-        const uniforms = {
-          uTime: { value: 0 },
-          uAssemble: { value: reduced ? 1 : 0 },
-          uSize: { value: 28 },
-          uGlint: { value: -9 },
-          uShine: { value: 99 },
-          uRingRadius: { value: 0.5 },
-          uHead: { value: new THREE.Vector2() },
-          uLight: { value: new THREE.Vector3(-1.4, 1.2, 1.6) },
-          uGlyphAtlas: { value: glyphAtlas },
-          uKeep: { value: 0.48 },
-          uHover: { value: new THREE.Vector2(-1000, -1000) },
-          uHoverOn: { value: 0 },
-          uHoverRadius: { value: 165 },
-          uViewport: { value: new THREE.Vector2(1, 1) },
-          uDispersion: { value: 1.0 },
-          uPulseAge: { value: -1 },
-          uPulseOrigin: { value: new THREE.Vector2(-1000, -1000) },
-          uInk: { value: new THREE.Color("#C4B9D2") },
-          uAccent: { value: new THREE.Color("#BCA5D4") },
-          uIvory: { value: new THREE.Color("#F3EEF8") },
+        const maxAniso = isSoftwareGl
+          ? 1
+          : Math.min(4, renderer.capabilities.getMaxAnisotropy());
+
+        const pmrem = new THREE.PMREMGenerator(renderer);
+        const roomEnv = new RoomEnvironment();
+        const envRT = pmrem.fromScene(roomEnv, 0.04);
+        const envTexture = envRT.texture;
+        roomEnv.dispose();
+        pmrem.dispose();
+
+        const cuteScene = new THREE.Scene();
+        const samuraiScene = new THREE.Scene();
+        cuteScene.environment = envTexture;
+        samuraiScene.environment = envTexture;
+        cuteScene.environmentIntensity = 0.72;
+        samuraiScene.environmentIntensity = 0.88;
+
+        const cuteLights = attachStudioLights(cuteScene);
+        const samuraiLights = attachStudioLights(samuraiScene);
+
+        const revealUniforms: RevealUniforms = {
+          uRevealCenter: { value: new THREE.Vector2(-1000, -1000) },
+          uRevealRadius: { value: 220 },
+          uRevealMix: { value: 0 },
+          uFullCutaway: { value: 0 },
         };
 
-        const surfaceMaterial = new THREE.ShaderMaterial({
-          vertexShader: surfaceVertexShader,
-          fragmentShader: surfaceFragmentShader,
-          uniforms: {
-            uHead: uniforms.uHead,
-            uLight: uniforms.uLight,
-            uHover: uniforms.uHover,
-            uHoverOn: uniforms.uHoverOn,
-            uHoverRadius: uniforms.uHoverRadius,
-            uAssemble: uniforms.uAssemble,
-            uHasTextures: { value: hasTextures },
-            uBaseColorMap: { value: baseColorMap },
-            uNormalMap: { value: normalMap },
-            uOrmMap: { value: ormMap },
-          },
-          transparent: true,
-          depthWrite: true,
-          side: THREE.FrontSide,
-        });
-        const surface = new THREE.Mesh(surfaceGeometry, surfaceMaterial);
-        surface.frustumCulled = false;
-        surface.renderOrder = 1;
-        scene.add(surface);
+        const alignment = computeDualLayerAlignment(
+          measureRotatedSceneBounds(cuteGltf.scene, -Math.PI / 2),
+          measureRotatedSceneBounds(samuraiGltf.scene, -Math.PI / 2),
+          CAT_MODEL_HEIGHT
+        );
 
-        const material = new THREE.ShaderMaterial({
-          vertexShader,
-          fragmentShader,
-          uniforms,
-          transparent: true,
-          depthWrite: false,
-          blending: THREE.AdditiveBlending,
+        const cuteRig = buildSegmentedCatRig({
+          sourceRoot: cuteGltf.scene,
+          facingRotationY: alignment.facingRotationY,
+          centerOffset: alignment.cuteCenterOffset,
+          scale: alignment.cuteScale,
+          neckPivotY: alignment.neckPivotY,
+          classify: classifyCuteSegment,
+          maxAnisotropy: maxAniso,
         });
-        const bust = new THREE.Points(portrait, material);
-        bust.frustumCulled = false;
-        bust.renderOrder = 2;
-        scene.add(bust);
 
-        const dustCount = 1400;
-        const dustGeometry = new THREE.BufferGeometry();
-        const dustPositions = new Float32Array(dustCount * 3);
-        const dustRand = new Float32Array(dustCount);
-        for (let i = 0; i < dustCount; i++) {
-          const aroundBust = i < 860;
-          if (aroundBust) {
-            const theta = Math.random() * Math.PI * 2;
-            const r = 0.58 + Math.random() * 1.35;
-            dustPositions.set(
-              [
-                bustCenter.x + Math.cos(theta) * r,
-                bustCenter.y - 1.45 + Math.random() * 2.95,
-                bustCenter.z + Math.sin(theta) * r * 0.78,
-              ],
-              i * 3
-            );
-          } else {
-            dustPositions.set(
-              [(Math.random() - 0.5) * 14, (Math.random() - 0.5) * 10, Math.random() * 7 - 5],
-              i * 3
-            );
-          }
-          dustRand[i] = Math.random();
-        }
-        dustGeometry.setAttribute("position", new THREE.BufferAttribute(dustPositions, 3));
-        dustGeometry.setAttribute("aRand", new THREE.BufferAttribute(dustRand, 1));
-        const dustMaterial = new THREE.ShaderMaterial({
-          transparent: true,
-          depthWrite: false,
-          blending: THREE.AdditiveBlending,
-          uniforms: {
-            uTime: uniforms.uTime,
-            uOn: { value: reduced ? 1 : 0 },
-            uDpr: { value: 1 },
-            uInk: uniforms.uAccent,
-            uHover: uniforms.uHover,
-            uHoverOn: uniforms.uHoverOn,
-            uHoverRadius: uniforms.uHoverRadius,
-            uViewport: uniforms.uViewport,
-          },
-          vertexShader: `attribute float aRand; uniform float uTime,uDpr,uHoverOn,uHoverRadius; uniform vec2 uHover,uViewport; varying float vRand,vSwirl; void main(){vec3 p=position; p.y=mod(p.y+5.+uTime*(0.06+aRand*0.09),10.)-5.; p.x+=sin(uTime*0.35+aRand*40.)*0.18; p.z+=cos(uTime*0.28+aRand*25.)*0.14; vec4 mv0=modelViewMatrix*vec4(p,1.); vec4 clip0=projectionMatrix*mv0; vec2 scr=(clip0.xy/clip0.w*0.5+0.5)*uViewport; float swirl=(1.-smoothstep(0.,uHoverRadius*1.8,distance(scr,uHover)))*uHoverOn; p.xy+=normalize(scr-uHover+vec2(0.001,0.002))*swirl*0.24*(0.5+aRand); vec4 mv=modelViewMatrix*vec4(p,1.); gl_Position=projectionMatrix*mv; gl_PointSize=min(14.,(28.+swirl*16.)*uDpr*(0.5+aRand)/max(0.1,-mv.z)); vRand=aRand; vSwirl=swirl;}`,
-          fragmentShader: `uniform vec3 uInk; uniform float uOn; varying float vRand,vSwirl; void main(){vec2 q=gl_PointCoord-0.5; float a=exp(-34.*dot(q,q))*(0.26+vRand*0.38+vSwirl*0.35)*uOn; gl_FragColor=vec4(mix(uInk,vec3(0.96,0.94,0.98),clamp(vRand*0.45+vSwirl*0.45,0.,1.)),a);}`,
+        const samuraiRig = buildSegmentedCatRig({
+          sourceRoot: samuraiGltf.scene,
+          facingRotationY: alignment.facingRotationY,
+          centerOffset: alignment.samuraiCenterOffset,
+          scale: alignment.samuraiScale,
+          neckPivotY: alignment.neckPivotY,
+          classify: classifySamuraiSegment,
+          maxAnisotropy: maxAniso,
+          revealUniforms,
         });
-        const dust = new THREE.Points(dustGeometry, dustMaterial);
-        dust.frustumCulled = false;
-        scene.add(dust);
 
-        const lightGeometry = new THREE.BufferGeometry();
-        lightGeometry.setAttribute("position", new THREE.Float32BufferAttribute([0, 0, 0], 3));
-        const lightMaterial = new THREE.ShaderMaterial({
-          transparent: true,
-          depthWrite: false,
-          blending: THREE.AdditiveBlending,
-          uniforms: { uOn: { value: reduced ? 1 : 0 }, uDpr: { value: 1 } },
-          vertexShader: `uniform float uOn,uDpr; void main(){vec4 mv=modelViewMatrix*vec4(position,1.); gl_Position=projectionMatrix*mv; gl_PointSize=min(240.,220.*uDpr*uOn/max(0.1,-mv.z));}`,
-          fragmentShader: `void main(){float p=length(gl_PointCoord-0.5)*2.; float core=1.-smoothstep(0.08,0.14,p); float glow=exp(-4.*p)*0.4+exp(-12.*p)*0.65; gl_FragColor=vec4(vec3(0.82,0.74,0.91)*(core+glow),min(1.,core+glow));}`,
-        });
-        const light = new THREE.Points(lightGeometry, lightMaterial);
-        light.frustumCulled = false;
-        scene.add(light);
+        cuteScene.add(cuteRig.rootGroup);
+        samuraiScene.add(samuraiRig.rootGroup);
 
-        let baseDistance = 8.5;
-        let baseKeep = 0.34;
+        // Lightweight proxy hit spheres synchronized with the cat silhouette
+        const hitGroup = new THREE.Group();
+        hitGroup.rotation.order = "YXZ";
+        const proxyMat = new THREE.MeshBasicMaterial({ visible: false });
+        const headHitSphere = new THREE.Mesh(
+          new THREE.SphereGeometry(1.16, 12, 10),
+          proxyMat
+        );
+        headHitSphere.position.set(0, STAGE_CENTER_Y + 0.42, 0.05);
+        const bodyHitSphere = new THREE.Mesh(
+          new THREE.SphereGeometry(1.08, 12, 10),
+          proxyMat
+        );
+        bodyHitSphere.position.set(0, STAGE_CENTER_Y - 0.72, 0);
+        hitGroup.add(headHitSphere, bodyHitSphere);
+        samuraiScene.add(hitGroup);
+        const hitColliders: THREE.Object3D[] = [headHitSphere, bodyHitSphere];
+
+        const modelCenter = new THREE.Vector3(0, STAGE_CENTER_Y, 0);
+        const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+
+        let baseDistance = 7.4;
         let shown = false;
 
         const applyCameraFraming = (w: number) => {
@@ -684,39 +629,38 @@ export default function ParticlePortrait({
           const transition = computeHeroToCarouselState(rawHero, rawProjects);
           const centerMix = centerMixRef?.current ?? transition.centerMix;
 
-          // Hero framing puts the bust in the right-third clear of H1 & top nav;
-          // Act I dollies into close-up cinema, Act II settles to centered O-ring orbit,
-          // Act III/IV continue gentle orbital camera arcs and a closing sculptural dolly on exit.
-          const heroShiftX = isDesktop ? 1.24 : 0;
-          const heroCamX = bustCenter.x - heroShiftX * 1.12;
-          const heroLookX = bustCenter.x - heroShiftX * 0.92;
-          const heroCamY = isDesktop ? bustCenter.y - 0.26 : bustCenter.y - 0.36;
-          const heroLookY = isDesktop ? bustCenter.y - 0.12 : bustCenter.y - 0.18;
-          const heroCamZ = isDesktop ? baseDistance * 1.06 : baseDistance * 1.18;
+          const heroShiftX = isDesktop ? 1.12 : 0;
+          const heroCamX = modelCenter.x - heroShiftX * 1.04;
+          const heroLookX = modelCenter.x - heroShiftX * 0.88;
+          const heroCamY = isDesktop ? modelCenter.y - 0.06 : modelCenter.y - 0.35;
+          const heroLookY = isDesktop ? modelCenter.y - 0.04 : modelCenter.y - 1.18;
+          const heroCamZ = isDesktop
+            ? Math.max(7.6, baseDistance * 1.08)
+            : Math.max(9.2, baseDistance * 1.28);
 
-          const orbitCamX = bustCenter.x;
-          const orbitLookX = bustCenter.x;
-          const orbitCamY = isDesktop ? bustCenter.y - 0.08 : bustCenter.y - 0.1;
-          const orbitLookY = isDesktop ? bustCenter.y - 0.16 : bustCenter.y - 0.14;
-          const orbitCamZ = Math.max(7.2, baseDistance * (isDesktop ? 1.44 : 1.52));
+          const orbitCamX = modelCenter.x;
+          const orbitLookX = modelCenter.x;
+          const orbitCamY = isDesktop ? modelCenter.y + 0.1 : modelCenter.y + 0.08;
+          const orbitLookY = isDesktop ? modelCenter.y + 0.04 : modelCenter.y + 0.04;
+          const orbitCamZ = Math.max(10.6, baseDistance * (isDesktop ? 1.54 : 1.66));
 
           const pullback = transition.orbitPullbackMix;
           const camX =
-            heroCamX + (orbitCamX - heroCamX) * centerMix + transition.orbitCameraArcX;
+            heroCamX + (orbitCamX - heroCamX) * centerMix + transition.orbitCameraArcX * 0.35;
           const lookX = heroLookX + (orbitLookX - heroLookX) * centerMix;
           const camY =
             heroCamY +
             (orbitCamY - heroCamY) * pullback +
-            0.14 * (1 - pullback) * centerMix +
-            transition.orbitCameraArcY;
+            0.12 * (1 - pullback) * centerMix +
+            transition.orbitCameraArcY * 0.6;
           const lookY = heroLookY + (orbitLookY - heroLookY) * pullback;
           const camZ = Math.max(
-            4.1,
+            5.4,
             heroCamZ + (orbitCamZ - heroCamZ) * pullback + transition.cinematicDollyZ
           );
 
           camera.position.set(camX, camY, camZ);
-          camera.lookAt(lookX, lookY, bustCenter.z);
+          camera.lookAt(lookX, lookY, modelCenter.z);
           return { spatial, transition, centerMix, rawProjects };
         };
 
@@ -724,28 +668,28 @@ export default function ParticlePortrait({
           if (!renderer) return;
           const w = Math.max(1, stage.clientWidth);
           const h = Math.max(1, stage.clientHeight);
-          const dpr = isSoftwareGl ? 1 : Math.min(devicePixelRatio, innerWidth < 700 ? 1.5 : 2);
+          const dpr = isSoftwareGl
+            ? 1
+            : Math.min(devicePixelRatio, innerWidth < 700 ? 1.5 : 2);
           renderer.setPixelRatio(dpr);
           renderer.setSize(w, h);
           camera.aspect = w / h;
           baseDistance = Math.max(
-            2.35 / Math.tan(Math.PI / 12),
-            1.7 / (Math.tan(Math.PI / 12) * camera.aspect)
+            (CAT_MODEL_HEIGHT * 0.65) / Math.tan(Math.PI / 12),
+            1.75 / (Math.tan(Math.PI / 12) * camera.aspect)
           );
           applyCameraFraming(w);
           camera.updateProjectionMatrix();
-          uniforms.uSize.value = 72 * dpr;
-          baseKeep = w < 700 ? 0.28 : 0.42;
-          const densityScale = controlsRef?.current?.densityScale ?? 1;
-          uniforms.uKeep.value = Math.min(0.95, baseKeep * densityScale);
-          uniforms.uHoverRadius.value = (w < 700 ? 115 : 165) * dpr;
-          uniforms.uViewport.value.set(w * dpr, h * dpr);
-          uniforms.uRingRadius.value =
-            (92 * 2 * baseDistance * Math.tan(Math.PI / 12)) / h;
-          dustMaterial.uniforms.uDpr.value = dpr;
-          lightMaterial.uniforms.uDpr.value = dpr;
+          revealUniforms.uRevealRadius.value = (w < 700 ? 148 : 242) * dpr;
           if (shown) {
-            renderer.render(scene, camera);
+            renderer.clear();
+            if (revealUniforms.uRevealMix.value > 0.01 || revealUniforms.uFullCutaway.value > 0.01) {
+              renderer.render(cuteScene, camera);
+              renderer.clearDepth();
+            }
+            if (revealUniforms.uFullCutaway.value < 0.99) {
+              renderer.render(samuraiScene, camera);
+            }
           }
         };
         resize();
@@ -753,10 +697,10 @@ export default function ParticlePortrait({
 
         const clock = new THREE.Clock();
         const raycaster = new THREE.Raycaster();
-        const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -2.6);
-        const target = new THREE.Vector3();
-        const head = new THREE.Vector2();
-        const desiredHead = new THREE.Vector2();
+        const lightPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -2.4);
+        const lightTarget = new THREE.Vector3();
+        let smoothedHeadYaw = 0;
+        let smoothedHeadPitch = 0;
         let last = 0;
 
         function afterDraw(cb: () => void) {
@@ -789,119 +733,122 @@ export default function ParticlePortrait({
           const dt = Math.min(0.16, Math.max(0.001, elapsed - last));
           last = elapsed;
 
-          const assemble = reduced ? 1 : Math.min(1, elapsed / 2.2);
-          uniforms.uAssemble.value = assemble;
-          uniforms.uTime.value = reduced ? 0 : elapsed;
-
           if (!shown) {
             shown = true;
             setReady(true);
           }
 
-          if (!reduced && elapsed >= 2.0 && elapsed <= 4.2) {
-            const s = (elapsed - 2.0) / 2.2;
-            uniforms.uShine.value = 2.8 - (1 - (1 - s) ** 2) * 7.4;
-          } else {
-            uniforms.uShine.value = 99;
-          }
-          if (!reduced && elapsed >= 4.4) {
-            const s = ((elapsed - 4.4) % 4.2) / 0.9;
-            uniforms.uGlint.value = s <= 1 ? -0.75 + s * 1.8 : -9;
-          }
-
           const { spatial, transition, centerMix, rawProjects } = applyCameraFraming(
             stage.clientWidth
           );
+          camera.updateMatrixWorld(true);
+
           const ctrl = controlsRef?.current;
-          const densityScale = ctrl?.densityScale ?? 1;
-          const dispersionBoost = ctrl?.dispersionBoost ?? 0;
+          const layerMode: CatLayerMode = ctrl?.layerMode ?? "reveal";
           const azimuthOffset = ctrl?.lightAzimuth ?? 0;
 
-          uniforms.uKeep.value = Math.min(0.95, baseKeep * densityScale);
-          uniforms.uDispersion.value = transition.cinematicDispersion + dispersionBoost;
-
-          const pulseAge = performance.now() * 0.001 - pulseStartTime;
-          uniforms.uPulseAge.value = pulseAge >= 0 && pulseAge < 1.6 ? pulseAge : -1;
-          uniforms.uPulseOrigin.value.copy(pulseOrigin);
-
-          const active = pointerActive || performance.now() < touchUntil;
+          const active = pointerActive || performance.now() < touchRevealUntil;
           const dpr = renderer!.getPixelRatio();
-          uniforms.uHover.value.set(
+          revealUniforms.uRevealCenter.value.set(
             (pointer.x * 0.5 + 0.5) * stage.clientWidth * dpr,
             (pointer.y * 0.5 + 0.5) * stage.clientHeight * dpr
           );
-          uniforms.uHoverOn.value +=
-            ((active && assemble > 0.7 ? 1 : 0) - uniforms.uHoverOn.value) *
-            (reduced || isSoftwareGl ? 0.65 : 1 - Math.exp(-dt * 9));
 
-          if (active) {
-            raycaster.setFromCamera(pointer, camera);
-            raycaster.ray.intersectPlane(plane, target);
-          } else if (reduced) {
-            target.set(-1.4 + azimuthOffset, 1.2, 2.6);
-          } else {
-            target.set(
-              1.9 * Math.sin(0.45 * elapsed + azimuthOffset),
-              0.5 + 0.8 * Math.cos(0.33 * elapsed),
-              2.6
-            );
-          }
-
-          uniforms.uLight.value.lerp(target, reduced ? 1 : 1 - Math.exp(-dt * 6));
-          light.position.copy(uniforms.uLight.value);
-
-          const orbitAlpha = isSoftwareGl ? 0.55 : 1 - Math.exp(-dt * 7);
+          const orbitAlpha = isSoftwareGl ? 0.55 : 1 - Math.exp(-dt * 8);
           currentOrbitYaw += (targetOrbitYaw - currentOrbitYaw) * orbitAlpha;
           currentOrbitPitch += (targetOrbitPitch - currentOrbitPitch) * orbitAlpha;
 
-          // Act I applies cinematic head turn; inside the O-ring orbit the bust looks directly where the cursor moves
-          const pullback = transition.orbitPullbackMix;
-          const heroYawBias = spatial.headBiasX * (1 - pullback * 0.94);
-          const heroPitchBias = spatial.headBiasY * (1 - pullback * 0.92);
-          const dragAttenuation = 1 - centerMix * 0.6;
-          const gazeSpanX = 0.52 + 0.28 * transition.carouselMix;
-          const gazeSpanY = 0.24 + 0.12 * transition.carouselMix;
+          // Keep whole-model orbit tilt aligned on both layers and hit proxies
+          samuraiRig.rootGroup.rotation.set(currentOrbitPitch * 0.45, currentOrbitYaw * 0.65, 0);
+          cuteRig.rootGroup.rotation.copy(samuraiRig.rootGroup.rotation);
+          hitGroup.rotation.copy(samuraiRig.rootGroup.rotation);
+          hitGroup.updateMatrixWorld(true);
 
-          if (!reduced) {
-            if (active) {
-              desiredHead.set(
-                pointer.x * gazeSpanX + heroYawBias + currentOrbitYaw * dragAttenuation,
-                pointer.y * gazeSpanY + heroPitchBias + currentOrbitPitch * dragAttenuation
-              );
-            } else {
-              desiredHead.set(
-                (0.28 - 0.12 * pullback) * Math.sin(0.45 * elapsed) +
-                  heroYawBias +
-                  currentOrbitYaw * dragAttenuation,
-                0.08 * Math.cos(0.33 * elapsed) + heroPitchBias + currentOrbitPitch * dragAttenuation
-              );
-            }
-            const headAlpha = isSoftwareGl ? 0.65 : 1 - Math.exp(-dt * (active ? 6.5 : 3.2));
-            head.lerp(desiredHead, headAlpha);
-            uniforms.uHead.value.set(head.x, -head.y);
+          // Hover hit-check directly against the synchronized proxy colliders
+          let modelHovered = false;
+          if ((pointerActive || performance.now() < touchRevealUntil) && !overDomControl) {
+            raycaster.setFromCamera(pointer, camera);
+            const hits = raycaster.intersectObjects(hitColliders, false);
+            modelHovered = hits.length > 0;
+          }
+
+          const targetFullCutaway = layerMode === "cute" ? 1 : 0;
+          revealUniforms.uFullCutaway.value = targetFullCutaway;
+
+          const wantsReveal =
+            layerMode === "reveal" && modelHovered && targetFullCutaway < 0.5;
+          const revealAlpha = reduced || isSoftwareGl ? 0.72 : 1 - Math.exp(-dt * 12);
+          revealUniforms.uRevealMix.value +=
+            ((wantsReveal ? 1 : 0) - revealUniforms.uRevealMix.value) * revealAlpha;
+
+          // Synchronized pointer light across both scenes
+          if (pointerMoved) {
+            raycaster.setFromCamera(pointer, camera);
+            raycaster.ray.intersectPlane(lightPlane, lightTarget);
           } else {
-            uniforms.uHead.value.set(
-              heroYawBias + currentOrbitYaw * dragAttenuation,
-              -(heroPitchBias + currentOrbitPitch * dragAttenuation)
+            lightTarget.set(
+              1.6 * Math.sin(0.5 * elapsed + azimuthOffset),
+              1.1 + 0.4 * Math.cos(0.35 * elapsed),
+              3.2
             );
           }
+          samuraiLights.pointerLight.position.lerp(
+            lightTarget,
+            reduced ? 1 : 1 - Math.exp(-dt * 7)
+          );
+          cuteLights.pointerLight.position.copy(samuraiLights.pointerLight.position);
+
+          // Synchronized segmented head & subtle body tracking on BOTH cats wherever pointer goes
+          const desired = computeSegmentedLookAngles({
+            pointerX: pointer.x,
+            pointerY: pointer.y,
+            pointerActive: pointerMoved,
+            elapsed,
+            headBiasX: spatial.headBiasX,
+            headBiasY: spatial.headBiasY,
+            dragYaw: currentOrbitYaw,
+            dragPitch: currentOrbitPitch,
+            centerMix,
+            carouselMix: transition.carouselMix,
+            pullbackMix: transition.orbitPullbackMix,
+            reducedMotion: reduced,
+          });
+
+          const headAlpha =
+            reduced || isSoftwareGl ? 0.72 : 1 - Math.exp(-dt * (active ? 9.5 : 4.2));
+          smoothedHeadYaw += (desired.headYaw - smoothedHeadYaw) * headAlpha;
+          smoothedHeadPitch += (desired.headPitch - smoothedHeadPitch) * headAlpha;
+
+          samuraiRig.headGroup.rotation.set(smoothedHeadPitch, smoothedHeadYaw, 0);
+          cuteRig.headGroup.rotation.copy(samuraiRig.headGroup.rotation);
+
+          samuraiRig.bodyGroup.rotation.set(
+            smoothedHeadPitch * 0.12,
+            smoothedHeadYaw * 0.16,
+            0
+          );
+          cuteRig.bodyGroup.rotation.copy(samuraiRig.bodyGroup.rotation);
 
           if (rootRef.current) {
-            rootRef.current.dataset.hoverActive = active ? "true" : "false";
-            rootRef.current.dataset.orbitRad = currentOrbitYaw.toFixed(3);
+            syncTelemetry(active, modelHovered, currentOrbitYaw, layerMode);
             rootRef.current.dataset.centerMix = centerMix.toFixed(2);
             rootRef.current.dataset.projectsProgress = rawProjects.toFixed(2);
-            rootRef.current.dataset.gazeX = head.x.toFixed(3);
-            rootRef.current.dataset.gazeY = head.y.toFixed(3);
+            rootRef.current.dataset.gazeX = smoothedHeadYaw.toFixed(3);
+            rootRef.current.dataset.gazeY = (-smoothedHeadPitch).toFixed(3);
+            rootRef.current.dataset.revealMix = revealUniforms.uRevealMix.value.toFixed(2);
           }
 
-          const easeLight = 1 - Math.exp(-dt * 4);
-          const easeDust = 1 - Math.exp(-dt * 0.8);
-          lightMaterial.uniforms.uOn.value +=
-            (Math.min(1, 1.6 * assemble) - lightMaterial.uniforms.uOn.value) * easeLight;
-          dustMaterial.uniforms.uOn.value += (1 - dustMaterial.uniforms.uOn.value) * easeDust;
-
-          renderer!.render(scene, camera);
+          renderer!.clear();
+          const needCutePass =
+            revealUniforms.uRevealMix.value > 0.01 ||
+            revealUniforms.uFullCutaway.value > 0.01;
+          if (needCutePass) {
+            renderer!.render(cuteScene, camera);
+            renderer!.clearDepth();
+          }
+          if (revealUniforms.uFullCutaway.value < 0.99) {
+            renderer!.render(samuraiScene, camera);
+          }
 
           if (isSoftwareGl) {
             afterDraw(tick);
@@ -914,18 +861,12 @@ export default function ParticlePortrait({
 
         controller.signal.addEventListener("abort", () => {
           window.removeEventListener("resize", resize);
-          material.dispose();
-          surfaceMaterial.dispose();
-          fallbackMap.dispose();
-          fallbackNormal.dispose();
-          fallbackOrm.dispose();
-          stdMat?.map?.dispose();
-          stdMat?.normalMap?.dispose();
-          stdMat?.roughnessMap?.dispose();
-          dustGeometry.dispose();
-          dustMaterial.dispose();
-          lightGeometry.dispose();
-          lightMaterial.dispose();
+          samuraiRig.dispose();
+          cuteRig.dispose();
+          headHitSphere.geometry.dispose();
+          bodyHitSphere.geometry.dispose();
+          proxyMat.dispose();
+          envRT.dispose();
         });
       } catch (cause) {
         if (!controller.signal.aborted) {
@@ -951,9 +892,6 @@ export default function ParticlePortrait({
       document.documentElement.removeEventListener("pointerleave", onWindowLeave);
       renderer?.dispose();
       renderer?.domElement.remove();
-      portrait?.dispose();
-      surfaceGeometry?.dispose();
-      glyphAtlas?.dispose();
     };
   }, [spatialProgressRef, projectsProgressRef, centerMixRef, controlsRef]);
 
@@ -964,6 +902,9 @@ export default function ParticlePortrait({
       data-phase={ready ? "ready" : "loading"}
       data-webgl={webglUnavailable ? "fallback" : "active"}
       data-hover-active="false"
+      data-model-hovered="false"
+      data-layer-mode="reveal"
+      data-reveal-mix="0"
       data-orbit-rad="0"
       data-center-mix="0"
       data-gaze-x="0"
@@ -989,7 +930,7 @@ export default function ParticlePortrait({
       <div
         className="particle-loader"
         role="progressbar"
-        aria-label="Loading 3D sculpture"
+        aria-label="Loading 3D cat models"
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={progress}
