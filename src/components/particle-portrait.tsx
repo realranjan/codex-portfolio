@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { MeshSurfaceSampler } from "three/addons/math/MeshSurfaceSampler.js";
 import {
   computeHeroToCarouselState,
@@ -10,7 +11,7 @@ import {
 } from "@/lib/motion";
 
 const COUNT = 66000;
-const MODEL = "/particle-bust.glb";
+const MODEL = "/cute-cat.glb";
 const GLYPHS = ".,:;i1tfLCG08@#%";
 
 export interface SpatialControlValues {
@@ -73,241 +74,244 @@ varying float vBrightness, vAlpha, vShine, vGlint, vPart, vGlyph, vReveal, vScat
 mat3 rotX(float a) { float c=cos(a), s=sin(a); return mat3(1.,0.,0., 0.,c,s, 0.,-s,c); }
 mat3 rotY(float a) { float c=cos(a), s=sin(a); return mat3(c,0.,-s, 0.,1.,0., s,0.,c); }
 void main() {
-  float head = smoothstep(-1.3,-0.6,position.y);
-  mat3 turn = rotY(uHead.x*(0.28+0.72*head))*rotX(uHead.y*head);
-  vec3 home = turn*(position-vec3(0.,-1.,0.))+vec3(0.,-1.,0.);
-  vec3 n = normalize(turn*aNormal);
-  home += n*sin(uTime*1.6+aRand*60.)*0.009*uDispersion;
-  home += n*(uDispersion-1.)*0.2*(0.3+aRand*0.7);
-  float r2 = fract(sin(aRand*91.7)*43758.5453);
-  float t = clamp((uAssemble-aRand*0.45)/0.55,0.,1.);
-  float e = t<0.5 ? 4.*t*t*t : 1.-pow(-2.*t+2.,3.)/2.;
-  float angle=aRand*6.2831853;
-  vec3 start=vec3(cos(angle)*uRingRadius, sin(angle)*uRingRadius-0.15, 0.);
-  vec3 p=mix(start,home,e)+vec3(sin(aRand*40.+uTime*0.3),cos(aRand*31.),0.9+r2*1.4)*sin(e*3.14159)*0.45;
-  vec4 mvPre=modelViewMatrix*vec4(p,1.);
-  vec4 clipPre=projectionMatrix*mvPre;
-  vec2 screenPre=(clipPre.xy/clipPre.w*0.5+0.5)*uViewport;
-  float hoverDist=distance(screenPre,uHover);
-  float scatter=(1.-smoothstep(0.,uHoverRadius*1.65,hoverDist))*uHoverOn;
-  float pulseWave=0.;
-  if(uPulseAge>0. && uPulseAge<1.6){
-    float pulseDist=distance(screenPre,uPulseOrigin);
-    float ringPos=uPulseAge*420.;
-    pulseWave=exp(-pow((pulseDist-ringPos)/75.,2.))*(1.-uPulseAge/1.6);
+  float head = smoothstep(-0.75, 0.05, position.y);
+  mat3 turn = rotY(uHead.x * (0.34 + 0.66 * head)) * rotX(uHead.y * (0.28 + 0.72 * head));
+  vec3 pivot = vec3(0., -0.55, 0.);
+  vec3 home = turn * (position - pivot) + pivot;
+  vec3 n = normalize(turn * aNormal);
+  home += n * sin(uTime * 1.6 + aRand * 60.) * 0.009 * uDispersion;
+  home += n * (uDispersion - 1.) * 0.2 * (0.3 + aRand * 0.7);
+  float r2 = fract(sin(aRand * 91.7) * 43758.5453);
+  float t = clamp((uAssemble - aRand * 0.45) / 0.55, 0., 1.);
+  float e = t < 0.5 ? 4. * t * t * t : 1. - pow(-2. * t + 2., 3.) / 2.;
+  float angle = aRand * 6.2831853;
+  vec3 start = vec3(cos(angle) * uRingRadius, sin(angle) * uRingRadius - 0.15, 0.);
+  vec3 p = mix(start, home, e) + vec3(sin(aRand * 40. + uTime * 0.3), cos(aRand * 31.), 0.9 + r2 * 1.4) * sin(e * 3.14159) * 0.45;
+  vec4 mvPre = modelViewMatrix * vec4(p, 1.);
+  vec4 clipPre = projectionMatrix * mvPre;
+  vec2 screenPre = (clipPre.xy / clipPre.w * 0.5 + 0.5) * uViewport;
+  float hoverDist = distance(screenPre, uHover);
+  float scatter = (1. - smoothstep(0., uHoverRadius * 1.65, hoverDist)) * uHoverOn;
+  float pulseWave = 0.;
+  if (uPulseAge > 0. && uPulseAge < 1.6) {
+    float pulseDist = distance(screenPre, uPulseOrigin);
+    float ringPos = uPulseAge * 420.;
+    pulseWave = exp(-pow((pulseDist - ringPos) / 75., 2.)) * (1. - uPulseAge / 1.6);
   }
-  p+=n*(scatter*0.18*(0.35+r2*0.85)+pulseWave*0.24*(0.4+aRand));
-  vec3 toLight=uLight-home;
-  float lit=max(dot(n,normalize(toLight)),0.)/(1.+dot(toLight,toLight)*0.3);
-  float key=max(dot(n,normalize(vec3(0.5,0.6,0.7))),0.);
-  float facing=n.z;
-  float rim=pow(1.-abs(facing),2.6);
-  float b=(0.24+key*0.26+lit*1.12+rim*0.28)*mix(0.45,1.,smoothstep(-0.3,0.25,facing));
-  if(aPart>0.5) b*=0.86;
-  if(aPart>1.5) b*=0.72;
-  if(aPart>2.5) b*=0.64;
-  b*=0.72+r2*0.48;
-  float glint=aPart>0.5 ? 1.-smoothstep(0.,0.09,abs(position.x-uGlint)) : 0.;
-  float band=home.y-home.x*0.5-uShine;
-  float shine=exp(-band*band*4.);
-  b+=glint*0.95+shine*1.05+scatter*0.65+pulseWave*0.95;
-  vec4 mv=modelViewMatrix*vec4(p,1.);
-  gl_Position=projectionMatrix*mv;
-  gl_PointSize=min(18.,uSize*(1.18+r2*0.24+scatter*0.28)/max(0.1,-mv.z));
-  vec2 screen=(gl_Position.xy/gl_Position.w*0.5+0.5)*uViewport;
-  vReveal=uHoverOn*(1.-smoothstep(uHoverRadius*0.38,uHoverRadius*0.90,distance(screen,uHover)));
-  vScatterGlow=clamp(scatter+pulseWave,0.,1.);
-  vGlyph=floor(clamp((b*0.54+r2*0.18),0.,0.999)*16.);
-  vBrightness=min(b,1.75); vAlpha=mix(0.75,1.,e)*step(aRand, aPart>1.5 ? 0.30 : uKeep); vShine=shine; vGlint=glint; vPart=aPart;
+  p += n * (scatter * 0.18 * (0.35 + r2 * 0.85) + pulseWave * 0.24 * (0.4 + aRand));
+  vec3 toLight = uLight - home;
+  float lit = max(dot(n, normalize(toLight)), 0.) / (1. + dot(toLight, toLight) * 0.3);
+  float key = max(dot(n, normalize(vec3(0.5, 0.6, 0.7))), 0.);
+  float facing = n.z;
+  float rim = pow(1. - abs(facing), 2.6);
+  float b = (0.28 + key * 0.28 + lit * 1.08 + rim * 0.30) * mix(0.45, 1., smoothstep(-0.3, 0.25, facing));
+  if (aPart > 0.5) b *= 0.9;
+  b *= 0.74 + r2 * 0.46;
+  float glint = aPart > 0.5 ? 1. - smoothstep(0., 0.12, abs(position.x - uGlint)) : 0.;
+  float band = home.y - home.x * 0.5 - uShine;
+  float shine = exp(-band * band * 4.);
+  b += glint * 0.75 + shine * 1.05 + scatter * 0.65 + pulseWave * 0.95;
+  vec4 mv = modelViewMatrix * vec4(p, 1.);
+  gl_Position = projectionMatrix * mv;
+  gl_PointSize = min(18., uSize * (1.16 + r2 * 0.24 + scatter * 0.28) / max(0.1, -mv.z));
+  vec2 screen = (gl_Position.xy / gl_Position.w * 0.5 + 0.5) * uViewport;
+  vReveal = uHoverOn * (1. - smoothstep(uHoverRadius * 0.44, uHoverRadius * 0.96, distance(screen, uHover)));
+  vScatterGlow = clamp(scatter + pulseWave, 0., 1.);
+  vGlyph = floor(clamp((b * 0.54 + r2 * 0.18), 0., 0.999) * 16.);
+  vBrightness = min(b, 1.75);
+  vAlpha = mix(0.75, 1., e) * step(aRand, uKeep);
+  vShine = shine;
+  vGlint = glint;
+  vPart = aPart;
 }`;
 
 const fragmentShader = /* glsl */ `
-uniform vec3 uInk,uAccent,uIvory;
+uniform vec3 uInk, uAccent, uIvory;
 uniform sampler2D uGlyphAtlas;
-varying float vBrightness,vAlpha,vShine,vGlint,vPart,vGlyph,vReveal,vScatterGlow;
+varying float vBrightness, vAlpha, vShine, vGlint, vPart, vGlyph, vReveal, vScatterGlow;
 void main() {
-  if(vAlpha<0.01) discard;
-  vec2 cell=vec2(mod(vGlyph,4.),3.-floor(vGlyph/4.));
-  vec2 uv=(cell+vec2(gl_PointCoord.x,1.-gl_PointCoord.y))/4.;
-  float glyph=texture2D(uGlyphAtlas,uv).a;
-  if(glyph<0.08) discard;
-  float alpha=glyph*vAlpha*(1.-vReveal*0.96);
-  if(alpha<0.01) discard;
-  vec3 ink=mix(uInk,uIvory,clamp(vShine*0.55+vScatterGlow*0.40,0.,1.));
-  if(vPart>2.5) ink=mix(ink,uAccent,0.72);
-  ink=mix(ink,uAccent,clamp(vGlint*0.72+vScatterGlow*0.52,0.,1.));
-  gl_FragColor=vec4(ink*vBrightness,alpha);
+  if (vAlpha < 0.01) discard;
+  vec2 cell = vec2(mod(vGlyph, 4.), 3. - floor(vGlyph / 4.));
+  vec2 uv = (cell + vec2(gl_PointCoord.x, 1. - gl_PointCoord.y)) / 4.;
+  float glyph = texture2D(uGlyphAtlas, uv).a;
+  if (glyph < 0.08) discard;
+  float alpha = glyph * vAlpha * (1. - vReveal * 0.98);
+  if (alpha < 0.01) discard;
+  vec3 ink = mix(uInk, uIvory, clamp(vShine * 0.55 + vScatterGlow * 0.40, 0., 1.));
+  if (vPart > 0.5) ink = mix(ink, uAccent, 0.35);
+  ink = mix(ink, uAccent, clamp(vGlint * 0.72 + vScatterGlow * 0.52, 0., 1.));
+  gl_FragColor = vec4(ink * vBrightness, alpha);
 }`;
 
 const surfaceVertexShader = /* glsl */ `
 uniform vec2 uHead;
 varying vec3 vNormal;
-varying vec3 vModelPos;
+varying vec3 vWorldPos;
+varying vec2 vUv;
 mat3 rotX(float a) { float c=cos(a), s=sin(a); return mat3(1.,0.,0., 0.,c,s, 0.,-s,c); }
 mat3 rotY(float a) { float c=cos(a), s=sin(a); return mat3(c,0.,-s, 0.,1.,0., s,0.,c); }
 void main() {
-  float head=smoothstep(-1.3,-0.6,position.y);
-  mat3 turn=rotY(uHead.x*(0.28+0.72*head))*rotX(uHead.y*head);
-  vec3 p=turn*(position-vec3(0.,-1.,0.))+vec3(0.,-1.,0.);
-  vNormal=normalize(turn*normal);
-  vModelPos=vec3(position.x/2.8,(position.y+0.68)/2.8,position.z/2.8);
-  gl_Position=projectionMatrix*modelViewMatrix*vec4(p,1.);
+  float head = smoothstep(-0.75, 0.05, position.y);
+  mat3 turn = rotY(uHead.x * (0.34 + 0.66 * head)) * rotX(uHead.y * (0.28 + 0.72 * head));
+  vec3 pivot = vec3(0., -0.55, 0.);
+  vec3 p = turn * (position - pivot) + pivot;
+  vNormal = normalize(turn * normal);
+  vWorldPos = (modelMatrix * vec4(p, 1.)).xyz;
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.);
 }`;
 
 const surfaceFragmentShader = /* glsl */ `
 uniform vec2 uHover;
-uniform float uHoverOn,uHoverRadius,uAssemble;
+uniform vec3 uLight;
+uniform float uHoverOn, uHoverRadius, uAssemble, uHasTextures;
+uniform sampler2D uBaseColorMap, uNormalMap, uOrmMap;
 varying vec3 vNormal;
-varying vec3 vModelPos;
+varying vec3 vWorldPos;
+varying vec2 vUv;
+
+vec3 perturbNormal(vec3 N, vec3 worldPos, vec2 uv, vec3 mapN) {
+  vec3 q0 = dFdx(worldPos);
+  vec3 q1 = dFdy(worldPos);
+  vec2 st0 = dFdx(uv);
+  vec2 st1 = dFdy(uv);
+  vec3 Nperp = normalize(N);
+  float det = st0.s * st1.t - st1.s * st0.t;
+  if (abs(det) < 1e-7) return Nperp;
+  vec3 T = normalize(q0 * st1.t - q1 * st0.t);
+  vec3 B = normalize(-q0 * st1.s + q1 * st0.s);
+  if (dot(T, T) < 1e-6 || dot(B, B) < 1e-6) return Nperp;
+  float facing = step(0., det) * 2. - 1.;
+  mat3 TBN = mat3(T * facing, B * facing, Nperp);
+  return normalize(TBN * (mapN * 2. - 1.));
+}
+
 void main() {
-  vec3 n=normalize(vNormal);
-  float key=max(dot(n,normalize(vec3(0.5,0.65,0.8))),0.);
-  float rim=pow(1.-abs(n.z),2.4);
-  float spotlight=(1.-smoothstep(uHoverRadius*0.5,uHoverRadius*1.05,distance(gl_FragCoord.xy,uHover)))*uHoverOn;
-  float baseAlpha=clamp(0.11+rim*0.22,0.,0.34)*uAssemble;
-  float reveal=max(baseAlpha,spotlight*uAssemble);
-  if(reveal<0.01) discard;
-  float x=abs(vModelPos.x), y=vModelPos.y, z=vModelPos.z;
-  // Classical Pentelic marble and obsidian chiaroscuro tones
-  vec3 marble=vec3(0.84,0.80,0.90);
-  vec3 shadowStone=vec3(0.32,0.28,0.38);
-  vec3 drape=vec3(0.16,0.13,0.21);
-  vec3 laurel=vec3(0.74,0.65,0.83);
-  float drapeMask=(1.-smoothstep(-0.43,-0.19,y))*smoothstep(0.11,0.22,x);
-  float hairMask=max(smoothstep(0.69,0.82,y),smoothstep(0.33,0.46,x)*smoothstep(0.24,0.38,y));
-  float leafMask=step(0.13,vModelPos.x)*step(0.60,y)*step(0.035,pow(vModelPos.x-0.02,2.)+pow(z+0.06,2.));
-  vec3 base=mix(marble,drape,drapeMask);
-  base=mix(base,shadowStone,hairMask*0.75);
-  base=mix(base,laurel,leafMask);
-  float visor=(1.-smoothstep(0.20,0.24,x))*smoothstep(0.275,0.30,y)*(1.-smoothstep(0.37,0.39,y))*smoothstep(0.1,0.25,z);
-  base=mix(base,vec3(0.82,0.74,0.91),visor*0.65);
-  float ambientScale=mix(0.24,1.0,spotlight);
-  vec3 color=(base*(0.32+key*0.68)*ambientScale)+vec3(0.74,0.65,0.83)*rim*0.36;
-  gl_FragColor=vec4(color,reveal);
+  vec3 geomN = normalize(vNormal);
+  float rim = pow(1. - abs(geomN.z), 2.4);
+  float spotlight = (1. - smoothstep(uHoverRadius * 0.42, uHoverRadius * 1.05, distance(gl_FragCoord.xy, uHover))) * uHoverOn;
+  float baseAlpha = clamp(0.05 + rim * 0.16, 0., 0.22) * uAssemble;
+  float reveal = max(baseAlpha, spotlight * uAssemble);
+  if (reveal < 0.01) discard;
+
+  vec3 N = geomN;
+  vec3 albedo = vec3(0.84, 0.80, 0.90);
+  float ao = 1.0;
+  float roughness = 0.65;
+  float metalness = 0.0;
+
+  if (uHasTextures > 0.5) {
+    albedo = texture2D(uBaseColorMap, vUv).rgb;
+    vec3 orm = texture2D(uOrmMap, vUv).rgb;
+    ao = mix(0.5, 1.0, orm.r);
+    roughness = clamp(orm.g, 0.18, 0.98);
+    metalness = orm.b;
+    vec3 mapN = texture2D(uNormalMap, vUv).xyz;
+    N = normalize(mix(geomN, perturbNormal(geomN, vWorldPos, vUv, mapN), 0.72 * spotlight));
+  }
+
+  vec3 viewDir = normalize(cameraPosition - vWorldPos);
+  vec3 spotDir = normalize(uLight - vWorldPos);
+  vec3 keyDir = normalize(vec3(0.45, 0.72, 0.85));
+  vec3 fillDir = normalize(vec3(-0.65, 0.2, 0.65));
+
+  float key = max(dot(N, keyDir), 0.);
+  float fill = max(dot(N, fillDir), 0.);
+  float spot = max(dot(N, spotDir), 0.);
+
+  vec3 H = normalize(keyDir + viewDir);
+  float shininess = mix(48., 8., roughness);
+  float spec = pow(max(dot(N, H), 0.), shininess) * mix(0.28, 0.75, 1. - roughness) * mix(0.35, 1.0, metalness + 0.25);
+
+  vec3 diffuse = albedo * ao * (0.42 + key * 0.68 + fill * 0.24 + spot * 0.42);
+  vec3 litColor = diffuse + vec3(1.0, 0.98, 0.96) * spec;
+  litColor += vec3(0.76, 0.66, 0.88) * rim * 0.30;
+
+  // Outside the spotlight reveal, keep a dim obsidian silhouette behind the ASCII cloud
+  vec3 ghostTint = vec3(0.18, 0.15, 0.24) + vec3(0.74, 0.65, 0.83) * rim * 0.45;
+  vec3 finalLinear = mix(ghostTint, litColor, smoothstep(0.05, 0.75, spotlight));
+
+  // Encode linear -> sRGB since ShaderMaterial bypasses renderer tone/colorSpace pass
+  vec3 finalSrgb = uHasTextures > 0.5 ? pow(max(finalLinear, vec3(0.)), vec3(1. / 2.2)) : finalLinear;
+  gl_FragColor = vec4(finalSrgb, reveal);
 }`;
 
 type Dot = { p: THREE.Vector3; n: THREE.Vector3; part: number };
 
-function buildDots(mesh: THREE.Mesh): THREE.BufferGeometry {
-  mesh.updateWorldMatrix(true, false);
-  const geometry = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
+function normalizeModelGeometry(rawMesh: THREE.Mesh): THREE.BufferGeometry {
+  rawMesh.updateWorldMatrix(true, false);
+  const geometry = rawMesh.geometry.clone().applyMatrix4(rawMesh.matrixWorld);
   if (!geometry.getAttribute("normal")) geometry.computeVertexNormals();
+  const pos = geometry.getAttribute("position") as THREE.BufferAttribute;
+  const box = new THREE.Box3().setFromBufferAttribute(pos);
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z, 0.001);
+  const scale = 2.45 / maxDim;
+  geometry.translate(-center.x, -center.y, -center.z);
+  geometry.scale(scale, scale, scale);
+  geometry.translate(0, -0.12, 0);
+  return geometry;
+}
+
+function buildDots(geometry: THREE.BufferGeometry): THREE.BufferGeometry {
   const sampler = new MeshSurfaceSampler(new THREE.Mesh(geometry)).build();
   const p = new THREE.Vector3();
   const n = new THREE.Vector3();
   const candidates: Dot[] = [];
-  const leaves: Dot[] = [];
   const bins = new Map<string, Dot[]>();
-  const face = new Map<string, number>();
-  const faceKey = (x: number, y: number) => `${Math.round(x * 100)},${Math.round(y * 100)}`;
-  for (let i = 0; i < COUNT * 5; i++) {
+
+  for (let i = 0; i < COUNT * 4; i++) {
     sampler.sample(p, n);
-    const dot = { p: p.clone(), n: n.clone(), part: 0 };
+    const part = p.y > 0.28 || Math.abs(n.z) < 0.32 ? 1 : 0;
+    const dot = { p: p.clone(), n: n.clone(), part };
     candidates.push(dot);
-    if (p.x > 0.13 && p.y > 0.6 && (p.x - 0.02) ** 2 + (p.z + 0.06) ** 2 > 0.035) {
-      if (Math.random() < 0.6) leaves.push({ ...dot, part: 1 });
-    } else {
-      const key = `${Math.floor(p.x / 0.022)},${Math.floor(p.y / 0.022)},${Math.floor(p.z / 0.022)}`;
-      const bin = bins.get(key);
-      if (bin) bin.push(dot);
-      else bins.set(key, [dot]);
-    }
-    if (n.z >= 0.2 && p.x >= -0.32 && p.x <= 0.32 && p.y >= 0.2 && p.y <= 0.45) {
-      const key = faceKey(p.x, p.y);
-      face.set(key, Math.max(face.get(key) ?? -Infinity, p.z));
-    }
+    const key = `${Math.floor(p.x / 0.036)},${Math.floor(p.y / 0.036)},${Math.floor(p.z / 0.036)}`;
+    const bin = bins.get(key);
+    if (bin) bin.push(dot);
+    else bins.set(key, [dot]);
   }
-  const height = (x: number, y: number) => {
-    let z = -Infinity;
-    for (let dx = -1; dx <= 1; dx++) {
-      for (let dy = -1; dy <= 1; dy++) {
-        z = Math.max(z, face.get(faceKey(x + dx * 0.01, y + dy * 0.01)) ?? -Infinity);
-      }
-    }
-    return z;
-  };
-  const W = 0.215;
-  const top = (x: number) => 0.378 - 0.022 * (x / W) ** 2;
-  const bottom = (x: number) =>
-    0.282 + 0.032 * Math.exp(-((x / 0.034) ** 2)) + 0.026 * (x / W) ** 4;
-  let front = -Infinity;
-  for (let x = -0.06; x <= 0.06; x += 0.01) {
-    for (let y = 0.3; y <= 0.36; y += 0.01) front = Math.max(front, height(x, y));
-  }
-  if (!Number.isFinite(front)) front = 0.36;
-  front += 0.028;
-  let wrap = 2.4;
-  for (let x = -W; x <= W; x += 0.01) {
-    if (Math.abs(x) < 0.05) continue;
-    let need = -Infinity;
-    for (let y = bottom(x); y <= top(x); y += 0.01) need = Math.max(need, height(x, y));
-    if (Number.isFinite(need)) wrap = Math.min(wrap, (front - need - 0.0196) / (x * x));
-  }
-  wrap = Math.max(0.4, wrap);
-  const visor: Dot[] = [];
-  const addVisor = (x: number, y: number, zOffset: number, part: number) =>
-    visor.push({
-      p: new THREE.Vector3(x, y, front - wrap * x * x + zOffset),
-      n: new THREE.Vector3(2 * wrap * x, 0, 1).normalize(),
-      part,
-    });
-  for (let i = 0; i < 950; i++) {
-    const x = (Math.random() * 2 - 1) * W;
-    addVisor(x, top(x) - Math.random() ** 2 * 0.016, 0.004, 2);
-  }
-  for (let i = 0; i < 380; i++) {
-    const x = (Math.random() * 2 - 1) * W;
-    addVisor(x, bottom(x) + Math.random() * 0.004, 0.002, 2);
-  }
-  for (const side of [-1, 1]) {
-    for (let i = 0; i < 70; i++) {
-      addVisor(side * W, bottom(W) + Math.random() * (top(W) - bottom(W)), 0.002, 2);
-    }
-    for (let i = 0; i < 70; i++) {
-      const t = Math.random();
-      addVisor(side * (W + 0.03 * t), top(W) - 0.008, -0.15 * t, 2);
-    }
-  }
-  for (let i = 0; i < 1500; i++) {
-    const x = (Math.random() * 2 - 1) * W;
-    addVisor(x, bottom(x) + Math.random() * (top(x) - bottom(x)), 0, 3);
-  }
-  const wanted = COUNT - visor.length - Math.min(leaves.length, 6000);
-  const leafDots = leaves.slice(0, COUNT - visor.length - wanted);
+
   let lo = 1;
   let hi = 100;
   while (lo < hi) {
     const mid = Math.floor((lo + hi) / 2);
     let total = 0;
     for (const bin of bins.values()) total += Math.min(bin.length, mid);
-    if (total >= wanted * 1.8) hi = mid;
+    if (total >= COUNT * 1.45) hi = mid;
     else lo = mid + 1;
   }
+
   const pool: Dot[] = [];
   for (const bin of bins.values()) pool.push(...bin.slice(0, lo));
   for (let i = pool.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  const dots = [...pool.slice(0, wanted), ...leafDots, ...visor];
-  while (dots.length < COUNT) dots.push(candidates[Math.floor(Math.random() * candidates.length)]);
+
+  const dots = pool.slice(0, COUNT);
+  while (dots.length < COUNT && candidates.length > 0) {
+    dots.push(candidates[Math.floor(Math.random() * candidates.length)]);
+  }
+
   const positions = new Float32Array(COUNT * 3);
   const normals = new Float32Array(COUNT * 3);
   const randoms = new Float32Array(COUNT);
   const parts = new Float32Array(COUNT);
+
   for (let i = 0; i < COUNT; i++) {
     const d = dots[i];
-    positions.set([d.p.x * 2.8, d.p.y * 2.8 - 0.68, d.p.z * 2.8], i * 3);
+    positions.set([d.p.x, d.p.y, d.p.z], i * 3);
     normals.set([d.n.x, d.n.y, d.n.z], i * 3);
     randoms[i] = Math.random();
     parts[i] = d.part;
   }
+
   const result = new THREE.BufferGeometry();
   result.setAttribute("position", new THREE.BufferAttribute(positions, 3));
   result.setAttribute("aNormal", new THREE.BufferAttribute(normals, 3));
   result.setAttribute("aRand", new THREE.BufferAttribute(randoms, 1));
   result.setAttribute("aPart", new THREE.BufferAttribute(parts, 1));
-  geometry.dispose();
   return result;
 }
 
@@ -496,17 +500,34 @@ export default function ParticlePortrait({
           bytes.set(chunk, offset);
           offset += chunk.length;
         }
-        const gltf = await new GLTFLoader().parseAsync(bytes.buffer, "");
+        await MeshoptDecoder.ready;
+        const loader = new GLTFLoader();
+        loader.setMeshoptDecoder(MeshoptDecoder);
+        const gltf = await loader.parseAsync(bytes.buffer, "");
         let mesh: THREE.Mesh | undefined;
         gltf.scene.traverse((object) => {
           if (!mesh && (object as THREE.Mesh).isMesh) mesh = object as THREE.Mesh;
         });
         if (!mesh) throw new Error("No mesh in model");
-        portrait = buildDots(mesh);
-        mesh.updateWorldMatrix(true, false);
-        surfaceGeometry = mesh.geometry.clone().applyMatrix4(mesh.matrixWorld);
-        if (!surfaceGeometry.getAttribute("normal")) surfaceGeometry.computeVertexNormals();
-        surfaceGeometry.scale(2.8, 2.8, 2.8).translate(0, -0.68, 0);
+
+        surfaceGeometry = normalizeModelGeometry(mesh);
+        portrait = buildDots(surfaceGeometry);
+
+        const stdMat = (
+          Array.isArray(mesh.material) ? mesh.material[0] : mesh.material
+        ) as THREE.MeshStandardMaterial | undefined;
+        const fallbackMap = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
+        fallbackMap.needsUpdate = true;
+        const fallbackNormal = new THREE.DataTexture(new Uint8Array([128, 128, 255, 255]), 1, 1);
+        fallbackNormal.needsUpdate = true;
+        const fallbackOrm = new THREE.DataTexture(new Uint8Array([255, 180, 0, 255]), 1, 1);
+        fallbackOrm.needsUpdate = true;
+
+        const baseColorMap = stdMat?.map ?? fallbackMap;
+        const normalMap = stdMat?.normalMap ?? fallbackNormal;
+        const ormMap = stdMat?.roughnessMap ?? fallbackOrm;
+        const hasTextures = stdMat?.map ? 1 : 0;
+
         const bustBox = new THREE.Box3().setFromBufferAttribute(
           surfaceGeometry.getAttribute("position") as THREE.BufferAttribute
         );
@@ -542,7 +563,7 @@ export default function ParticlePortrait({
           uKeep: { value: 0.48 },
           uHover: { value: new THREE.Vector2(-1000, -1000) },
           uHoverOn: { value: 0 },
-          uHoverRadius: { value: 145 },
+          uHoverRadius: { value: 165 },
           uViewport: { value: new THREE.Vector2(1, 1) },
           uDispersion: { value: 1.0 },
           uPulseAge: { value: -1 },
@@ -557,13 +578,18 @@ export default function ParticlePortrait({
           fragmentShader: surfaceFragmentShader,
           uniforms: {
             uHead: uniforms.uHead,
+            uLight: uniforms.uLight,
             uHover: uniforms.uHover,
             uHoverOn: uniforms.uHoverOn,
             uHoverRadius: uniforms.uHoverRadius,
             uAssemble: uniforms.uAssemble,
+            uHasTextures: { value: hasTextures },
+            uBaseColorMap: { value: baseColorMap },
+            uNormalMap: { value: normalMap },
+            uOrmMap: { value: ormMap },
           },
           transparent: true,
-          depthWrite: false,
+          depthWrite: true,
           side: THREE.FrontSide,
         });
         const surface = new THREE.Mesh(surfaceGeometry, surfaceMaterial);
@@ -709,10 +735,10 @@ export default function ParticlePortrait({
           applyCameraFraming(w);
           camera.updateProjectionMatrix();
           uniforms.uSize.value = 72 * dpr;
-          baseKeep = w < 700 ? 0.22 : 0.34;
+          baseKeep = w < 700 ? 0.28 : 0.42;
           const densityScale = controlsRef?.current?.densityScale ?? 1;
           uniforms.uKeep.value = Math.min(0.95, baseKeep * densityScale);
-          uniforms.uHoverRadius.value = (w < 700 ? 105 : 145) * dpr;
+          uniforms.uHoverRadius.value = (w < 700 ? 115 : 165) * dpr;
           uniforms.uViewport.value.set(w * dpr, h * dpr);
           uniforms.uRingRadius.value =
             (92 * 2 * baseDistance * Math.tan(Math.PI / 12)) / h;
@@ -890,6 +916,12 @@ export default function ParticlePortrait({
           window.removeEventListener("resize", resize);
           material.dispose();
           surfaceMaterial.dispose();
+          fallbackMap.dispose();
+          fallbackNormal.dispose();
+          fallbackOrm.dispose();
+          stdMat?.map?.dispose();
+          stdMat?.normalMap?.dispose();
+          stdMat?.roughnessMap?.dispose();
           dustGeometry.dispose();
           dustMaterial.dispose();
           lightGeometry.dispose();

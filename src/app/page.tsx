@@ -436,7 +436,7 @@ export default function Home() {
 
               <div className="page-container pointer-events-none">
                 <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.1] pt-4 text-xs font-mono text-[#A19D97]">
-                  <span>Drag bust to orbit · Hover to inspect marble · Scroll to orbit projects</span>
+                  <span>Drag sculpture to orbit · Hover to reveal texture · Scroll to orbit projects</span>
 
                   <div
                     ref={heroDockRef}
