@@ -39,17 +39,20 @@ test("samurai cat partitions 13 segments cleanly into helmet/head (6 parts) and 
   assert.equal(classifySamuraiSegment("tripo_part_11", -0.407), "body");
 });
 
-test("computeDualLayerAlignment nests cute cat cleanly inside samurai scale and face depth", () => {
+test("computeDualLayerAlignment matches cute cat height (Y) and proportions 1:1 with samurai cat", () => {
   const alignment = computeDualLayerAlignment(
     { min: [-0.371, -0.5, -0.449], max: [0.371, 0.5, 0.449] },
     { min: [-0.399, -0.489, -0.367], max: [0.399, 0.49, 0.367] }
   );
 
+  assert.equal(CUTE_INNER_SCALE_RATIO, 1.0);
   assert.equal(alignment.facingRotationY, CAT_FACING_ROTATION_Y);
   assert.ok(
-    Math.abs(alignment.cuteScale - CAT_MODEL_HEIGHT * CUTE_INNER_SCALE_RATIO) < 1e-6
+    Math.abs(alignment.cuteScale * 1.0 - CAT_MODEL_HEIGHT * CUTE_INNER_SCALE_RATIO) < 1e-6
   );
-  assert.ok(alignment.samuraiScale > alignment.cuteScale);
+  assert.ok(
+    Math.abs(alignment.samuraiScale * 0.979 - CAT_MODEL_HEIGHT) < 1e-6
+  );
   assert.deepEqual(alignment.cuteCenterOffset, [0, 0, CUTE_DEPTH_TUCK_RAW]);
   assert.ok(alignment.neckPivotY < 0);
 });

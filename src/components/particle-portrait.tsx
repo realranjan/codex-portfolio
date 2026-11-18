@@ -91,14 +91,15 @@ async function fetchGlbWithProgress(
 function applyTextureSafeguards(
   material: THREE.Material,
   maxAnisotropy: number,
-  revealUniforms?: RevealUniforms
+  revealUniforms: RevealUniforms,
+  isOuterSamuraiLayer: boolean
 ): THREE.MeshStandardMaterial {
   const cloned = material.clone() as THREE.MeshStandardMaterial;
   cloned.color.setHex(0xffffff);
   cloned.transparent = false;
   cloned.depthWrite = true;
   cloned.opacity = 1;
-  if (!revealUniforms) {
+  if (!isOuterSamuraiLayer) {
     cloned.side = THREE.DoubleSide;
   }
 
@@ -123,38 +124,50 @@ function applyTextureSafeguards(
   configureTex(cloned.metalnessMap, false);
   configureTex(cloned.aoMap, false);
 
-  if (revealUniforms) {
-    cloned.customProgramCacheKey = () => "samurai-hover-reveal-v1";
-    cloned.onBeforeCompile = (shader) => {
-      shader.uniforms.uRevealCenter = revealUniforms.uRevealCenter;
-      shader.uniforms.uRevealRadius = revealUniforms.uRevealRadius;
-      shader.uniforms.uRevealMix = revealUniforms.uRevealMix;
-      shader.uniforms.uFullCutaway = revealUniforms.uFullCutaway;
+  cloned.customProgramCacheKey = () =>
+    isOuterSamuraiLayer ? "samurai-hover-reveal-v2" : "cute-hover-mask-v2";
+  cloned.onBeforeCompile = (shader) => {
+    shader.uniforms.uRevealCenter = revealUniforms.uRevealCenter;
+    shader.uniforms.uRevealRadius = revealUniforms.uRevealRadius;
+    shader.uniforms.uRevealMix = revealUniforms.uRevealMix;
+    shader.uniforms.uFullCutaway = revealUniforms.uFullCutaway;
 
-      shader.fragmentShader = shader.fragmentShader
-        .replace(
-          "#include <common>",
-          `#include <common>
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <common>",
+      `#include <common>
 uniform vec2 uRevealCenter;
 uniform float uRevealRadius;
 uniform float uRevealMix;
 uniform float uFullCutaway;`
-        )
-        .replace(
-          "#include <dithering_fragment>",
-          `if (uFullCutaway > 0.99) discard;
+    );
+
+    if (isOuterSamuraiLayer) {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        "#include <dithering_fragment>",
+        `if (uFullCutaway > 0.99) discard;
 if (uRevealMix > 0.01) {
   float revealR = uRevealRadius * uRevealMix;
   float distToPointer = distance(gl_FragCoord.xy, uRevealCenter);
   if (distToPointer < revealR) discard;
-  float rimWidth = max(4.0, revealR * 0.06);
+  float rimWidth = max(3.5, revealR * 0.075);
   float edgeGlow = 1.0 - smoothstep(revealR, revealR + rimWidth, distToPointer);
-  gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.77, 0.69, 0.86), edgeGlow * 0.82 * uRevealMix);
+  gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.77, 0.69, 0.86), edgeGlow * 0.85 * uRevealMix);
 }
 #include <dithering_fragment>`
-        );
-    };
-  }
+      );
+    } else {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        "#include <dithering_fragment>",
+        `if (uFullCutaway < 0.5) {
+  if (uRevealMix <= 0.01) discard;
+  float revealR = uRevealRadius * uRevealMix;
+  float distToPointer = distance(gl_FragCoord.xy, uRevealCenter);
+  if (distToPointer > revealR + 1.5) discard;
+}
+#include <dithering_fragment>`
+      );
+    }
+  };
 
   cloned.needsUpdate = true;
   return cloned;
@@ -197,7 +210,8 @@ function buildSegmentedCatRig(params: {
   neckPivotY: number;
   classify: (name: string, centerY: number) => "head" | "body";
   maxAnisotropy: number;
-  revealUniforms?: RevealUniforms;
+  revealUniforms: RevealUniforms;
+  isOuterSamuraiLayer: boolean;
 }) {
   const {
     sourceRoot,
@@ -208,6 +222,7 @@ function buildSegmentedCatRig(params: {
     classify,
     maxAnisotropy,
     revealUniforms,
+    isOuterSamuraiLayer,
   } = params;
 
   sourceRoot.updateMatrixWorld(true);
@@ -257,11 +272,17 @@ function buildSegmentedCatRig(params: {
       ? srcMesh.material[0]
       : srcMesh.material;
     const nextMat = srcMat
-      ? applyTextureSafeguards(srcMat, maxAnisotropy, revealUniforms)
+      ? applyTextureSafeguards(
+          srcMat,
+          maxAnisotropy,
+          revealUniforms,
+          isOuterSamuraiLayer
+        )
       : applyTextureSafeguards(
           new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.55 }),
           maxAnisotropy,
-          revealUniforms
+          revealUniforms,
+          isOuterSamuraiLayer
         );
     materials.push(nextMat);
 
@@ -584,6 +605,8 @@ export default function ParticlePortrait({
           neckPivotY: alignment.neckPivotY,
           classify: classifyCuteSegment,
           maxAnisotropy: maxAniso,
+          revealUniforms,
+          isOuterSamuraiLayer: false,
         });
 
         const samuraiRig = buildSegmentedCatRig({
@@ -595,6 +618,7 @@ export default function ParticlePortrait({
           classify: classifySamuraiSegment,
           maxAnisotropy: maxAniso,
           revealUniforms,
+          isOuterSamuraiLayer: true,
         });
 
         cuteScene.add(cuteRig.rootGroup);
@@ -683,7 +707,7 @@ export default function ParticlePortrait({
           );
           applyCameraFraming(w);
           camera.updateProjectionMatrix();
-          revealUniforms.uRevealRadius.value = (w < 700 ? 132 : 196) * dpr;
+          revealUniforms.uRevealRadius.value = (w < 700 ? 78 : 108) * dpr;
           if (shown) {
             renderer.clear();
             if (revealUniforms.uRevealMix.value > 0.01 || revealUniforms.uFullCutaway.value > 0.01) {

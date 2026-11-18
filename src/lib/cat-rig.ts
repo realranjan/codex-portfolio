@@ -42,9 +42,9 @@ export const CAT_MODEL_HEIGHT = 2.95;
 export const CAT_FACING_ROTATION_Y = -Math.PI / 2;
 export const RAW_NECK_PIVOT_Y = -0.175;
 export const STAGE_CENTER_Y = -0.05;
-/** Cute cat sits cleanly nested inside samurai armor and matches its face-mask Z plane */
-export const CUTE_INNER_SCALE_RATIO = 0.9;
-export const CUTE_DEPTH_TUCK_RAW = -0.068;
+/** Match Cute Cat 1:1 on height (Y axis) and proportions to Samurai Cat */
+export const CUTE_INNER_SCALE_RATIO = 1.0;
+export const CUTE_DEPTH_TUCK_RAW = -0.045;
 
 export function classifyCuteSegment(name: string, centerY: number): CatSegmentRole {
   if (CUTE_HEAD_PARTS.has(name)) return "head";
