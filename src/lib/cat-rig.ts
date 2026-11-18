@@ -40,8 +40,11 @@ export const CUTE_HEAD_PARTS: ReadonlySet<string> = new Set(["tripo_part_0"]);
 
 export const CAT_MODEL_HEIGHT = 2.95;
 export const CAT_FACING_ROTATION_Y = -Math.PI / 2;
-export const RAW_NECK_PIVOT_Y = -0.185;
+export const RAW_NECK_PIVOT_Y = -0.175;
 export const STAGE_CENTER_Y = -0.05;
+/** Cute cat sits cleanly nested inside samurai armor and matches its face-mask Z plane */
+export const CUTE_INNER_SCALE_RATIO = 0.9;
+export const CUTE_DEPTH_TUCK_RAW = -0.068;
 
 export function classifyCuteSegment(name: string, centerY: number): CatSegmentRole {
   if (CUTE_HEAD_PARTS.has(name)) return "head";
@@ -72,7 +75,7 @@ function clamp(value: number, min: number, max: number): number {
 
 /**
  * Registers both rotated bounding boxes cleanly onto the exact same front-facing
- * target height, stage center, and shared neck pivot so layered hover reveals align.
+ * orientation, face plane, and shared neck pivot so Cute Cat nests cleanly inside Samurai Cat.
  */
 export function computeDualLayerAlignment(
   cuteBounds: BoxBoundsLike,
@@ -82,8 +85,8 @@ export function computeDualLayerAlignment(
   const cuteSizeY = Math.max(0.001, cuteBounds.max[1] - cuteBounds.min[1]);
   const samuraiSizeY = Math.max(0.001, samuraiBounds.max[1] - samuraiBounds.min[1]);
 
-  const cuteScale = targetHeight / cuteSizeY;
   const samuraiScale = targetHeight / samuraiSizeY;
+  const cuteScale = (targetHeight * CUTE_INNER_SCALE_RATIO) / cuteSizeY;
 
   const cuteCenter: readonly [number, number, number] = [
     (cuteBounds.min[0] + cuteBounds.max[0]) * 0.5,
@@ -101,7 +104,11 @@ export function computeDualLayerAlignment(
     targetHeight,
     cuteScale,
     samuraiScale,
-    cuteCenterOffset: [-cuteCenter[0] || 0, -cuteCenter[1] || 0, -cuteCenter[2] || 0],
+    cuteCenterOffset: [
+      -cuteCenter[0] || 0,
+      -cuteCenter[1] || 0,
+      -cuteCenter[2] + CUTE_DEPTH_TUCK_RAW || 0,
+    ],
     samuraiCenterOffset: [
       -samuraiCenter[0] || 0,
       -samuraiCenter[1] || 0,
@@ -113,11 +120,16 @@ export function computeDualLayerAlignment(
 
 /**
  * Computes synchronized head + subtle body rotation for both layered cat rigs
- * toward the viewport pointer (`[-1..1]`), with natural anatomical yaw/pitch clamps.
+ * relative to the cat's projected screen position and camera sightline, so hovering
+ * directly on the cat looks straight at the cursor and moving anywhere guides gaze accurately.
  */
 export function computeSegmentedLookAngles(params: {
   pointerX: number;
   pointerY: number;
+  modelScreenX?: number;
+  modelScreenY?: number;
+  cameraFacingYaw?: number;
+  cameraFacingPitch?: number;
   pointerActive: boolean;
   elapsed: number;
   headBiasX: number;
@@ -132,6 +144,10 @@ export function computeSegmentedLookAngles(params: {
   const {
     pointerX,
     pointerY,
+    modelScreenX = 0,
+    modelScreenY = 0,
+    cameraFacingYaw = 0,
+    cameraFacingPitch = 0,
     pointerActive,
     elapsed,
     headBiasX,
@@ -144,13 +160,21 @@ export function computeSegmentedLookAngles(params: {
     reducedMotion,
   } = params;
 
-  const heroYawBias = headBiasX * 0.38 * (1 - pullbackMix * 0.92);
-  const heroPitchBias = headBiasY * 0.35 * (1 - pullbackMix * 0.9);
+  const heroYawBias = headBiasX * 0.34 * (1 - pullbackMix * 0.92);
+  const heroPitchBias = headBiasY * 0.3 * (1 - pullbackMix * 0.9);
   const dragAttenuation = 1 - centerMix * 0.55;
 
   if (reducedMotion) {
-    const yaw = clamp(heroYawBias + dragYaw * dragAttenuation, -0.78, 0.78);
-    const pitch = clamp(-(heroPitchBias + dragPitch * dragAttenuation), -0.42, 0.42);
+    const yaw = clamp(
+      cameraFacingYaw + heroYawBias + dragYaw * dragAttenuation,
+      -0.78,
+      0.78
+    );
+    const pitch = clamp(
+      cameraFacingPitch - (heroPitchBias + dragPitch * dragAttenuation),
+      -0.42,
+      0.42
+    );
     return {
       headYaw: yaw,
       headPitch: pitch,
@@ -159,22 +183,31 @@ export function computeSegmentedLookAngles(params: {
     };
   }
 
-  const gazeSpanX = 0.62 + 0.18 * carouselMix;
-  const gazeSpanY = 0.36 + 0.08 * carouselMix;
+  // Offset pointer relative to the cat's current face screen position (`modelScreenX/Y`)
+  const relX = clamp((pointerX - modelScreenX) / 1.05, -1.25, 1.25);
+  const relY = clamp((pointerY - modelScreenY) / 0.95, -1.1, 1.1);
 
-  // Even outside initial pointer move or idle, cursor position drives look continuously;
-  // gentle ambient idle breath only mixes in slightly when pointer has not entered yet.
-  const idleYaw = pointerActive ? 0 : 0.14 * Math.sin(0.55 * elapsed);
-  const idlePitch = pointerActive ? 0 : 0.05 * Math.cos(0.42 * elapsed);
+  const gazeSpanX = 0.56 + 0.16 * carouselMix;
+  const gazeSpanY = 0.34 + 0.08 * carouselMix;
+
+  const idleYaw = pointerActive ? 0 : 0.08 * Math.sin(0.55 * elapsed);
+  const idlePitch = pointerActive ? 0 : 0.04 * Math.cos(0.42 * elapsed);
 
   const targetYaw = clamp(
-    pointerX * gazeSpanX + idleYaw + heroYawBias + dragYaw * dragAttenuation,
-    -0.82,
-    0.82
+    cameraFacingYaw +
+      (pointerActive ? relX * gazeSpanX : 0) +
+      idleYaw +
+      heroYawBias +
+      dragYaw * dragAttenuation,
+    -0.84,
+    0.84
   );
-  // Three.js +X rotation tilts +Z downward, so looking UP (+pointerY) is negative rotation.x
   const targetPitch = clamp(
-    -(pointerY * gazeSpanY + idlePitch + heroPitchBias + dragPitch * dragAttenuation),
+    cameraFacingPitch -
+      ((pointerActive ? relY * gazeSpanY : 0) +
+        idlePitch +
+        heroPitchBias +
+        dragPitch * dragAttenuation),
     -0.46,
     0.46
   );
@@ -182,7 +215,7 @@ export function computeSegmentedLookAngles(params: {
   return {
     headYaw: targetYaw,
     headPitch: targetPitch,
-    bodyYaw: targetYaw * 0.14,
+    bodyYaw: cameraFacingYaw * 0.35 + (targetYaw - cameraFacingYaw) * 0.14,
     bodyPitch: targetPitch * 0.08,
   };
 }

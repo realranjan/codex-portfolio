@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import {
   CAT_FACING_ROTATION_Y,
   CAT_MODEL_HEIGHT,
+  CUTE_DEPTH_TUCK_RAW,
+  CUTE_INNER_SCALE_RATIO,
   SAMURAI_HELMET_PARTS,
   classifyCuteSegment,
   classifySamuraiSegment,
@@ -37,23 +39,50 @@ test("samurai cat partitions 13 segments cleanly into helmet/head (6 parts) and 
   assert.equal(classifySamuraiSegment("tripo_part_11", -0.407), "body");
 });
 
-test("computeDualLayerAlignment faces forward (-PI/2) and registers heights & shared neck pivot", () => {
+test("computeDualLayerAlignment nests cute cat cleanly inside samurai scale and face depth", () => {
   const alignment = computeDualLayerAlignment(
     { min: [-0.371, -0.5, -0.449], max: [0.371, 0.5, 0.449] },
     { min: [-0.399, -0.489, -0.367], max: [0.399, 0.49, 0.367] }
   );
 
   assert.equal(alignment.facingRotationY, CAT_FACING_ROTATION_Y);
-  assert.ok(Math.abs(alignment.cuteScale - CAT_MODEL_HEIGHT) < 1e-6);
+  assert.ok(
+    Math.abs(alignment.cuteScale - CAT_MODEL_HEIGHT * CUTE_INNER_SCALE_RATIO) < 1e-6
+  );
   assert.ok(alignment.samuraiScale > alignment.cuteScale);
-  assert.deepEqual(alignment.cuteCenterOffset, [0, 0, 0]);
+  assert.deepEqual(alignment.cuteCenterOffset, [0, 0, CUTE_DEPTH_TUCK_RAW]);
   assert.ok(alignment.neckPivotY < 0);
 });
 
-test("computeSegmentedLookAngles tracks pointer horizontally & vertically with anatomical clamp", () => {
+test("computeSegmentedLookAngles faces camera directly when hovering over face and turns left/right relative to cat", () => {
+  const heroCenterHover = computeSegmentedLookAngles({
+    pointerX: 0.34,
+    pointerY: 0.05,
+    modelScreenX: 0.34,
+    modelScreenY: 0.05,
+    cameraFacingYaw: -0.15,
+    cameraFacingPitch: 0,
+    pointerActive: true,
+    elapsed: 1,
+    headBiasX: 0,
+    headBiasY: 0,
+    dragYaw: 0,
+    dragPitch: 0,
+    centerMix: 0,
+    carouselMix: 0,
+    pullbackMix: 0,
+    reducedMotion: false,
+  });
+  assert.ok(
+    Math.abs(heroCenterHover.headYaw - -0.15) < 1e-6,
+    "Hovering directly over the cat's nose must face straight toward the viewer/cursor"
+  );
+
   const rightLook = computeSegmentedLookAngles({
-    pointerX: 0.8,
+    pointerX: 0.85,
     pointerY: 0.5,
+    modelScreenX: 0,
+    modelScreenY: 0,
     pointerActive: true,
     elapsed: 1,
     headBiasX: 0,
@@ -67,8 +96,10 @@ test("computeSegmentedLookAngles tracks pointer horizontally & vertically with a
   });
 
   const leftLook = computeSegmentedLookAngles({
-    pointerX: -0.8,
+    pointerX: -0.85,
     pointerY: -0.5,
+    modelScreenX: 0,
+    modelScreenY: 0,
     pointerActive: true,
     elapsed: 1,
     headBiasX: 0,
@@ -83,7 +114,7 @@ test("computeSegmentedLookAngles tracks pointer horizontally & vertically with a
 
   assert.ok(rightLook.headYaw > 0.3);
   assert.ok(leftLook.headYaw < -0.3);
-  assert.ok(rightLook.headPitch < 0); // Looking up flips X rotation negative
-  assert.ok(leftLook.headPitch > 0);  // Looking down flips X rotation positive
+  assert.ok(rightLook.headPitch < 0);
+  assert.ok(leftLook.headPitch > 0);
   assert.ok(Math.abs(rightLook.bodyYaw) < Math.abs(rightLook.headYaw));
 });

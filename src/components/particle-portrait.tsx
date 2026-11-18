@@ -98,6 +98,9 @@ function applyTextureSafeguards(
   cloned.transparent = false;
   cloned.depthWrite = true;
   cloned.opacity = 1;
+  if (!revealUniforms) {
+    cloned.side = THREE.DoubleSide;
+  }
 
   if (typeof cloned.metalness === "number") {
     cloned.metalness = Math.min(cloned.metalness, 0.72);
@@ -680,7 +683,7 @@ export default function ParticlePortrait({
           );
           applyCameraFraming(w);
           camera.updateProjectionMatrix();
-          revealUniforms.uRevealRadius.value = (w < 700 ? 148 : 242) * dpr;
+          revealUniforms.uRevealRadius.value = (w < 700 ? 132 : 196) * dpr;
           if (shown) {
             renderer.clear();
             if (revealUniforms.uRevealMix.value > 0.01 || revealUniforms.uFullCutaway.value > 0.01) {
@@ -699,8 +702,11 @@ export default function ParticlePortrait({
         const raycaster = new THREE.Raycaster();
         const lightPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -2.4);
         const lightTarget = new THREE.Vector3();
+        const faceScreenAnchor = new THREE.Vector3();
         let smoothedHeadYaw = 0;
         let smoothedHeadPitch = 0;
+        let smoothedBodyYaw = 0;
+        let smoothedBodyPitch = 0;
         let last = 0;
 
         function afterDraw(cb: () => void) {
@@ -798,10 +804,23 @@ export default function ParticlePortrait({
           );
           cuteLights.pointerLight.position.copy(samuraiLights.pointerLight.position);
 
-          // Synchronized segmented head & subtle body tracking on BOTH cats wherever pointer goes
+          // Project the cat face into NDC screen space & compute camera sightline so hovering
+          // straight over the cat's nose aligns both eyes straight toward the cursor.
+          faceScreenAnchor.set(0, STAGE_CENTER_Y + 0.34, 0.25).project(camera);
+          const camFacingYaw = Math.atan2(camera.position.x, camera.position.z);
+          const camFacingPitch =
+            Math.atan2(
+              camera.position.y - (STAGE_CENTER_Y + 0.34),
+              Math.hypot(camera.position.x, camera.position.z)
+            ) * 0.35;
+
           const desired = computeSegmentedLookAngles({
             pointerX: pointer.x,
             pointerY: pointer.y,
+            modelScreenX: faceScreenAnchor.x,
+            modelScreenY: faceScreenAnchor.y,
+            cameraFacingYaw: camFacingYaw,
+            cameraFacingPitch: camFacingPitch,
             pointerActive: pointerMoved,
             elapsed,
             headBiasX: spatial.headBiasX,
@@ -818,15 +837,13 @@ export default function ParticlePortrait({
             reduced || isSoftwareGl ? 0.72 : 1 - Math.exp(-dt * (active ? 9.5 : 4.2));
           smoothedHeadYaw += (desired.headYaw - smoothedHeadYaw) * headAlpha;
           smoothedHeadPitch += (desired.headPitch - smoothedHeadPitch) * headAlpha;
+          smoothedBodyYaw += (desired.bodyYaw - smoothedBodyYaw) * headAlpha;
+          smoothedBodyPitch += (desired.bodyPitch - smoothedBodyPitch) * headAlpha;
 
           samuraiRig.headGroup.rotation.set(smoothedHeadPitch, smoothedHeadYaw, 0);
           cuteRig.headGroup.rotation.copy(samuraiRig.headGroup.rotation);
 
-          samuraiRig.bodyGroup.rotation.set(
-            smoothedHeadPitch * 0.12,
-            smoothedHeadYaw * 0.16,
-            0
-          );
+          samuraiRig.bodyGroup.rotation.set(smoothedBodyPitch, smoothedBodyYaw, 0);
           cuteRig.bodyGroup.rotation.copy(samuraiRig.bodyGroup.rotation);
 
           if (rootRef.current) {
