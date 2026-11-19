@@ -18,6 +18,7 @@ import {
   computeHeroStoryScrollState,
   computeHeroToCarouselState,
 } from "@/lib/motion";
+import { computeManifestoScrollState } from "@/lib/manifesto";
 import type { SpatialControlValues } from "@/components/particle-portrait";
 import { DirectionalMediaReveal } from "@/components/motion/directional-media-reveal";
 import { MaskedLineReveal } from "@/components/motion/masked-line-reveal";
@@ -32,6 +33,10 @@ import {
   HeroJapaneseBackdrop,
   HeroJapaneseForeground,
 } from "@/components/portfolio/hero-japanese-backdrop";
+import {
+  PreProjectsManifesto,
+  type ManifestoStageHandle,
+} from "@/components/portfolio/pre-projects-manifesto";
 import { ProjectFlyout } from "@/components/portfolio/project-flyout";
 import { ProjectsGallerySection } from "@/components/portfolio/projects-gallery-section";
 import { ResumeModal } from "@/components/portfolio/resume-modal";
@@ -53,6 +58,7 @@ export default function Home() {
   const pageRef = useRef<HTMLElement>(null);
   const unifiedRunwayRef = useRef<HTMLDivElement>(null);
   const heroBandRef = useRef<HTMLDivElement>(null);
+  const manifestoBandRef = useRef<HTMLDivElement>(null);
   const projectsBandRef = useRef<HTMLElement>(null);
 
   const heroWordRef = useRef<HTMLDivElement>(null);
@@ -70,6 +76,7 @@ export default function Home() {
   const heroForegroundRef = useRef<HTMLDivElement>(null);
   const heroForegroundDecorRef = useRef<HTMLDivElement>(null);
   const projectsHudRef = useRef<HTMLDivElement>(null);
+  const manifestoRef = useRef<ManifestoStageHandle>(null);
 
   const spatialProgressRef = useRef<number>(0);
   const projectsProgressRef = useRef<number>(0);
@@ -97,14 +104,27 @@ export default function Home() {
     const applyStageFromScroll = () => {
       const heroHeight = Math.max(
         1,
-        heroBandRef.current?.offsetHeight ?? window.innerHeight * 3.6
+        heroBandRef.current?.offsetHeight ?? window.innerHeight * 2.8
       );
       const rawHero = Math.min(1, Math.max(0, window.scrollY / heroHeight));
+
+      const manifestoEl = manifestoBandRef.current;
+      const manifestoTop = manifestoEl
+        ? manifestoEl.getBoundingClientRect().top + window.scrollY
+        : heroHeight;
+      const manifestoHeight = Math.max(
+        1,
+        manifestoEl?.offsetHeight ?? window.innerHeight * 3.4
+      );
+      const rawManifesto = Math.min(
+        1,
+        Math.max(0, (window.scrollY - manifestoTop) / manifestoHeight)
+      );
 
       const projectsEl = projectsBandRef.current;
       const projectsTop = projectsEl
         ? projectsEl.getBoundingClientRect().top + window.scrollY
-        : heroHeight;
+        : manifestoTop + manifestoHeight;
       const projectsScrollable = projectsEl
         ? Math.max(1, projectsEl.offsetHeight - window.innerHeight)
         : Math.max(1, window.innerHeight);
@@ -113,14 +133,20 @@ export default function Home() {
         Math.max(0, (window.scrollY - projectsTop) / projectsScrollable)
       );
 
-      // Sequential 3-beat hero story (CURIOSITY -> KILLED THE CAT. -> Not this one.) + multi-plane parallax
+      // 1. Sequential 3-beat hero story (CURIOSITY -> KILLED THE CAT. -> Not this one.) + multi-plane parallax
       const story = computeHeroStoryScrollState(rawHero);
+      // 2. Sequential 4-beat pre-projects scroll manifesto (0-25%, 25-50%, 50-75%, 75-100%)
+      const manifesto = computeManifestoScrollState(rawManifesto, rawHero);
+      // 3. Orbiting Selected Work 3D gallery driven smoothly out of manifesto's final 20%
       const transition = computeHeroToCarouselState(
-        story.carouselStageProgress,
+        manifesto.carouselDriver,
         rawProjects
       );
 
-      spatialProgressRef.current = story.carouselStageProgress;
+      spatialProgressRef.current =
+        rawManifesto > 0.001
+          ? manifesto.carouselDriver
+          : story.carouselStageProgress * 0.42;
       projectsProgressRef.current = rawProjects;
       centerMixRef.current = transition.centerMix;
       ringDrawMixRef.current = transition.ringDrawMix;
@@ -138,6 +164,8 @@ export default function Home() {
         brushUnderlineRef: heroBrushUnderlineRef,
         scrollCueRef: heroScrollCueRef,
       });
+
+      manifestoRef.current?.apply(manifesto);
 
       // Multi-plane parallax across Japanese backdrop, crimson rising sun, and foreground mist/sweep
       if (heroBackdropDecorRef.current) {
@@ -355,8 +383,8 @@ export default function Home() {
                 {/* Minimal centered scroll-down mouse icon cue (visible at Beat 1, clears on scroll) */}
                 <a
                   ref={heroScrollCueRef}
-                  href="#projects"
-                  aria-label="Scroll to selected work"
+                  href="#manifesto"
+                  aria-label="Scroll to continue"
                   className="pointer-events-auto absolute bottom-0 inline-flex flex-col items-center gap-1 text-[#2B231E]/80 transition-colors hover:text-[#A91D22] will-change-[opacity]"
                 >
                   <span
@@ -370,6 +398,9 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Pre-Projects 4-Beat Scroll Manifesto (z-[24], seamlessly between Hero & Selected Work) */}
+            <PreProjectsManifesto ref={manifestoRef} />
+
             {/* Selected Work Circular Rings (Back z-2 + Front z-12) & Case Controls HUD */}
             <ProjectsGallerySection
               selectedProject={selectedProject}
@@ -381,14 +412,22 @@ export default function Home() {
             />
           </div>
 
-          {/* Scroll Band 1: 3-Beat Hero Story (CURIOSITY -> KILLED THE CAT. -> Not this one.) -> Parallax -> O-Ring */}
+          {/* Scroll Band 1: 3-Beat Hero Story (CURIOSITY -> KILLED THE CAT. -> Not this one.) + Parallax */}
           <div
             ref={heroBandRef}
             aria-hidden="true"
-            className="h-[340svh] md:h-[380svh] pointer-events-none"
+            className="h-[250svh] md:h-[280svh] pointer-events-none"
           />
 
-          {/* Scroll Band 2 (#projects anchor): Orbiting circular carousel + continuous scroll cinema + clean exit */}
+          {/* Scroll Band 2: 4-Beat Pre-Projects Manifesto (0-25% / 25-50% / 50-75% / 75-100%) */}
+          <div
+            ref={manifestoBandRef}
+            id="manifesto"
+            aria-hidden="true"
+            className="h-[320svh] md:h-[360svh] pointer-events-none"
+          />
+
+          {/* Scroll Band 3 (#projects anchor): Orbiting circular carousel + continuous scroll cinema + clean exit */}
           <section
             ref={projectsBandRef}
             id="projects"
