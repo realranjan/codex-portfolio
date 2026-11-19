@@ -48,9 +48,29 @@ export const ABOUT_CONTENT = {
   chapterNumber: "01",
   chapterLabel: "About & Philosophy",
   heading: "MORE THAN MEETS THE EYE.",
+  headlineLead: "I'm the kind of person",
+  headlineItalic: "who...",
   mainStatement: "I'm the kind of person who can't leave a question unanswered.",
   supportingStatement:
     "Sometimes it becomes a project. Sometimes an experiment. Sometimes a very long night.",
+  storyStatements: [
+    {
+      index: "01",
+      text: "can't leave a question unanswered.",
+    },
+    {
+      index: "02",
+      text: "builds things to understand how they work.",
+    },
+    {
+      index: "03",
+      text: "turns ideas into working systems.",
+    },
+    {
+      index: "04",
+      text: "gets lost in the details.",
+    },
+  ],
   manifestoBeats: [
     {
       index: "01 / 04",
@@ -76,10 +96,16 @@ export const ABOUT_CONTENT = {
     },
   ],
   philosophyParagraphs: [
-    "I've always been interested in how things work. Not just what they do, but what happens when you push them a little further.",
+    "I've always been fascinated by how things work. Not just what they do, but what happens when you push them a little further.",
     "Sometimes that means building something from scratch. Other times, it means taking something apart, questioning the obvious, or following an idea simply because it interests me.",
     "I don't think I'll ever know everything. But that's what makes the journey interesting.",
   ],
+  sumieArtwork: {
+    pineSrc: "/assets/about/sumie-pine.webp",
+    pineAlt: "Traditional Japanese sumi-e ink-wash black pine branch entering from the right edge",
+    mountainsSrc: "/assets/about/sumie-mountains.webp",
+    mountainsAlt: "Faint distant Japanese sumi-e ink-wash mountain silhouettes along the horizon",
+  },
   characterSlot: {
     slotId: "unmasked-cat-3d",
     label: "3D CHARACTER / COMING SOON",
