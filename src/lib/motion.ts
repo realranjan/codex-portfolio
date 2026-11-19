@@ -222,6 +222,175 @@ export function computeHeroToCarouselState(
   };
 }
 
+export type HeroStoryBeat = "curiosity" | "killed" | "punchline" | "transition";
+
+export interface HeroStoryScrollState {
+  /** Clamped 0..1 progress across the full hero runway */
+  progress: number;
+  /** Which narrative beat currently owns the hero stage */
+  activeBeat: HeroStoryBeat;
+  /** Beat 1: "CURIOSITY" — visible at scroll 0, exits cleanly before Beat 2 */
+  curiosity: {
+    opacity: number;
+    y: number;
+    clipTopPct: number;
+    visible: boolean;
+  };
+  /** Beat 2: "KILLED THE CAT." — word-staggered bottom-to-top reveal, exits cleanly before Beat 3 */
+  killed: {
+    opacity: number;
+    y: number;
+    wordYPercent: [number, number, number];
+    visible: boolean;
+  };
+  /** Beat 3: "Not this one." — crimson SVG brushstroke left-to-right reveal, exits with parallax */
+  punchline: {
+    opacity: number;
+    y: number;
+    /** 0..1 left-to-right text & underline reveal progress */
+    reveal: number;
+    /** 0..1 leading edge of sweeping crimson wash */
+    washHead: number;
+    /** 0..1 trailing edge clearing the crimson wash behind the lettering */
+    washTail: number;
+    visible: boolean;
+  };
+  /** Initial scroll-down mouse cue opacity (fades quickly once user starts scrolling) */
+  scrollCueOpacity: number;
+  /** Multi-plane vertical parallax offset (px) for sakura branch, mountains, pagoda */
+  backdropParallaxY: number;
+  /** Multi-plane vertical parallax offset (px) for the crimson rising sun */
+  sunParallaxY: number;
+  /** Subtle scale modulation for the crimson rising sun */
+  sunScale: number;
+  /** Multi-plane vertical parallax offset (px) for foreground crimson sweep & petals */
+  foregroundParallaxY: number;
+  /** Hero scenery opacity (stays 1 across all 3 story beats, fades smoothly during transition) */
+  decorOpacity: number;
+  /** Lower mist opacity */
+  mistOpacity: number;
+  /** Normalized 0..1 progress forwarded to computeHeroToCarouselState for the next section */
+  carouselStageProgress: number;
+}
+
+/**
+ * Pure scroll-scrubbed choreography for the 3-beat hero typography narrative + parallax exit:
+ * - Beat 1 (0.00 -> 0.18): Only "CURIOSITY" is displayed; scrolls upward & clips out cleanly.
+ * - Beat 2 (0.20 -> 0.43): Only "KILLED THE CAT." rises word-by-word; exits cleanly upward.
+ * - Beat 3 (0.45 -> 0.65): Only "Not this one." sweeps L->R with the crimson brushstroke; exits with parallax.
+ * - Beat 4 (0.56 -> 1.00): Multi-plane depth parallax transitions smoothly into the #projects 3D circular gallery.
+ *
+ * Guarantees strict mutual exclusivity: previous text always reaches opacity 0 before the next text appears.
+ */
+export function computeHeroStoryScrollState(
+  rawHeroProgress: number
+): HeroStoryScrollState {
+  const p = clamp01(rawHeroProgress);
+
+  // Beat 1: CURIOSITY (holds 0.00 -> 0.08, exits 0.08 -> 0.18)
+  const curiosityExit = smoothstep(0.08, 0.18, p);
+  const curiosityOpacity = p >= 0.18 ? 0 : 1 - curiosityExit;
+  const curiosityY = -72 * curiosityExit;
+  const curiosityClipTopPct = 100 * smoothstep(0.09, 0.18, p);
+  const curiosityVisible = curiosityOpacity > 0.005;
+
+  // Beat 2: KILLED THE CAT. (enters 0.20 -> 0.33, holds 0.33 -> 0.36, exits 0.36 -> 0.43)
+  const wordEnterWindows: ReadonlyArray<readonly [number, number]> = [
+    [0.2, 0.27],
+    [0.23, 0.3],
+    [0.26, 0.33],
+  ];
+  const wordExitWindows: ReadonlyArray<readonly [number, number]> = [
+    [0.36, 0.41],
+    [0.375, 0.42],
+    [0.39, 0.43],
+  ];
+  const wordYPercent = wordEnterWindows.map(([inStart, inEnd], idx) => {
+    const [outStart, outEnd] = wordExitWindows[idx];
+    if (p <= inStart) return 115;
+    if (p >= outEnd) return -115;
+    const enterT = smoothstep(inStart, inEnd, p);
+    const exitT = smoothstep(outStart, outEnd, p);
+    return (1 - enterT) * 115 - exitT * 115;
+  }) as [number, number, number];
+
+  const killedInMask = smoothstep(0.195, 0.215, p);
+  const killedOutMask = 1 - smoothstep(0.415, 0.435, p);
+  const killedOpacity = p < 0.2 || p >= 0.435 ? 0 : killedInMask * killedOutMask;
+  const killedSpanT = clamp01((p - 0.2) / 0.235);
+  const killedY = 26 - 58 * killedSpanT;
+  const killedVisible = killedOpacity > 0.005;
+
+  // Beat 3: "Not this one." + Crimson SVG Brushstroke (sweeps 0.45 -> 0.54, holds 0.54 -> 0.58, exits 0.58 -> 0.65)
+  const punchlineReveal = smoothstep(0.45, 0.54, p);
+  const washHead = smoothstep(0.45, 0.505, p);
+  const washTail = smoothstep(0.495, 0.548, p);
+  const punchlineExit = smoothstep(0.58, 0.65, p);
+  const punchlineOpacity =
+    p < 0.45 || p >= 0.65 ? 0 : smoothstep(0.45, 0.465, p) * (1 - punchlineExit);
+  const punchlineY = 12 * (1 - punchlineReveal) - 56 * punchlineExit;
+  const punchlineVisible = punchlineOpacity > 0.005;
+
+  // Initial scroll cue gently clears once the user begins scrolling
+  const scrollCueOpacity = 1 - smoothstep(0.015, 0.09, p);
+
+  // Multi-plane parallax across the story + accelerated sweep into the next section (#projects)
+  const storyDrift = smoothstep(0, 0.6, p);
+  const exitSweep = smoothstep(0.56, 0.96, p);
+  const backdropParallaxY = -22 * storyDrift - 110 * exitSweep;
+  const sunParallaxY = -12 * storyDrift - 62 * exitSweep;
+  const sunScale = 1 - 0.03 * storyDrift - 0.13 * exitSweep;
+  const foregroundParallaxY = -16 * storyDrift - 74 * exitSweep;
+
+  const decorOpacity = 1 - smoothstep(0.6, 0.86, p);
+  const mistOpacity = 0.42 + 0.58 * decorOpacity;
+
+  // Forward the final 44% of the hero runway cleanly into the 3D close-up -> O-ring -> #projects carousel
+  const carouselStageProgress = clamp01((p - 0.56) / 0.44);
+
+  let activeBeat: HeroStoryBeat = "transition";
+  if (p < 0.19) {
+    activeBeat = "curiosity";
+  } else if (p < 0.44) {
+    activeBeat = "killed";
+  } else if (p < 0.65) {
+    activeBeat = "punchline";
+  }
+
+  return {
+    progress: p,
+    activeBeat,
+    curiosity: {
+      opacity: curiosityOpacity,
+      y: curiosityY,
+      clipTopPct: curiosityClipTopPct,
+      visible: curiosityVisible,
+    },
+    killed: {
+      opacity: killedOpacity,
+      y: killedY,
+      wordYPercent,
+      visible: killedVisible,
+    },
+    punchline: {
+      opacity: punchlineOpacity,
+      y: punchlineY,
+      reveal: punchlineReveal,
+      washHead,
+      washTail,
+      visible: punchlineVisible,
+    },
+    scrollCueOpacity,
+    backdropParallaxY,
+    sunParallaxY,
+    sunScale,
+    foregroundParallaxY,
+    decorOpacity,
+    mistOpacity,
+    carouselStageProgress,
+  };
+}
+
 /**
  * Maps normalized scroll progress [0..1] into a centered vertical parallax translation [-rangePx..+rangePx].
  */

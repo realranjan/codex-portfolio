@@ -177,3 +177,78 @@ test("computeStickyScrollRotation maps sticky container scroll into 0..360 degre
   assert.equal(computeStickyScrollRotation(-1500, 1800, 900), 360);
 });
 
+import { computeHeroStoryScrollState } from "./motion";
+
+test("computeHeroStoryScrollState reveals CURIOSITY -> KILLED THE CAT. -> Not this one. with zero text overlap and parallax handoff", () => {
+  // Beat 1 at scroll 0: ONLY CURIOSITY is visible
+  const beat1 = computeHeroStoryScrollState(0);
+  assert.equal(beat1.activeBeat, "curiosity");
+  assert.equal(beat1.curiosity.visible, true);
+  assert.equal(beat1.curiosity.opacity, 1);
+  assert.equal(beat1.killed.visible, false);
+  assert.equal(beat1.killed.opacity, 0);
+  assert.equal(beat1.punchline.visible, false);
+  assert.equal(beat1.punchline.opacity, 0);
+  assert.equal(beat1.carouselStageProgress, 0);
+
+  // Beat 2 entry (~0.25): CURIOSITY is completely gone, words stagger in order (KILLED leads THE leads CAT.)
+  const beat2Enter = computeHeroStoryScrollState(0.25);
+  assert.equal(beat2Enter.activeBeat, "killed");
+  assert.equal(beat2Enter.curiosity.visible, false);
+  assert.equal(beat2Enter.killed.visible, true);
+  assert.ok(
+    beat2Enter.killed.wordYPercent[0] < beat2Enter.killed.wordYPercent[1],
+    "KILLED should rise ahead of THE"
+  );
+  assert.ok(
+    beat2Enter.killed.wordYPercent[1] < beat2Enter.killed.wordYPercent[2],
+    "THE should rise ahead of CAT."
+  );
+  assert.equal(beat2Enter.punchline.visible, false);
+
+  // Beat 2 hold (~0.345): KILLED THE CAT. fully settled, previous & next hidden
+  const beat2Hold = computeHeroStoryScrollState(0.345);
+  assert.deepEqual(beat2Hold.killed.wordYPercent, [0, 0, 0]);
+  assert.equal(beat2Hold.curiosity.opacity, 0);
+  assert.equal(beat2Hold.punchline.opacity, 0);
+
+  // Beat 3 mid-sweep (~0.50): KILLED THE CAT. completely gone, brushstroke sweeping Not this one.
+  const beat3Mid = computeHeroStoryScrollState(0.5);
+  assert.equal(beat3Mid.activeBeat, "punchline");
+  assert.equal(beat3Mid.curiosity.visible, false);
+  assert.equal(beat3Mid.killed.visible, false);
+  assert.equal(beat3Mid.punchline.visible, true);
+  assert.ok(beat3Mid.punchline.reveal > 0.3 && beat3Mid.punchline.reveal < 0.8);
+  assert.ok(beat3Mid.punchline.washHead > beat3Mid.punchline.washTail);
+
+  // Beat 3 hold (~0.56): Not this one. fully revealed and clear
+  const beat3Hold = computeHeroStoryScrollState(0.56);
+  assert.equal(beat3Hold.punchline.reveal, 1);
+  assert.equal(beat3Hold.punchline.washTail, 1);
+  assert.equal(beat3Hold.punchline.opacity, 1);
+
+  // Beat 4 transition (~0.85): all hero typography gone, parallax active, carousel progressing
+  const beat4 = computeHeroStoryScrollState(0.85);
+  assert.equal(beat4.activeBeat, "transition");
+  assert.equal(beat4.curiosity.visible, false);
+  assert.equal(beat4.killed.visible, false);
+  assert.equal(beat4.punchline.visible, false);
+  assert.ok(beat4.backdropParallaxY < -80, "Backdrop parallax should glide upward into next section");
+  assert.ok(beat4.sunScale < 0.9, "Rising sun should scale back smoothly");
+  assert.ok(beat4.carouselStageProgress > 0.6 && beat4.carouselStageProgress < 0.75);
+
+  // Exhaustive mutual exclusivity invariant across 201 sample points [0..1]
+  for (let i = 0; i <= 200; i++) {
+    const sample = computeHeroStoryScrollState(i / 200);
+    const visibleCount =
+      Number(sample.curiosity.visible) +
+      Number(sample.killed.visible) +
+      Number(sample.punchline.visible);
+    assert.ok(
+      visibleCount <= 1,
+      `Expected at most 1 hero text visible at p=${(i / 200).toFixed(3)}, got ${visibleCount}`
+    );
+  }
+});
+
+

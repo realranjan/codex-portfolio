@@ -51,7 +51,7 @@ export function SiteNav({ onOpenResume }: SiteNavProps) {
 
   return (
     <div
-      className={`site-nav-wrap ${scrolled ? "is-scrolled" : "is-on-hero"}`}
+      className={`site-nav-wrap font-nav ${scrolled ? "is-scrolled" : "is-on-hero"}`}
       data-nav-theme="washi-sumi"
     >
       <header className="page-container flex h-16 md:h-[74px] items-center justify-between gap-8">

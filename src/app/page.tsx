@@ -14,12 +14,21 @@ import {
   STACK_CATEGORIES,
   type ProjectCaseStudy,
 } from "@/data/portfolio";
-import { computeHeroToCarouselState } from "@/lib/motion";
+import {
+  computeHeroStoryScrollState,
+  computeHeroToCarouselState,
+} from "@/lib/motion";
 import type { SpatialControlValues } from "@/components/particle-portrait";
 import { DirectionalMediaReveal } from "@/components/motion/directional-media-reveal";
 import { MaskedLineReveal } from "@/components/motion/masked-line-reveal";
 import { ScrollWordReveal } from "@/components/motion/scroll-word-reveal";
 import { CareerJourney } from "@/components/portfolio/career-journey";
+import {
+  applyHeroStoryToDom,
+  HeroCuriosityTypography,
+  HeroPunchlineBrushReveal,
+  useHeroCuriosityEntrance,
+} from "@/components/portfolio/hero-curiosity-typography";
 import {
   HeroJapaneseBackdrop,
   HeroJapaneseForeground,
@@ -46,7 +55,16 @@ export default function Home() {
   const heroBandRef = useRef<HTMLDivElement>(null);
   const projectsBandRef = useRef<HTMLElement>(null);
 
-  const heroOverlayRef = useRef<HTMLDivElement>(null);
+  const heroWordRef = useRef<HTMLDivElement>(null);
+  const heroCuriositySlotRef = useRef<HTMLDivElement>(null);
+  const heroCuriosityTextRef = useRef<HTMLSpanElement>(null);
+  const heroKilledSlotRef = useRef<HTMLDivElement>(null);
+  const heroKilledWordRefs = useRef<Array<HTMLSpanElement | null>>([]);
+  const heroPunchlineSlotRef = useRef<HTMLDivElement>(null);
+  const heroSublineRef = useRef<HTMLParagraphElement>(null);
+  const heroBrushWashRef = useRef<HTMLDivElement>(null);
+  const heroBrushUnderlineRef = useRef<HTMLDivElement>(null);
+  const heroScrollCueRef = useRef<HTMLAnchorElement>(null);
   const heroBackdropDecorRef = useRef<HTMLDivElement>(null);
   const heroSunRef = useRef<HTMLDivElement>(null);
   const heroForegroundRef = useRef<HTMLDivElement>(null);
@@ -71,13 +89,15 @@ export default function Home() {
   const [contactError, setContactError] = useState<string | null>(null);
   const [contactSent, setContactSent] = useState(false);
 
+  useHeroCuriosityEntrance(heroCuriosityTextRef, heroWordRef);
+
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     const applyStageFromScroll = () => {
       const heroHeight = Math.max(
         1,
-        heroBandRef.current?.offsetHeight ?? window.innerHeight * 1.15
+        heroBandRef.current?.offsetHeight ?? window.innerHeight * 3.6
       );
       const rawHero = Math.min(1, Math.max(0, window.scrollY / heroHeight));
 
@@ -93,42 +113,52 @@ export default function Home() {
         Math.max(0, (window.scrollY - projectsTop) / projectsScrollable)
       );
 
-      const transition = computeHeroToCarouselState(rawHero, rawProjects);
+      // Sequential 3-beat hero story (CURIOSITY -> KILLED THE CAT. -> Not this one.) + multi-plane parallax
+      const story = computeHeroStoryScrollState(rawHero);
+      const transition = computeHeroToCarouselState(
+        story.carouselStageProgress,
+        rawProjects
+      );
 
-      spatialProgressRef.current = rawHero;
+      spatialProgressRef.current = story.carouselStageProgress;
       projectsProgressRef.current = rawProjects;
       centerMixRef.current = transition.centerMix;
       ringDrawMixRef.current = transition.ringDrawMix;
       carouselMixRef.current = transition.carouselMix;
 
-      if (heroOverlayRef.current) {
-        heroOverlayRef.current.style.transform = `translate3d(0, ${transition.heroOverlayY}px, 0)`;
-        heroOverlayRef.current.style.opacity = String(transition.heroOverlayOpacity);
-        heroOverlayRef.current.style.visibility =
-          transition.heroOverlayOpacity > 0.02 ? "visible" : "hidden";
-      }
+      applyHeroStoryToDom(story, {
+        stageRef: heroWordRef,
+        curiositySlotRef: heroCuriositySlotRef,
+        curiosityTextRef: heroCuriosityTextRef,
+        killedSlotRef: heroKilledSlotRef,
+        killedWordRefs: heroKilledWordRefs,
+        punchlineSlotRef: heroPunchlineSlotRef,
+        punchlineTextRef: heroSublineRef,
+        brushWashRef: heroBrushWashRef,
+        brushUnderlineRef: heroBrushUnderlineRef,
+        scrollCueRef: heroScrollCueRef,
+      });
 
-      // Fade peripheral sakura/mountains/pagoda/brushstroke on scroll while preserving warm washi paper + soft crimson sun halo for #projects
-      const decorOpacity = Math.max(0, Math.min(1, 1 - transition.centerMix * 1.18));
+      // Multi-plane parallax across Japanese backdrop, crimson rising sun, and foreground mist/sweep
       if (heroBackdropDecorRef.current) {
-        heroBackdropDecorRef.current.style.opacity = String(decorOpacity);
+        heroBackdropDecorRef.current.style.opacity = story.decorOpacity.toFixed(4);
+        heroBackdropDecorRef.current.style.transform = `translate3d(0, ${story.backdropParallaxY.toFixed(1)}px, 0)`;
         heroBackdropDecorRef.current.style.visibility =
-          decorOpacity > 0.01 ? "visible" : "hidden";
+          story.decorOpacity > 0.01 ? "visible" : "hidden";
       }
       if (heroForegroundDecorRef.current) {
-        heroForegroundDecorRef.current.style.opacity = String(decorOpacity);
+        heroForegroundDecorRef.current.style.opacity = story.decorOpacity.toFixed(4);
+        heroForegroundDecorRef.current.style.transform = `translate3d(0, ${story.foregroundParallaxY.toFixed(1)}px, 0)`;
         heroForegroundDecorRef.current.style.visibility =
-          decorOpacity > 0.01 ? "visible" : "hidden";
+          story.decorOpacity > 0.01 ? "visible" : "hidden";
       }
       if (heroForegroundRef.current) {
-        const mistOpacity = 0.42 + 0.58 * decorOpacity;
-        heroForegroundRef.current.style.opacity = mistOpacity.toFixed(3);
+        heroForegroundRef.current.style.opacity = story.mistOpacity.toFixed(3);
       }
       if (heroSunRef.current) {
-        const sunOpacity = 0.28 + 0.72 * decorOpacity;
-        const sunScale = 0.86 + 0.14 * decorOpacity;
+        const sunOpacity = 0.28 + 0.72 * story.decorOpacity;
         heroSunRef.current.style.opacity = sunOpacity.toFixed(3);
-        heroSunRef.current.style.transform = `translate3d(0, 0, 0) scale(${sunScale.toFixed(3)})`;
+        heroSunRef.current.style.transform = `translate3d(0, ${story.sunParallaxY.toFixed(1)}px, 0) scale(${story.sunScale.toFixed(3)})`;
       }
 
       if (projectsHudRef.current) {
@@ -288,7 +318,16 @@ export default function Home() {
               sunRef={heroSunRef}
             />
 
-            {/* 3D Layered Samurai / Cute Cat Stage (z-[5]) centered in front of the crimson sun */}
+            {/* Scroll-Scrubbed Behind-Cat Anton Display Beats: Beat 1 (CURIOSITY) -> Beat 2 (KILLED THE CAT.) */}
+            <HeroCuriosityTypography
+              ref={heroWordRef}
+              curiositySlotRef={heroCuriositySlotRef}
+              curiosityTextRef={heroCuriosityTextRef}
+              killedSlotRef={heroKilledSlotRef}
+              killedWordRefs={heroKilledWordRefs}
+            />
+
+            {/* 3D Layered Samurai / Cute Cat Stage (z-[5]) centered in front of typography & crimson sun */}
             <ParticlePortrait
               spatialProgressRef={spatialProgressRef}
               projectsProgressRef={projectsProgressRef}
@@ -302,21 +341,23 @@ export default function Home() {
               decorRef={heroForegroundDecorRef}
             />
 
-            {/* Accessible H1 + Minimal Bottom Controls Only (No hero text blocks or ribbon) */}
-            <div
-              ref={heroOverlayRef}
-              className="pointer-events-none absolute inset-0 z-[20] flex flex-col justify-end pb-6 will-change-[transform,opacity]"
-            >
-              <h1 id="hero-heading" className="sr-only">
-                {IDENTITY.name} — Interactive 3D Portfolio
-              </h1>
+            {/* Bottom Stage (z-[20]): Beat 3 Punchline ("Not this one.") + Initial Scroll Mouse Cue */}
+            <div className="pointer-events-none absolute inset-0 z-[20] flex flex-col justify-end pb-7 sm:pb-9">
+              <div className="page-container pointer-events-none relative flex min-h-[76px] items-center justify-center">
+                {/* Beat 3: Appears cleanly below the cat only after KILLED THE CAT. exits */}
+                <HeroPunchlineBrushReveal
+                  punchlineSlotRef={heroPunchlineSlotRef}
+                  punchlineTextRef={heroSublineRef}
+                  brushWashRef={heroBrushWashRef}
+                  brushUnderlineRef={heroBrushUnderlineRef}
+                />
 
-              <div className="page-container pointer-events-none flex items-center justify-center">
-                {/* Minimal centered scroll-down mouse icon cue (no text) */}
+                {/* Minimal centered scroll-down mouse icon cue (visible at Beat 1, clears on scroll) */}
                 <a
+                  ref={heroScrollCueRef}
                   href="#projects"
                   aria-label="Scroll to selected work"
-                  className="pointer-events-auto inline-flex flex-col items-center gap-1 text-[#2B231E]/80 transition-colors hover:text-[#A91D22]"
+                  className="pointer-events-auto absolute bottom-0 inline-flex flex-col items-center gap-1 text-[#2B231E]/80 transition-colors hover:text-[#A91D22] will-change-[opacity]"
                 >
                   <span
                     aria-hidden="true"
@@ -340,11 +381,11 @@ export default function Home() {
             />
           </div>
 
-          {/* Scroll Band 1: Hero close-up cinema -> Centered Model & O-Shape Track Draw */}
+          {/* Scroll Band 1: 3-Beat Hero Story (CURIOSITY -> KILLED THE CAT. -> Not this one.) -> Parallax -> O-Ring */}
           <div
             ref={heroBandRef}
             aria-hidden="true"
-            className="h-[135svh] md:h-[165svh] pointer-events-none"
+            className="h-[340svh] md:h-[380svh] pointer-events-none"
           />
 
           {/* Scroll Band 2 (#projects anchor): Orbiting circular carousel + continuous scroll cinema + clean exit */}
