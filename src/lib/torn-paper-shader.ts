@@ -1,10 +1,13 @@
 /**
- * Ultra-lightweight WebGL1/WebGL2 fragment shader for a real-time, scroll-morphing
- * Japanese torn handmade paper edge (#3A241D over transparent lower reveal).
+ * Real-time, scroll-morphing jagged Japanese torn handmade paper WebGL shader
+ * (#3A241D rough textured umber paper over transparent lower reveal).
  *
- * Uses 6-octave domain-warped 3D value/gradient fBm noise so scrolling smoothly morphs
- * organic billowing peaks, jagged paper flaps, undercut notches, micro-fibers, and
- * tiny detached paper crumbs at a locked 60–120fps on a single 2-triangle quad.
+ * Key technique:
+ * - Spatial axes (X, Y) use angular linear-facet & ridged noise with high-persistence
+ *   anisotropic fiber octaves -> razor-crisp jagged rips, stepped notches, cellulose
+ *   whiskers, and raw ragged micro-flecks (ZERO smooth blobby curves or blurry halos).
+ * - Scroll axis (Z / uPhase) uses C1-smooth Hermite interpolation -> buttery-smooth
+ *   continuous morphing on scroll up/down with zero strobing or frame jitter.
  */
 
 export const TORN_PAPER_VERTEX_SHADER = /* glsl */ `
@@ -33,11 +36,16 @@ float hash31(vec3 p) {
   return fract((p.x + p.y) * p.z);
 }
 
-// Smooth 3D value noise in [-1, 1]
-float noise3(vec3 p) {
+// Angular torn-paper noise: sharp linear facets in X/Y (jagged, never blobby)
+// paired with smooth Hermite interpolation along Z (buttery scroll morphing).
+float jaggedNoise3(vec3 p) {
   vec3 i = floor(p);
   vec3 f = fract(p);
-  vec3 u = f * f * (3.0 - 2.0 * f);
+
+  // Linear X/Y keeps sharp angular peaks & torn corners; smooth Z keeps scroll fluid
+  float ux = f.x;
+  float uy = f.y;
+  float uz = f.z * f.z * (3.0 - 2.0 * f.z);
 
   float n000 = hash31(i + vec3(0.0, 0.0, 0.0));
   float n100 = hash31(i + vec3(1.0, 0.0, 0.0));
@@ -48,37 +56,54 @@ float noise3(vec3 p) {
   float n011 = hash31(i + vec3(0.0, 1.0, 1.0));
   float n111 = hash31(i + vec3(1.0, 1.0, 1.0));
 
-  float nx00 = mix(n000, n100, u.x);
-  float nx10 = mix(n010, n110, u.x);
-  float nx01 = mix(n001, n101, u.x);
-  float nx11 = mix(n011, n111, u.x);
+  float nx00 = mix(n000, n100, ux);
+  float nx10 = mix(n010, n110, ux);
+  float nx01 = mix(n001, n101, ux);
+  float nx11 = mix(n011, n111, ux);
 
-  float nxy0 = mix(nx00, nx10, u.y);
-  float nxy1 = mix(nx01, nx11, u.y);
+  float nxy0 = mix(nx00, nx10, uy);
+  float nxy1 = mix(nx01, nx11, uy);
 
-  return mix(nxy0, nxy1, u.z) * 2.0 - 1.0;
+  return mix(nxy0, nxy1, uz) * 2.0 - 1.0;
 }
 
-// 4-octave fractal Brownian motion for organic torn paper contour
-float fbm4(vec3 p) {
+// Angular multi-octave fBm with high persistence so fine ragged detail bites hard
+float fbmJagged(vec3 p) {
   float sum = 0.0;
-  float amp = 0.52;
+  float amp = 0.50;
   for (int i = 0; i < 4; i++) {
-    sum += amp * noise3(p);
-    p = p * 2.07 + vec3(13.7, 7.3, 5.1);
-    amp *= 0.5;
+    sum += amp * jaggedNoise3(p);
+    p = vec3(p.x * 2.28 + 11.7, p.y * 2.34 + 7.3, p.z * 1.18 + 5.1);
+    amp *= 0.58;
   }
   return sum;
 }
 
-// Crisp high-frequency micro-fiber noise for authentic deckled paper teeth
-float fbmFine(vec3 p) {
+// Sharp ridged torn creases (creates sudden paper rip cliffs & pointed torn peaks)
+float fbmRidged(vec3 p) {
   float sum = 0.0;
   float amp = 0.55;
-  for (int i = 0; i < 3; i++) {
-    sum += amp * noise3(p);
-    p = p * 2.35 + vec3(4.9, 11.2, 3.7);
-    amp *= 0.48;
+  for (int i = 0; i < 4; i++) {
+    float n = jaggedNoise3(p);
+    // Sharp fold at 0 creates crisp torn paper peaks & sudden steep drops
+    float ridge = 1.0 - abs(n) * 2.0;
+    sum += amp * ridge;
+    p = vec3(p.x * 2.18 + 6.4, p.y * 2.22 + 13.1, p.z * 1.14 + 3.9);
+    amp *= 0.54;
+  }
+  return sum;
+}
+
+// Fine spiky cellulose fiber fBm (anisotropic vertical & diagonal paper whiskers)
+float fbmFibers(vec3 p) {
+  float sum = 0.0;
+  float amp = 0.54;
+  for (int i = 0; i < 4; i++) {
+    float n = jaggedNoise3(p);
+    // Sharpen spikes so individual paper fibers protrude crisply
+    sum += amp * (sign(n) * pow(abs(n), 0.72));
+    p = vec3(p.x * 2.42 + 4.3, p.y * 2.15 + 9.7, p.z * 1.12 + 2.8);
+    amp *= 0.62;
   }
   return sum;
 }
@@ -88,66 +113,82 @@ void main() {
   float aspect = uResolution.x / max(uResolution.y, 1.0);
   float ax = vUv.x * aspect;
 
-  // Scroll-coupled domain warp creates living undercuts, hanging flaps & torn bays
+  // Scroll-coupled angular domain warp creates steep torn cliffs, undercuts & living flaps
   float velBoost = clamp(uVelocity, 0.0, 1.0);
-  vec3 warpPos = vec3(ax * 0.64, vUv.y * 1.15, uPhase * 0.62);
-  float warpX = fbm4(warpPos + vec3(2.3, 5.1, 0.0)) * (0.40 + velBoost * 0.28);
-  float warpY = fbm4(warpPos + vec3(9.7, 1.4, 4.2)) * (0.32 + velBoost * 0.24);
+  vec3 warpPos = vec3(ax * 0.42, vUv.y * 0.95, uPhase * 0.58);
+  float warpX = fbmJagged(warpPos + vec3(2.3, 5.1, 0.0)) * (0.42 + velBoost * 0.24);
+  float warpY = fbmJagged(warpPos + vec3(9.7, 1.4, 4.2)) * (0.34 + velBoost * 0.20);
 
-  // Macro billowing paper tear profile + medium jagged ledges + fine kozo micro-fibers
-  float macroTear = fbm4(vec3(ax * 0.46 + warpX * 0.78, vUv.y * 0.86 + warpY * 0.68, uPhase * 0.76));
-  float medTear   = fbm4(vec3(ax * 1.72 + warpX * 1.20, vUv.y * 1.98 + warpY, uPhase * 1.08 + 17.4));
-  float fineTear  = fbmFine(vec3(ax * 8.8 + warpX * 0.50, vUv.y * 9.8 + warpY * 0.48, uPhase * 1.38 + 31.2));
-  float microTeeth = noise3(vec3(ax * 30.0, vUv.y * 32.0, uPhase * 1.62 + 63.8));
+  // 1. BOLD DRAMATIC macro torn-paper cliffs, high coves & deep hanging peninsulas
+  float macroWide  = fbmJagged(vec3(ax * 0.27 + warpX * 0.65, vUv.y * 0.62 + warpY * 0.52, uPhase * 0.68));
+  float macroMid   = fbmJagged(vec3(ax * 0.64 + warpX * 0.78, vUv.y * 0.92 + warpY * 0.64, uPhase * 0.78 + 4.1));
+  float macroRidge = fbmRidged(vec3(ax * 0.34 + warpX * 0.55, vUv.y * 0.68 + warpY * 0.45, uPhase * 0.64 + 8.3));
+  float macroTear  = macroWide * 0.52 + macroMid * 0.28 + macroRidge * 0.20;
 
-  // Combined tear displacement (morphs expressively with bold torn lobes & razor-crisp deckle teeth)
+  // 2. Medium craggy deckle ledges & sharp torn notches
+  float medTear = fbmJagged(vec3(ax * 2.15 + warpX * 1.15, vUv.y * 2.35 + warpY * 0.95, uPhase * 1.02 + 17.4));
+
+  // 3. Coarse jagged rips & irregular torn teeth
+  float coarseRips = fbmJagged(vec3(ax * 9.5 + warpX * 0.42, vUv.y * 10.4 + warpY * 0.42, uPhase * 1.24 + 31.2));
+
+  // 4. Vertical & cross-diagonal torn paper fiber whiskers (signature hairy paper edge)
+  float verticalFibers = fbmFibers(vec3(ax * 42.0 + warpX * 0.25, vUv.y * 13.5 + warpY * 0.22, uPhase * 1.32 + 49.6));
+  float diagFibers     = fbmFibers(vec3(ax * 64.0 + vUv.y * 24.0, vUv.y * 26.0 - ax * 18.0, uPhase * 1.38 + 73.1));
+
+  // 5. Pixel-crisp micro-serrations & ragged detached paper specks right at the torn rim
+  float microTeeth = jaggedNoise3(vec3(ax * 138.0, vUv.y * 86.0, uPhase * 1.45 + 91.4));
+  float nanoGrit   = jaggedNoise3(vec3(ax * 255.0, vUv.y * 195.0, uPhase * 1.52 + 118.2));
+
+  // Combined ragged torn paper displacement — bold uneven torn peaks + aggressive crisp fibers
   float tearOffset =
-      macroTear * (0.31 + velBoost * 0.12) +
-      medTear * (0.135 + velBoost * 0.06) +
-      fineTear * 0.052 +
-      microTeeth * 0.021;
+      macroTear * (0.60 + velBoost * 0.14) +
+      medTear * (0.145 + velBoost * 0.055) +
+      coarseRips * 0.062 +
+      verticalFibers * 0.044 +
+      diagFibers * 0.026 +
+      microTeeth * 0.022 +
+      nanoGrit * 0.013;
 
-  // Signed distance field: > 0 is dark #3A241D paper, < 0 is transparent revealing #F3E8DC
-  // Base tear line sits around vUv.y = 0.50 so peaks rise toward 0.88 and hanging flaps dip toward 0.10
-  float sdf = (vUv.y - 0.50) + tearOffset;
+  // Signed distance field: > 0 is rough dark #3A241D paper, < 0 is transparent revealing #F3E8DC
+  float sdf = (vUv.y - 0.48) + tearOffset;
 
-  // Guarantee top 8% is solid paper so there is zero gap at the upper sheet seam
-  float topLock = smoothstep(0.87, 0.975, vUv.y);
-  sdf = mix(sdf, 0.48, topLock);
+  // Guarantee top 6% is solid paper so there is zero gap at the upper sheet seam
+  float topLock = smoothstep(0.90, 0.985, vUv.y);
+  sdf = mix(sdf, 0.56, topLock);
 
-  // Guarantee bottom 3% clears cleanly so flaps never clip hard against the canvas bottom
-  float bottomClear = smoothstep(0.055, 0.0, vUv.y);
-  sdf -= bottomClear * 0.55;
+  // Guarantee bottom 3% clears cleanly so deepest hanging flaps never clip flat at canvas bottom
+  float bottomClear = smoothstep(0.045, 0.0, vUv.y);
+  sdf -= bottomClear * 0.65;
 
-  // Razor-sharp anti-aliased torn paper silhouette (retains crisp fibers & detached crumbs)
-  float aa = max(1.2 / max(uResolution.y, 1.0), 0.0032);
+  // RAZOR-CRISP binary-feeling torn edge (sub-pixel ~0.55px AA — zero smooth blur or fuzzy halo)
+  float aa = max(0.58 / max(uResolution.y, 1.0), 0.0016);
   float paperAlpha = smoothstep(-aa, aa, sdf);
 
-  // Exact #3A241D deep textured Japanese umber paper color with subtle organic mottling
+  // ── RAW, ROUGH HANDMADE TEXTURED #3A241D PAPER SURFACE (ZERO SEAM AT TOP!) ──
   vec3 baseUmber = vec3(0.2275, 0.1412, 0.1137); // exact #3A241D
-  float mottle = fbm4(vec3(ax * 0.9, vUv.y * 1.4, uPhase * 0.18 + 5.0));
-  float grain  = noise3(vec3(gl_FragCoord.xy * 0.34, 1.7));
 
-  // Fade mottling smoothly to pure #3A241D at the top seam (vUv.y -> 1.0) for zero horizontal line
-  float seamFade = 1.0 - smoothstep(0.70, 0.97, vUv.y);
+  // Zero-mean organic parchment blotches + raw pulp clumping + crisp high-freq paper grit
+  float blotch     = fbmJagged(vec3(ax * 1.25, vUv.y * 1.75, 2.4));
+  float pulpClumps = fbmJagged(vec3(ax * 6.5, vUv.y * 8.0, 11.7));
+  float fiberGrain = jaggedNoise3(vec3(ax * 54.0, vUv.y * 20.0, 19.3));
+  float crispSpeck = jaggedNoise3(vec3(gl_FragCoord.xy * 0.62, 4.1));
+  float darkFleck  = smoothstep(0.66, 0.90, jaggedNoise3(vec3(gl_FragCoord.xy * 0.24, 9.5))) - 0.12;
+
+  // Feather ALL texture perturbations smoothly to exact #3A241D toward top edge (vUv.y -> 1.0)
+  // so the join with the upper #3A241D sheet is 100% invisible (zero horizontal line!)
+  float seamBlend = 1.0 - smoothstep(0.62, 0.97, vUv.y);
   vec3 paperColor = baseUmber
-      + vec3(0.024, 0.015, 0.011) * mottle * seamFade
-      + vec3(0.013, 0.009, 0.007) * grain * seamFade;
+      + (vec3(0.036, 0.022, 0.015) * blotch
+      +  vec3(0.024, 0.015, 0.011) * pulpClumps
+      +  vec3(0.015, 0.010, 0.007) * fiberGrain
+      +  vec3(0.016, 0.012, 0.009) * crispSpeck
+      -  vec3(0.038, 0.025, 0.020) * darkFleck) * seamBlend;
 
-  // Delicate warm raw-pulp edge sheen along the very inner 1–2px rim of the tear
-  float rimFactor = smoothstep(0.014, 0.0, sdf) * paperAlpha * seamFade;
-  vec3 deckleTint = vec3(0.58, 0.47, 0.39);
-  paperColor = mix(paperColor, deckleTint, rimFactor * 0.20);
+  // Subtle raw dry-pulp tone shift on the outermost 1-2px of ripped fibers (crisp, not glowing)
+  float rimTeeth = smoothstep(0.009, 0.0, sdf) * paperAlpha * seamBlend;
+  paperColor = mix(paperColor, vec3(0.32, 0.22, 0.17), rimTeeth * 0.26);
 
-  // Tight, crisp physical contact shadow hugging right beneath the torn paper thickness
-  float shadowBand = smoothstep(-0.028 - velBoost * 0.012, 0.0, sdf) * (1.0 - paperAlpha);
-  float shadowAlpha = pow(shadowBand, 2.75) * (0.14 + velBoost * 0.04);
-  vec3 shadowColor = vec3(0.14, 0.08, 0.055);
-
-  float outAlpha = clamp(paperAlpha + shadowAlpha, 0.0, 1.0);
-  vec3 outColor = mix(shadowColor, paperColor, paperAlpha / max(outAlpha, 0.0001));
-
-  // Output premultiplied alpha to match standard WebGL canvas compositing cleanly with zero fringe
-  gl_FragColor = vec4(outColor * outAlpha, outAlpha);
+  // Crisp premultiplied alpha output with ZERO blurry shadow halo over #F3E8DC ivory
+  gl_FragColor = vec4(paperColor * paperAlpha, paperAlpha);
 }
 `;

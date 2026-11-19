@@ -20,8 +20,10 @@ gsap.registerPlugin(ScrollTrigger);
 // Deterministic fallback SVG geometry when WebGL is unavailable or context is lost
 const FALLBACK_TORN_GEOMETRY = generateTornPaperPaths(1600, 190, 720, 42);
 
-// Lightweight static SVG grain data URI for authentic Japanese handmade paper tactility
-const PAPER_GRAIN_URI = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220' viewBox='0 0 220 220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23g)' opacity='0.55'/%3E%3C/svg%3E")`;
+// Crisp raw handmade paper grain + coarse organic mottled parchment SVG data URIs
+const PAPER_GRAIN_URI = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.15' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23g)' opacity='0.72'/%3E%3C/svg%3E")`;
+
+const PAPER_MOTTLE_URI = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='340' height='340' viewBox='0 0 340 340'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.032' numOctaves='5' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='340' height='340' filter='url(%23m)' opacity='0.78'/%3E%3C/svg%3E")`;
 
 function compileShader(
   gl: WebGLRenderingContext,
@@ -384,9 +386,9 @@ export function TornPaperPeelTransition() {
       className="relative w-full"
     >
       {/* ═══════════════════════════════════════════════════════════════════════════
-          UPPER SHEET: Deep Textured Japanese Umber (#3A241D)
-          Flows smoothly with Lenis scroll; attached live WebGL torn-paper skirt
-          hangs directly off the bottom edge with zero horizontal seam.
+          UPPER SHEET: Deep Rough-Textured Japanese Umber (#3A241D)
+          Raw organic parchment mottling & fibrous grain matching the live jagged WebGL
+          torn-paper edge directly beneath it with zero horizontal seam.
          ═══════════════════════════════════════════════════════════════════════════ */}
       <div
         ref={darkSheetRef}
@@ -395,34 +397,47 @@ export function TornPaperPeelTransition() {
         style={{
           backgroundColor: "#3A241D",
           backgroundImage: [
-            "radial-gradient(ellipse 68% 52% at 24% 32%, rgba(78, 49, 39, 0.36) 0%, transparent 66%)",
-            "radial-gradient(ellipse 52% 44% at 76% 52%, rgba(40, 22, 16, 0.44) 0%, transparent 66%)",
-            "radial-gradient(ellipse 46% 36% at 50% 66%, rgba(74, 46, 36, 0.24) 0%, transparent 64%)",
-            "radial-gradient(ellipse 80% 64% at 88% 18%, rgba(34, 18, 13, 0.38) 0%, transparent 60%)",
-            "linear-gradient(180deg, #36211A 0%, #3A241D 58%, #3A241D 100%)",
+            "radial-gradient(ellipse 68% 52% at 22% 30%, rgba(86, 52, 38, 0.42) 0%, transparent 64%)",
+            "radial-gradient(ellipse 50% 42% at 74% 56%, rgba(34, 18, 12, 0.52) 0%, transparent 64%)",
+            "radial-gradient(ellipse 42% 34% at 48% 72%, rgba(82, 49, 36, 0.30) 0%, transparent 62%)",
+            "radial-gradient(ellipse 76% 60% at 88% 18%, rgba(28, 14, 10, 0.44) 0%, transparent 58%)",
+            "radial-gradient(ellipse 38% 30% at 15% 80%, rgba(30, 16, 11, 0.36) 0%, transparent 62%)",
+            "linear-gradient(180deg, #352019 0%, #3A241D 52%, #3A241D 100%)",
           ].join(", "),
         }}
       >
-        {/* Organic dark handmade paper grain feathered seamlessly to pure #3A241D at bottom edge */}
+        {/* Coarse organic handmade paper pulp & mottled blotches */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-[0.20] mix-blend-soft-light"
+          className="pointer-events-none absolute inset-0 opacity-[0.34] mix-blend-multiply"
+          style={{
+            backgroundImage: PAPER_MOTTLE_URI,
+            backgroundRepeat: "repeat",
+            backgroundSize: "340px 340px",
+            maskImage: "linear-gradient(180deg, black 0%, black 76%, transparent 100%)",
+            WebkitMaskImage: "linear-gradient(180deg, black 0%, black 76%, transparent 100%)",
+          }}
+        />
+        {/* Crisp raw handmade paper grain feathered smoothly to pure #3A241D at bottom join */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-[0.30] mix-blend-soft-light"
           style={{
             backgroundImage: PAPER_GRAIN_URI,
             backgroundRepeat: "repeat",
-            backgroundSize: "200px 200px",
-            maskImage: "linear-gradient(180deg, black 0%, black 86%, transparent 100%)",
-            WebkitMaskImage: "linear-gradient(180deg, black 0%, black 86%, transparent 100%)",
+            backgroundSize: "180px 180px",
+            maskImage: "linear-gradient(180deg, black 0%, black 78%, transparent 100%)",
+            WebkitMaskImage: "linear-gradient(180deg, black 0%, black 78%, transparent 100%)",
           }}
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-[0.05]"
+          className="pointer-events-none absolute inset-0 opacity-[0.06]"
           style={{
             backgroundImage:
-              "repeating-linear-gradient(176deg, transparent 0px, transparent 19px, rgba(243, 232, 220, 0.35) 19px, rgba(243, 232, 220, 0.35) 20px)",
-            maskImage: "linear-gradient(180deg, black 0%, black 76%, transparent 100%)",
-            WebkitMaskImage: "linear-gradient(180deg, black 0%, black 76%, transparent 100%)",
+              "repeating-linear-gradient(176deg, transparent 0px, transparent 17px, rgba(243, 232, 220, 0.38) 17px, rgba(243, 232, 220, 0.38) 18px)",
+            maskImage: "linear-gradient(180deg, black 0%, black 74%, transparent 100%)",
+            WebkitMaskImage: "linear-gradient(180deg, black 0%, black 74%, transparent 100%)",
           }}
         />
 
@@ -485,7 +500,7 @@ export function TornPaperPeelTransition() {
           ref={edgeWrapRef}
           aria-hidden="true"
           data-testid="torn-paper-edge"
-          className="pointer-events-none absolute left-0 right-0 top-[calc(100%-2px)] z-[25] h-[200px] sm:h-[260px] lg:h-[295px] w-full overflow-hidden"
+          className="pointer-events-none absolute left-0 right-0 top-[calc(100%-2px)] z-[25] h-[220px] sm:h-[290px] lg:h-[330px] w-full overflow-hidden"
         >
           {!useSvgFallback ? (
             <canvas
@@ -532,13 +547,13 @@ export function TornPaperPeelTransition() {
           LOWER LAYER (PHYSICALLY REVEALED BENEATH THE MORPHING TEAR):
           Warm Japanese Washi-Paper Ivory (#F3E8DC)
           Starts right at darkSheetRef bottom (-mt-[2px]) so the absolute WebGL torn-paper
-          skirt overlays the top 200-295px cleanly while Practice typography starts below
+          skirt overlays the top 220-330px cleanly while Practice typography starts below
           the deepest possible torn paper flap with zero text occlusion.
          ═══════════════════════════════════════════════════════════════════════════ */}
       <div
         ref={ivorySectionRef}
         data-testid="torn-paper-ivory-layer"
-        className="relative z-[10] -mt-[2px] w-full bg-[#F3E8DC] px-6 sm:px-10 pt-[235px] sm:pt-[295px] lg:pt-[335px] pb-14 sm:pb-20"
+        className="relative z-[10] -mt-[2px] w-full bg-[#F3E8DC] px-6 sm:px-10 pt-[255px] sm:pt-[325px] lg:pt-[365px] pb-14 sm:pb-20"
         style={{
           backgroundImage:
             "radial-gradient(ellipse 90% 80% at 50% 42%, #F8F0E6 0%, #F3E8DC 58%, #F3E8DC 100%)",
