@@ -46,11 +46,11 @@ export function ScrollWordReveal({
     }
 
     const ctx = gsap.context(() => {
-      gsap.set(wordNodes, { color: "#766C83" });
+      gsap.set(wordNodes, { color: "#B7ABA0" });
 
       gsap.to(wordNodes, {
         color: (_index: number, target: HTMLElement) =>
-          target.dataset.accent === "true" ? "#BCA5D4" : "#F3EEF8",
+          target.dataset.accent === "true" ? "#A91D22" : "#1E1916",
         stagger: 0.05,
         ease: "none",
         scrollTrigger: {
@@ -77,7 +77,7 @@ export function ScrollWordReveal({
               className={
                 token.isAccent
                   ? "type-serif-accent inline-block transition-none"
-                  : "inline-block transition-none text-[#766C83]"
+                  : "inline-block transition-none text-[#B7ABA0]"
               }
             >
               {token.word}

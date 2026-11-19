@@ -1,18 +1,19 @@
 :root {
-  /* Color Palette — Gallery Obsidian & Pentelic Limestone */
-  --bg-primary: #0a0a0c;
-  --bg-elevated: #121216;
-  --bg-surface: #1b1a20;
+  /* Color Palette — Japanese Washi Paper, Sumi Charcoal Ink & Vermilion Seal Crimson */
+  --bg-primary: #f4eadf;
+  --bg-elevated: #fbf6ef;
+  --bg-surface: #eae0d2;
 
-  --text-primary: #f4f1ea;
-  --text-secondary: #a19d97;
-  --text-muted: #6c6863;
+  --text-primary: #1e1916;
+  --text-secondary: #554c45;
+  --text-muted: #766c63;
 
-  --accent-primary: #c4b0dc;
-  --accent-soft: #d9cae8;
+  --accent-primary: #a91d22;
+  --accent-soft: #c4292f;
+  --accent-gold: #a27739;
 
-  --border-subtle: rgba(244, 241, 234, 0.1);
-  --border-strong: rgba(196, 176, 220, 0.36);
+  --border-subtle: rgba(43, 35, 30, 0.14);
+  --border-strong: rgba(169, 29, 34, 0.42);
 
   /* Font Scale */
   --font-display: clamp(3rem, 7.2vw, 7.75rem);
@@ -30,7 +31,7 @@
   --gutter-x: clamp(56px, 5vw, 88px);
   --section-py: clamp(80px, 7.5vw, 128px);
 
-  /* Sharp Architectural Radii */
+  /* Crisp Editorial Radii */
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 8px;

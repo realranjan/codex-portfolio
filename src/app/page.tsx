@@ -7,23 +7,23 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import { MotionConfig } from "motion/react";
-import { ArrowDown, ArrowUp, Check, Copy, Send } from "lucide-react";
+import { ArrowUp, Check, ChevronDown, Copy, Send } from "lucide-react";
 import {
   DISCIPLINES,
   IDENTITY,
   STACK_CATEGORIES,
   type ProjectCaseStudy,
 } from "@/data/portfolio";
-import {
-  computeHeroToCarouselState,
-  computeSpatialScrollState,
-} from "@/lib/motion";
+import { computeHeroToCarouselState } from "@/lib/motion";
 import type { SpatialControlValues } from "@/components/particle-portrait";
-import AsciiBackground from "@/components/ascii-background";
 import { DirectionalMediaReveal } from "@/components/motion/directional-media-reveal";
 import { MaskedLineReveal } from "@/components/motion/masked-line-reveal";
 import { ScrollWordReveal } from "@/components/motion/scroll-word-reveal";
 import { CareerJourney } from "@/components/portfolio/career-journey";
+import {
+  HeroJapaneseBackdrop,
+  HeroJapaneseForeground,
+} from "@/components/portfolio/hero-japanese-backdrop";
 import { ProjectFlyout } from "@/components/portfolio/project-flyout";
 import { ProjectsGallerySection } from "@/components/portfolio/projects-gallery-section";
 import { ResumeModal } from "@/components/portfolio/resume-modal";
@@ -32,9 +32,6 @@ import { SiteNav } from "@/components/portfolio/site-nav";
 gsap.registerPlugin(ScrollTrigger);
 
 const ParticlePortrait = dynamic(() => import("@/components/particle-portrait"), {
-  ssr: false,
-});
-const LightRays = dynamic(() => import("@/components/light-rays"), {
   ssr: false,
 });
 
@@ -67,14 +64,12 @@ export default function Home() {
   const projectsBandRef = useRef<HTMLElement>(null);
 
   const heroOverlayRef = useRef<HTMLDivElement>(null);
-  const heroActionsRef = useRef<HTMLDivElement>(null);
   const heroDockRef = useRef<HTMLDivElement>(null);
-  const heroScrimMobileRef = useRef<HTMLDivElement>(null);
-  const heroScrimDesktopRef = useRef<HTMLDivElement>(null);
+  const heroBackdropDecorRef = useRef<HTMLDivElement>(null);
+  const heroSunRef = useRef<HTMLDivElement>(null);
+  const heroForegroundRef = useRef<HTMLDivElement>(null);
+  const heroForegroundDecorRef = useRef<HTMLDivElement>(null);
   const projectsHudRef = useRef<HTMLDivElement>(null);
-
-  const asciiLayerRef = useRef<HTMLDivElement>(null);
-  const raysLayerRef = useRef<HTMLDivElement>(null);
 
   const spatialProgressRef = useRef<number>(0);
   const projectsProgressRef = useRef<number>(0);
@@ -122,7 +117,6 @@ export default function Home() {
         Math.max(0, (window.scrollY - projectsTop) / projectsScrollable)
       );
 
-      const spatial = computeSpatialScrollState(rawHero, rawProjects);
       const transition = computeHeroToCarouselState(rawHero, rawProjects);
 
       spatialProgressRef.current = rawHero;
@@ -139,18 +133,31 @@ export default function Home() {
       }
 
       const heroInteractive = transition.heroOverlayOpacity > 0.25 ? "auto" : "none";
-      if (heroActionsRef.current) {
-        heroActionsRef.current.style.pointerEvents = heroInteractive;
-      }
       if (heroDockRef.current) {
         heroDockRef.current.style.pointerEvents = heroInteractive;
       }
 
-      if (heroScrimMobileRef.current) {
-        heroScrimMobileRef.current.style.opacity = String(transition.heroOverlayOpacity);
+      // Fade peripheral sakura/mountains/pagoda/brushstroke on scroll while preserving warm washi paper + soft crimson sun halo for #projects
+      const decorOpacity = Math.max(0, Math.min(1, 1 - transition.centerMix * 1.18));
+      if (heroBackdropDecorRef.current) {
+        heroBackdropDecorRef.current.style.opacity = String(decorOpacity);
+        heroBackdropDecorRef.current.style.visibility =
+          decorOpacity > 0.01 ? "visible" : "hidden";
       }
-      if (heroScrimDesktopRef.current) {
-        heroScrimDesktopRef.current.style.opacity = String(transition.heroOverlayOpacity);
+      if (heroForegroundDecorRef.current) {
+        heroForegroundDecorRef.current.style.opacity = String(decorOpacity);
+        heroForegroundDecorRef.current.style.visibility =
+          decorOpacity > 0.01 ? "visible" : "hidden";
+      }
+      if (heroForegroundRef.current) {
+        const mistOpacity = 0.42 + 0.58 * decorOpacity;
+        heroForegroundRef.current.style.opacity = mistOpacity.toFixed(3);
+      }
+      if (heroSunRef.current) {
+        const sunOpacity = 0.28 + 0.72 * decorOpacity;
+        const sunScale = 0.86 + 0.14 * decorOpacity;
+        heroSunRef.current.style.opacity = sunOpacity.toFixed(3);
+        heroSunRef.current.style.transform = `translate3d(0, 0, 0) scale(${sunScale.toFixed(3)})`;
       }
 
       if (projectsHudRef.current) {
@@ -159,15 +166,6 @@ export default function Home() {
         projectsHudRef.current.style.transform = `translate3d(0, ${hudY.toFixed(1)}px, 0)`;
         projectsHudRef.current.style.visibility =
           transition.hudOpacity > 0.02 ? "visible" : "hidden";
-      }
-
-      if (asciiLayerRef.current) {
-        asciiLayerRef.current.style.transform = `translate3d(${spatial.bgDriftX}%, ${spatial.bgDriftY}%, 0) scale(${spatial.bgScale})`;
-        asciiLayerRef.current.style.opacity = String(spatial.bgOpacity);
-      }
-
-      if (raysLayerRef.current) {
-        raysLayerRef.current.style.transform = `translate3d(0, ${spatial.raysShiftY}px, 0)`;
       }
     };
 
@@ -190,15 +188,6 @@ export default function Home() {
     lenis.on("scroll", syncScroll);
 
     const ctx = gsap.context(() => {
-      gsap.from("[data-hero-intro]", {
-        y: 14,
-        opacity: 0,
-        duration: 0.65,
-        stagger: 0.08,
-        ease: "power3.out",
-        clearProps: "transform,opacity",
-      });
-
       const parallaxTargets: Array<{ selector: string; fromY: number; toY: number; trigger?: string }> = [
         { selector: '[data-parallax="prose"]', fromY: 16, toY: -16 },
         { selector: '[data-parallax="portrait"]', fromY: 36, toY: -36 },
@@ -322,38 +311,13 @@ export default function Home() {
             role="region"
             aria-label="Interactive 3D sculpture and orbiting project gallery"
           >
-            <AsciiBackground ref={asciiLayerRef} />
+            {/* Japanese Washi Paper, Crimson Sun, Sakura Branch, Mountains & Pagoda (z-[1]) */}
+            <HeroJapaneseBackdrop
+              decorRef={heroBackdropDecorRef}
+              sunRef={heroSunRef}
+            />
 
-            <div
-              ref={raysLayerRef}
-              className="pointer-events-none absolute inset-0 z-[1] will-change-transform"
-            >
-              <LightRays
-                className="hero-rays"
-                style={{}}
-                raysOrigin="top-right"
-                raysColor="#C4B0DC"
-                raysSpeed={0.44}
-                lightSpread={0.72}
-                rayLength={2.9}
-                rayDensity={1.35}
-                raySharpness={0.78}
-                tilt={28}
-                glow={0.38}
-                haze={0.2}
-                atmosphere={0.18}
-                intensity={1.55}
-                opacity={0.78}
-                pulsating
-                followMouse
-                mouseInfluence={0.1}
-                cursorShadow
-                clickPulse
-                maxDevicePixelRatio={1.25}
-              />
-            </div>
-
-            {/* 3D Particle Bust (z-[5]) sitting between Carousel Back Ring (z-[2]) and Front Ring (z-[12]) */}
+            {/* 3D Layered Samurai / Cute Cat Stage (z-[5]) centered in front of the crimson sun */}
             <ParticlePortrait
               spatialProgressRef={spatialProgressRef}
               projectsProgressRef={projectsProgressRef}
@@ -361,108 +325,61 @@ export default function Home() {
               controlsRef={spatialControlsRef}
             />
 
-            {/* Hero contrast scrims fade away cleanly as the carousel orbits the centered model */}
-            <div
-              ref={heroScrimMobileRef}
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 z-[6] md:hidden will-change-opacity"
-              style={{
-                background:
-                  "linear-gradient(to top, rgba(10,10,12,0.92) 0%, rgba(10,10,12,0.68) 42%, rgba(10,10,12,0.18) 72%, transparent 100%)",
-              }}
-            />
-            <div
-              ref={heroScrimDesktopRef}
-              aria-hidden="true"
-              className="pointer-events-none hidden md:block absolute inset-0 z-[6] will-change-opacity"
-              style={{
-                background:
-                  "linear-gradient(90deg, rgba(10,10,12,0.82) 0%, rgba(10,10,12,0.44) 36%, transparent 60%)",
-              }}
+            {/* Foreground Rolling Morning Mist, Sweeping Crimson Brush Stroke & Drifting Petals (z-[7]) */}
+            <HeroJapaneseForeground
+              ref={heroForegroundRef}
+              decorRef={heroForegroundDecorRef}
             />
 
-            {/* Hero Copy & Bottom Shader Controls */}
+            {/* Accessible H1 + Minimal Bottom Controls Only (No hero text blocks or ribbon) */}
             <div
               ref={heroOverlayRef}
-              className="pointer-events-none absolute inset-0 z-[20] flex flex-col justify-between pt-[92px] pb-7 will-change-[transform,opacity]"
+              className="pointer-events-none absolute inset-0 z-[20] flex flex-col justify-end pb-6 will-change-[transform,opacity]"
             >
-              <div className="page-container pointer-events-none flex flex-1 flex-col justify-end pb-6">
-                <div
-                  data-testid="hero-copy"
-                  className="pointer-events-none max-w-[660px]"
+              <h1 id="hero-heading" className="sr-only">
+                {IDENTITY.name} — Interactive 3D Portfolio
+              </h1>
+
+              <div className="page-container pointer-events-none relative flex items-center justify-center sm:justify-end">
+                {/* Minimal centered scroll-down mouse icon cue (no text) */}
+                <a
+                  href="#projects"
+                  aria-label="Scroll to selected work"
+                  className="pointer-events-auto hidden sm:inline-flex absolute left-1/2 -translate-x-1/2 flex-col items-center gap-1 text-[#2B231E]/80 transition-colors hover:text-[#A91D22]"
                 >
-                  <p className="pointer-events-none mb-5 type-tech-label text-[#C4B0DC]" data-hero-intro>
-                    {IDENTITY.roleLine}
-                  </p>
-
-                  <MaskedLineReveal
-                    as="h1"
-                    id="hero-heading"
-                    trigger="mount"
-                    delay={0.08}
-                    className="pointer-events-none type-display text-[#F4F1EA]"
-                    lines={[
-                      "Systems shaped",
-                      <>
-                        for <em className="type-serif-accent font-medium whitespace-nowrap">real-time</em>
-                      </>,
-                      "speed.",
-                    ]}
-                  />
-
-                  <p
-                    data-hero-intro
-                    className="pointer-events-none mt-6 max-w-[44ch] text-base sm:text-lg leading-relaxed text-[#A19D97]"
+                  <span
+                    aria-hidden="true"
+                    className="flex h-7 w-[18px] items-start justify-center rounded-full border-[1.5px] border-current pt-1.5"
                   >
-                    Full-stack software, low-latency inference routers, and custom WebGL graphics
-                    built for production predictability.
-                  </p>
+                    <span className="h-1.5 w-[2px] rounded-full bg-current" />
+                  </span>
+                  <ChevronDown size={13} strokeWidth={1.8} aria-hidden="true" />
+                </a>
 
-                  <div
-                    ref={heroActionsRef}
-                    data-hero-intro
-                    className="mt-8 flex flex-wrap items-center gap-4 pointer-events-auto"
-                  >
-                    <a href="#projects" className="btn-primary no-underline">
-                      <span>Selected work</span>
-                      <ArrowDown size={15} strokeWidth={1.6} aria-hidden="true" />
-                    </a>
-                    <a href="#about" className="btn-secondary no-underline">
-                      <span>Practice &amp; background</span>
-                    </a>
-                  </div>
-                </div>
-              </div>
-
-              <div className="page-container pointer-events-none">
-                <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.1] pt-4 text-xs font-mono text-[#A19D97]">
-                  <span>Hover cat to reveal inner layer · Move pointer to guide both heads · Drag to orbit</span>
-
-                  <div
-                    ref={heroDockRef}
-                    className="pointer-events-auto flex items-center gap-1 rounded-[4px] border border-white/[0.1] bg-[#0A0A0C]/85 p-1"
-                    role="group"
-                    aria-label="Cat layer mode"
-                  >
-                    {SCULPTURE_MODES.map((mode) => {
-                      const active = sculptureMode === mode.id;
-                      return (
-                        <button
-                          key={mode.id}
-                          type="button"
-                          onClick={() => handleSculptureMode(mode)}
-                          aria-pressed={active}
-                          className={`px-2.5 py-1 rounded-[3px] text-[11px] font-mono transition-colors duration-150 cursor-pointer whitespace-nowrap shrink-0 ${
-                            active
-                              ? "bg-[#C4B0DC] text-[#0A0A0C] font-medium"
-                              : "text-[#A19D97] hover:text-[#F4F1EA]"
-                          }`}
-                        >
-                          {mode.label}
-                        </button>
-                      );
-                    })}
-                  </div>
+                <div
+                  ref={heroDockRef}
+                  className="pointer-events-auto flex items-center gap-1 rounded-full border border-[#2B231E]/18 bg-[#FBF5ED]/85 p-1 backdrop-blur-sm"
+                  role="group"
+                  aria-label="Cat layer mode"
+                >
+                  {SCULPTURE_MODES.map((mode) => {
+                    const active = sculptureMode === mode.id;
+                    return (
+                      <button
+                        key={mode.id}
+                        type="button"
+                        onClick={() => handleSculptureMode(mode)}
+                        aria-pressed={active}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors duration-150 cursor-pointer whitespace-nowrap shrink-0 ${
+                          active
+                            ? "bg-[#A91D22] text-[#FBF5ED]"
+                            : "text-[#433B36] hover:text-[#1E1916]"
+                        }`}
+                      >
+                        {mode.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -503,13 +420,13 @@ export default function Home() {
           <div className="page-container">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12 items-start">
               <div className="lg:col-span-2">
-                <span className="type-tech-label">02. Practice</span>
+                <span className="type-tech-label text-[#A91D22]">02. Practice</span>
               </div>
               <div className="lg:col-span-10">
                 <MaskedLineReveal
                   as="h2"
                   id="about-heading"
-                  className="type-h2 text-[#F4F1EA]"
+                  className="type-h2 text-[#1E1916]"
                   lines={[
                     "From kernel tuning",
                     <>
@@ -520,7 +437,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="lg:ml-[16.666%] mb-14 border-y border-white/[0.1] py-10">
+            <div className="lg:ml-[16.666%] mb-14 border-y border-[#2B231E]/[0.14] py-10">
               <ScrollWordReveal
                 text="Across backend routers, storage engines, and browser shaders, good engineering cuts out unnecessary abstraction until the mechanism holds under load."
                 accentWords={["routers,", "shaders,", "holds"]}
@@ -533,7 +450,7 @@ export default function Home() {
                 data-parallax="prose"
                 className="lg:col-span-7 space-y-12 will-change-transform"
               >
-                <div className="space-y-5 text-[#A19D97] prose-measure">
+                <div className="space-y-5 text-[#554C45] prose-measure">
                   <p>
                     Over six years building distributed data pipelines, inference routers, and
                     browser WebGL engines, my approach has stayed straightforward: measure tail
@@ -547,21 +464,21 @@ export default function Home() {
 
                 {/* Core Disciplines */}
                 <div>
-                  <h3 className="type-tech-label text-[#C4B0DC] mb-4">Disciplines</h3>
-                  <div className="border-t border-white/[0.1]">
+                  <h3 className="type-tech-label text-[#A91D22] mb-4">Disciplines</h3>
+                  <div className="border-t border-[#2B231E]/[0.14]">
                     {DISCIPLINES.map((item) => (
                       <div
                         key={item.index}
-                        className="grid grid-cols-1 sm:grid-cols-[44px_1fr] gap-2 sm:gap-4 border-b border-white/[0.1] py-5"
+                        className="grid grid-cols-1 sm:grid-cols-[44px_1fr] gap-2 sm:gap-4 border-b border-[#2B231E]/[0.14] py-5"
                       >
-                        <span className="font-mono text-xs text-[#6C6863] tabular-nums pt-1">
+                        <span className="font-mono text-xs text-[#766C63] tabular-nums pt-1">
                           {item.index}
                         </span>
                         <div>
-                          <h4 className="text-lg font-semibold tracking-[-0.02em] text-[#F4F1EA]">
+                          <h4 className="text-lg font-semibold tracking-[-0.02em] text-[#1E1916]">
                             {item.title}
                           </h4>
-                          <p className="mt-1.5 text-sm sm:text-base text-[#A19D97] leading-relaxed prose-measure">
+                          <p className="mt-1.5 text-sm sm:text-base text-[#554C45] leading-relaxed prose-measure">
                             {item.detail}
                           </p>
                         </div>
@@ -572,17 +489,17 @@ export default function Home() {
 
                 {/* Unboxed Hairline Stack Specification */}
                 <div>
-                  <h3 className="type-tech-label text-[#C4B0DC] mb-4">Technical Stack</h3>
-                  <div className="border-t border-white/[0.1]">
+                  <h3 className="type-tech-label text-[#A91D22] mb-4">Technical Stack</h3>
+                  <div className="border-t border-[#2B231E]/[0.14]">
                     {STACK_CATEGORIES.map((group) => (
                       <div
                         key={group.name}
-                        className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-2 sm:gap-6 border-b border-white/[0.1] py-4 items-baseline"
+                        className="grid grid-cols-1 sm:grid-cols-[200px_1fr] gap-2 sm:gap-6 border-b border-[#2B231E]/[0.14] py-4 items-baseline"
                       >
-                        <span className="text-sm font-medium text-[#F4F1EA]">
+                        <span className="text-sm font-medium text-[#1E1916]">
                           {group.name}
                         </span>
-                        <p className="font-mono text-xs leading-relaxed text-[#A19D97]">
+                        <p className="font-mono text-xs leading-relaxed text-[#554C45]">
                           {group.items.join(" · ")}
                         </p>
                       </div>
@@ -599,7 +516,7 @@ export default function Home() {
                 <DirectionalMediaReveal
                   direction="right"
                   aspectClassName="aspect-[3/4]"
-                  className="max-w-[460px] lg:ml-auto"
+                  className="max-w-[460px] lg:ml-auto shadow-[0_18px_42px_rgba(43,35,30,0.12)]"
                 >
                   <Image
                     src={IDENTITY.portrait}
@@ -610,7 +527,7 @@ export default function Home() {
                     className="object-cover"
                   />
                 </DirectionalMediaReveal>
-                <div className="mt-3 max-w-[460px] lg:ml-auto flex items-center justify-between text-xs font-mono text-[#6C6863]">
+                <div className="mt-3 max-w-[460px] lg:ml-auto flex items-center justify-between text-xs font-mono text-[#766C63]">
                   <span>{IDENTITY.location}</span>
                   <span>2026</span>
                 </div>
@@ -627,13 +544,13 @@ export default function Home() {
           <div className="page-container">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12 items-start">
               <div className="lg:col-span-2">
-                <span className="type-tech-label">04. Contact</span>
+                <span className="type-tech-label text-[#A91D22]">04. Contact</span>
               </div>
               <div className="lg:col-span-10">
                 <MaskedLineReveal
                   as="h2"
                   id="contact-heading"
-                  className="type-h2 text-[#F4F1EA]"
+                  className="type-h2 text-[#1E1916]"
                   lines={[
                     "Start a conversation",
                     <>
@@ -646,15 +563,15 @@ export default function Home() {
 
             <div className="lg:ml-[16.666%] grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
               <div className="lg:col-span-5 space-y-6">
-                <p className="text-base sm:text-lg text-[#A19D97] leading-relaxed prose-measure">
+                <p className="text-base sm:text-lg text-[#554C45] leading-relaxed prose-measure">
                   Available for principal engineering roles, AI infrastructure advisory, and select
                   interactive web engagements.
                 </p>
 
-                <div className="border-t border-white/[0.1] pt-5 space-y-4">
+                <div className="border-t border-[#2B231E]/[0.14] pt-5 space-y-4">
                   <div>
-                    <span className="type-tech-label text-[#6C6863]">Direct Email</span>
-                    <div className="mt-1 font-mono text-sm text-[#F4F1EA] break-all">
+                    <span className="type-tech-label text-[#766C63]">Direct Email</span>
+                    <div className="mt-1 font-mono text-sm text-[#1E1916] break-all">
                       {IDENTITY.email}
                     </div>
                   </div>
@@ -695,13 +612,13 @@ export default function Home() {
                 {contactSent ? (
                   <div
                     role="status"
-                    className="rounded-[6px] border border-[#C4B0DC]/50 bg-[#121216] p-8 space-y-4"
+                    className="rounded-[6px] border border-[#A91D22]/45 bg-[#FBF6EF] p-8 space-y-4 shadow-[0_14px_36px_rgba(43,35,30,0.08)]"
                   >
-                    <p className="type-tech-label text-[#C4B0DC]">Message Recorded</p>
-                    <h3 className="text-2xl font-semibold tracking-[-0.025em] text-[#F4F1EA]">
+                    <p className="type-tech-label text-[#A91D22]">Message Recorded</p>
+                    <h3 className="text-2xl font-semibold tracking-[-0.025em] text-[#1E1916]">
                       Thank you, {contactName}.
                     </h3>
-                    <p className="text-sm sm:text-base text-[#A19D97] prose-measure">
+                    <p className="text-sm sm:text-base text-[#554C45] prose-measure">
                       Your note is ready for {IDENTITY.email}. You can send a follow-up note below
                       or copy the email address directly.
                     </p>
@@ -722,53 +639,53 @@ export default function Home() {
                   <form
                     onSubmit={handleContactSubmit}
                     noValidate
-                    className="rounded-[6px] border border-white/[0.1] bg-[#121216] p-6 sm:p-8 space-y-5"
+                    className="rounded-[6px] border border-[#2B231E]/[0.15] bg-[#FBF6EF] p-6 sm:p-8 space-y-5 shadow-[0_14px_36px_rgba(43,35,30,0.07)]"
                   >
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <label className="block">
-                        <span className="type-tech-label block mb-2">Name</span>
+                        <span className="type-tech-label text-[#554C45] block mb-2">Name</span>
                         <input
                           type="text"
                           value={contactName}
                           onChange={(e) => setContactName(e.target.value)}
                           placeholder="Your name"
-                          className="w-full min-h-[44px] rounded-[4px] border border-white/[0.12] bg-[#0A0A0C] px-3.5 py-2.5 text-sm text-[#F4F1EA] placeholder:text-[#6C6863] focus:border-[#C4B0DC] focus:outline-none"
+                          className="w-full min-h-[44px] rounded-[4px] border border-[#2B231E]/[0.2] bg-[#F4EADF]/65 px-3.5 py-2.5 text-sm text-[#1E1916] placeholder:text-[#8A7F75] focus:border-[#A91D22] focus:outline-none"
                           required
                         />
                       </label>
                       <label className="block">
-                        <span className="type-tech-label block mb-2">Email</span>
+                        <span className="type-tech-label text-[#554C45] block mb-2">Email</span>
                         <input
                           type="email"
                           value={contactEmail}
                           onChange={(e) => setContactEmail(e.target.value)}
                           placeholder="you@company.com"
-                          className="w-full min-h-[44px] rounded-[4px] border border-white/[0.12] bg-[#0A0A0C] px-3.5 py-2.5 text-sm text-[#F4F1EA] placeholder:text-[#6C6863] focus:border-[#C4B0DC] focus:outline-none"
+                          className="w-full min-h-[44px] rounded-[4px] border border-[#2B231E]/[0.2] bg-[#F4EADF]/65 px-3.5 py-2.5 text-sm text-[#1E1916] placeholder:text-[#8A7F75] focus:border-[#A91D22] focus:outline-none"
                           required
                         />
                       </label>
                     </div>
 
                     <label className="block">
-                      <span className="type-tech-label block mb-2">Project or Inquiry</span>
+                      <span className="type-tech-label text-[#554C45] block mb-2">Project or Inquiry</span>
                       <textarea
                         rows={4}
                         value={contactMessage}
                         onChange={(e) => setContactMessage(e.target.value)}
                         placeholder="Share project scope, architecture context, or timeline..."
-                        className="w-full rounded-[4px] border border-white/[0.12] bg-[#0A0A0C] px-3.5 py-2.5 text-sm text-[#F4F1EA] placeholder:text-[#6C6863] focus:border-[#C4B0DC] focus:outline-none"
+                        className="w-full rounded-[4px] border border-[#2B231E]/[0.2] bg-[#F4EADF]/65 px-3.5 py-2.5 text-sm text-[#1E1916] placeholder:text-[#8A7F75] focus:border-[#A91D22] focus:outline-none"
                         required
                       />
                     </label>
 
                     {contactError && (
-                      <p role="alert" className="text-xs font-mono text-[#D9CAE8]">
+                      <p role="alert" className="text-xs font-mono text-[#A91D22]">
                         {contactError}
                       </p>
                     )}
 
                     <div className="flex items-center justify-between gap-4 pt-1">
-                      <span className="font-mono text-xs text-[#6C6863]">
+                      <span className="font-mono text-xs text-[#766C63]">
                         Direct dispatch
                       </span>
                       <button type="submit" className="btn-primary">
@@ -781,20 +698,20 @@ export default function Home() {
               </div>
             </div>
 
-            <footer className="mt-20 flex flex-wrap items-center justify-between gap-6 border-t border-white/[0.1] pt-6 text-xs font-mono text-[#A19D97]">
+            <footer className="mt-20 flex flex-wrap items-center justify-between gap-6 border-t border-[#2B231E]/[0.14] pt-6 text-xs font-mono text-[#554C45]">
               <span>{IDENTITY.name}</span>
               <div className="flex flex-wrap items-center gap-6">
                 <a
                   href={IDENTITY.github}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-[#A19D97] no-underline hover:text-[#C4B0DC]"
+                  className="text-[#554C45] no-underline hover:text-[#A91D22]"
                 >
                   GitHub
                 </a>
                 <a
                   href="#top"
-                  className="inline-flex items-center gap-1.5 text-[#F4F1EA] no-underline hover:text-[#C4B0DC]"
+                  className="inline-flex items-center gap-1.5 text-[#1E1916] no-underline hover:text-[#A91D22]"
                 >
                   <span>Back to top</span>
                   <ArrowUp size={14} strokeWidth={1.6} aria-hidden="true" />

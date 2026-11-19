@@ -56,7 +56,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${plusJakarta.variable} ${cormorantGaramond.variable} ${ibmPlexMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#0A0A0C] text-[#F4F1EA]">
+      <body className="min-h-full flex flex-col bg-[#F4EADF] text-[#1E1916]">
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>

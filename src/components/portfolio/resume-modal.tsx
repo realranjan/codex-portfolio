@@ -73,16 +73,16 @@ export function ResumeModal({ open, onClose }: ResumeModalProps) {
       data-testid="resume-modal"
     >
       <div
-        className="fixed inset-0 bg-[#0A0A0C]/85"
+        className="fixed inset-0 bg-[#1E1916]/55 backdrop-blur-[2px]"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      <div className="relative z-10 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[6px] border border-white/[0.12] bg-[#121216] p-6 sm:p-10 text-[#F4F1EA]">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/[0.1] pb-5">
+      <div className="relative z-10 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[6px] border border-[#2B231E]/[0.16] bg-[#FBF6EF] p-6 sm:p-10 text-[#1E1916] shadow-[0_24px_64px_rgba(30,25,22,0.24)]">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#2B231E]/[0.14] pb-5">
           <div>
-            <p className="type-tech-label text-[#C4B0DC]">Curriculum Vitae</p>
-            <h2 id="resume-dialog-title" className="mt-1 text-2xl font-semibold tracking-[-0.03em]">
+            <p className="type-tech-label text-[#A91D22]">Curriculum Vitae</p>
+            <h2 id="resume-dialog-title" className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-[#1E1916]">
               {IDENTITY.name}
             </h2>
           </div>
@@ -110,7 +110,7 @@ export function ResumeModal({ open, onClose }: ResumeModalProps) {
               ref={closeBtnRef}
               type="button"
               onClick={onClose}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-[4px] border border-white/[0.12] bg-[#1B1A20] text-[#F4F1EA] hover:border-[#C4B0DC]"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-[4px] border border-[#2B231E]/[0.18] bg-[#F4EADF] text-[#1E1916] hover:border-[#A91D22] hover:text-[#A91D22] cursor-pointer"
               aria-label="Close resume dialog"
             >
               <X size={18} strokeWidth={1.6} />
@@ -119,7 +119,7 @@ export function ResumeModal({ open, onClose }: ResumeModalProps) {
         </div>
 
         <div className="mt-6 space-y-7 text-sm sm:text-base">
-          <div className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs text-[#A19D97]">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs text-[#554C45]">
             <span>{IDENTITY.email}</span>
             <span aria-hidden="true">·</span>
             <span>{IDENTITY.location}</span>
@@ -128,11 +128,11 @@ export function ResumeModal({ open, onClose }: ResumeModalProps) {
           </div>
 
           <div>
-            <h3 className="type-tech-label text-[#C4B0DC] mb-3">Engineering Profile</h3>
-            <ul className="space-y-2 text-[#A19D97] list-none p-0 m-0">
+            <h3 className="type-tech-label text-[#A91D22] mb-3">Engineering Profile</h3>
+            <ul className="space-y-2 text-[#554C45] list-none p-0 m-0">
               {RESUME_SUMMARY.highlights.map((h, i) => (
                 <li key={i} className="grid grid-cols-[18px_1fr] gap-2">
-                  <span className="font-mono text-xs text-[#6C6863] pt-1">—</span>
+                  <span className="font-mono text-xs text-[#766C63] pt-1">—</span>
                   <span>{h}</span>
                 </li>
               ))}
@@ -140,36 +140,36 @@ export function ResumeModal({ open, onClose }: ResumeModalProps) {
           </div>
 
           <div>
-            <h3 className="type-tech-label text-[#C4B0DC] mb-3">Career Chronology</h3>
-            <div className="border-t border-white/[0.1]">
+            <h3 className="type-tech-label text-[#A91D22] mb-3">Career Chronology</h3>
+            <div className="border-t border-[#2B231E]/[0.14]">
               {CAREER_STOPS.slice()
                 .reverse()
                 .map((stop) => (
                   <div
                     key={stop.id}
-                    className="border-b border-white/[0.08] py-4"
+                    className="border-b border-[#2B231E]/[0.12] py-4"
                   >
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <span className="font-semibold text-[#F4F1EA]">
+                      <span className="font-semibold text-[#1E1916]">
                         {stop.company} · {stop.role}
                       </span>
-                      <span className="font-mono text-xs text-[#6C6863] tabular-nums">
+                      <span className="font-mono text-xs text-[#766C63] tabular-nums">
                         {stop.period}
                       </span>
                     </div>
-                    <p className="mt-1.5 text-sm text-[#A19D97]">{stop.summary}</p>
+                    <p className="mt-1.5 text-sm text-[#554C45]">{stop.summary}</p>
                   </div>
                 ))}
             </div>
           </div>
 
           <div>
-            <h3 className="type-tech-label text-[#C4B0DC] mb-3">Systems & Stack</h3>
+            <h3 className="type-tech-label text-[#A91D22] mb-3">Systems & Stack</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {STACK_CATEGORIES.map((cat) => (
-                <div key={cat.name} className="border-t border-white/[0.1] pt-3">
-                  <div className="font-medium text-[#F4F1EA]">{cat.name}</div>
-                  <div className="mt-1 text-xs font-mono text-[#A19D97]">
+                <div key={cat.name} className="border-t border-[#2B231E]/[0.14] pt-3">
+                  <div className="font-medium text-[#1E1916]">{cat.name}</div>
+                  <div className="mt-1 text-xs font-mono text-[#554C45]">
                     {cat.items.join(" · ")}
                   </div>
                 </div>

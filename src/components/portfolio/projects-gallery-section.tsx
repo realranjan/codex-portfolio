@@ -106,30 +106,30 @@ export function ProjectsGallerySection({
         className="pointer-events-none absolute inset-0 z-[20] flex flex-col justify-between will-change-[transform,opacity]"
         style={{ opacity: 0, visibility: "hidden" }}
       >
-        {/* Top Header Row with gentle contrast veil over upper glyphs */}
+        {/* Top Header Row with gentle warm washi contrast veil */}
         <div
           className="pt-[84px] pb-6 lg:pt-24 lg:pb-8"
           style={{
             background:
-              "linear-gradient(to bottom, rgba(10,10,12,0.88) 0%, rgba(10,10,12,0.52) 64%, transparent 100%)",
+              "linear-gradient(to bottom, rgba(244,234,223,0.94) 0%, rgba(244,234,223,0.68) 64%, transparent 100%)",
           }}
         >
           <div className="page-container">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-8 items-end">
               <div className="lg:col-span-2">
-                <span className="type-tech-label text-[#C4B0DC]">01. Selected Work</span>
+                <span className="type-tech-label text-[#A91D22]">01. Selected Work</span>
               </div>
               <div className="lg:col-span-6">
                 <h2
                   id="projects-heading"
-                  className="text-2xl sm:text-3xl lg:text-[2.35rem] font-semibold leading-[1.08] tracking-[-0.035em] text-[#F4F1EA]"
+                  className="text-2xl sm:text-3xl lg:text-[2.35rem] font-semibold leading-[1.08] tracking-[-0.035em] text-[#1E1916]"
                 >
                   Production systems, built to hold{" "}
                   <em className="type-serif-accent font-medium">latency.</em>
                 </h2>
               </div>
               <div className="hidden sm:block lg:col-span-4">
-                <p className="text-xs sm:text-sm text-[#A19D97] leading-relaxed">
+                <p className="text-xs sm:text-sm text-[#554C45] leading-relaxed">
                   Scroll or drag to orbit projects around the sculpture. Select any card for
                   architecture notes.
                 </p>
@@ -138,25 +138,25 @@ export function ProjectsGallerySection({
           </div>
         </div>
 
-        {/* Bottom Case Controls Dock with crisp obsidian gradient backing */}
+        {/* Bottom Case Controls Dock with warm washi paper backing */}
         <div
           className="pt-8 pb-5 lg:pt-10 lg:pb-7"
           style={{
             background:
-              "linear-gradient(to top, rgba(10,10,12,0.94) 0%, rgba(10,10,12,0.72) 58%, transparent 100%)",
+              "linear-gradient(to top, rgba(244,234,223,0.96) 0%, rgba(244,234,223,0.78) 58%, transparent 100%)",
           }}
         >
           <div className="page-container">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 border-t border-white/[0.12] pt-3.5 sm:pt-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 border-t border-[#2B231E]/[0.15] pt-3.5 sm:pt-4">
               <div className="flex items-baseline gap-3 sm:gap-4 min-w-0">
-                <span className="font-mono text-xs text-[#C4B0DC] tabular-nums shrink-0">
+                <span className="font-mono text-xs text-[#A91D22] tabular-nums shrink-0">
                   {activeProject.index} / {String(PROJECTS.length).padStart(2, "0")}
                 </span>
-                <span className="text-base sm:text-lg font-semibold tracking-[-0.02em] text-[#F4F1EA] whitespace-nowrap shrink-0">
+                <span className="text-base sm:text-lg font-semibold tracking-[-0.02em] text-[#1E1916] whitespace-nowrap shrink-0">
                   {activeProject.title}{" "}
                   <em className="type-serif-accent font-normal">{activeProject.serifAccent}</em>
                 </span>
-                <span className="hidden xl:inline font-mono text-xs text-[#A19D97] truncate max-w-[380px]">
+                <span className="hidden xl:inline font-mono text-xs text-[#554C45] truncate max-w-[380px]">
                   {activeProject.summary}
                 </span>
               </div>
@@ -178,8 +178,8 @@ export function ProjectsGallerySection({
                       aria-pressed={isCurrent}
                       className={`h-9 min-w-[36px] px-2 rounded-[4px] font-mono text-xs tabular-nums transition-colors duration-200 cursor-pointer ${
                         isCurrent
-                          ? "bg-[#C4B0DC] text-[#0A0A0C] font-medium"
-                          : "border border-white/[0.1] bg-[#121216] text-[#A19D97] hover:border-[#C4B0DC] hover:text-[#F4F1EA]"
+                          ? "bg-[#A91D22] text-[#FBF6EF] font-medium"
+                          : "border border-[#2B231E]/[0.18] bg-[#FBF6EF] text-[#554C45] hover:border-[#A91D22] hover:text-[#1E1916]"
                       }`}
                     >
                       {project.index}
@@ -191,7 +191,7 @@ export function ProjectsGallerySection({
               <button
                 type="button"
                 onClick={() => handleStep(-1)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-[4px] border border-white/[0.1] bg-[#121216] text-[#F4F1EA] transition-colors duration-200 hover:border-[#C4B0DC] hover:text-[#C4B0DC] cursor-pointer"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-[4px] border border-[#2B231E]/[0.18] bg-[#FBF6EF] text-[#1E1916] transition-colors duration-200 hover:border-[#A91D22] hover:text-[#A91D22] cursor-pointer"
                 aria-label="Previous project"
               >
                 <ChevronLeft size={16} strokeWidth={1.6} />
@@ -200,7 +200,7 @@ export function ProjectsGallerySection({
               <button
                 type="button"
                 onClick={() => handleStep(1)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-[4px] border border-white/[0.1] bg-[#121216] text-[#F4F1EA] transition-colors duration-200 hover:border-[#C4B0DC] hover:text-[#C4B0DC] cursor-pointer"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-[4px] border border-[#2B231E]/[0.18] bg-[#FBF6EF] text-[#1E1916] transition-colors duration-200 hover:border-[#A91D22] hover:text-[#A91D22] cursor-pointer"
                 aria-label="Next project"
               >
                 <ChevronRight size={16} strokeWidth={1.6} />
@@ -209,7 +209,7 @@ export function ProjectsGallerySection({
               <button
                 type="button"
                 onClick={() => setPaused((p) => !p)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-[4px] border border-white/[0.1] bg-[#121216] text-[#F4F1EA] transition-colors duration-200 hover:border-[#C4B0DC] hover:text-[#C4B0DC] cursor-pointer"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-[4px] border border-[#2B231E]/[0.18] bg-[#FBF6EF] text-[#1E1916] transition-colors duration-200 hover:border-[#A91D22] hover:text-[#A91D22] cursor-pointer"
                 aria-label={paused ? "Resume gallery rotation" : "Pause gallery rotation"}
                 aria-pressed={paused}
               >

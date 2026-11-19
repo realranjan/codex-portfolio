@@ -89,13 +89,13 @@ export function CareerJourney() {
       <div className="page-container">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 mb-14 items-end">
           <div className="lg:col-span-2">
-            <span className="type-tech-label">03. Experience</span>
+            <span className="type-tech-label text-[#A91D22]">03. Experience</span>
           </div>
           <div className="lg:col-span-7">
             <MaskedLineReveal
               as="h2"
               id="experience-heading"
-              className="type-h2 text-[#F4F1EA]"
+              className="type-h2 text-[#1E1916]"
               lines={[
                 "Six years across",
                 <>
@@ -105,7 +105,7 @@ export function CareerJourney() {
             />
           </div>
           <div className="lg:col-span-3 flex flex-col gap-3">
-            <p className="text-sm text-[#A19D97] leading-relaxed">
+            <p className="text-sm text-[#554C45] leading-relaxed">
               Select a milestone or scroll to trace roles from data pipelines to inference routing.
             </p>
             <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Career milestones">
@@ -118,8 +118,8 @@ export function CareerJourney() {
                     onClick={() => setSelectedStopId(stop.id)}
                     className={`px-2.5 py-1.5 rounded-[4px] font-mono text-xs tabular-nums transition-colors duration-200 cursor-pointer ${
                       isActive
-                        ? "bg-[#C4B0DC] text-[#0A0A0C] font-medium"
-                        : "border border-white/[0.1] bg-[#121216] text-[#A19D97] hover:border-[#C4B0DC] hover:text-[#F4F1EA]"
+                        ? "bg-[#A91D22] text-[#FBF6EF] font-medium"
+                        : "border border-[#2B231E]/[0.16] bg-[#F4EADF] text-[#554C45] hover:border-[#A91D22] hover:text-[#1E1916]"
                     }`}
                     aria-pressed={isActive}
                   >
@@ -142,14 +142,14 @@ export function CareerJourney() {
               <path
                 d={routePathD}
                 fill="none"
-                stroke="rgba(244,241,234,0.12)"
+                stroke="rgba(43,35,30,0.16)"
                 strokeWidth="1"
                 vectorEffect="non-scaling-stroke"
               />
               <path
                 d={activeRoutePathD}
                 fill="none"
-                stroke="#C4B0DC"
+                stroke="#A91D22"
                 strokeWidth="1.75"
                 vectorEffect="non-scaling-stroke"
               />
@@ -161,8 +161,8 @@ export function CareerJourney() {
                     cx={pt.x}
                     cy={pt.y}
                     r={reached ? 4.5 : 3}
-                    fill={reached ? "#C4B0DC" : "#0A0A0C"}
-                    stroke="#C4B0DC"
+                    fill={reached ? "#A91D22" : "#FBF6EF"}
+                    stroke="#A91D22"
                     strokeWidth="1.2"
                     vectorEffect="non-scaling-stroke"
                   />
@@ -171,38 +171,38 @@ export function CareerJourney() {
             </svg>
           </div>
 
-          <ol className="relative lg:ml-[16.666%] lg:pl-8 border-t border-white/[0.1] list-none p-0 m-0">
+          <ol className="relative lg:ml-[16.666%] lg:pl-8 border-t border-[#2B231E]/[0.14] list-none p-0 m-0">
             {CAREER_STOPS.map((stop) => {
               const isActive = flight.activeWaypointId === stop.id;
               return (
                 <li
                   key={stop.id}
-                  className="border-b border-white/[0.1] py-8 sm:py-10 transition-opacity duration-300"
+                  className="border-b border-[#2B231E]/[0.14] py-8 sm:py-10 transition-opacity duration-300"
                   style={{ opacity: isActive ? 1 : 0.78 }}
                 >
                   <article className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-8 items-start">
                     <div className="lg:col-span-4 space-y-1.5">
-                      <div className="font-mono text-xs text-[#C4B0DC] tabular-nums">
+                      <div className="font-mono text-xs text-[#A91D22] tabular-nums">
                         {stop.period}
                       </div>
-                      <h3 className="text-xl sm:text-2xl font-semibold tracking-[-0.025em] text-[#F4F1EA]">
+                      <h3 className="text-xl sm:text-2xl font-semibold tracking-[-0.025em] text-[#1E1916]">
                         {stop.company}
                       </h3>
-                      <p className="font-serif italic text-lg text-[#C4B0DC]">{stop.role}</p>
-                      <p className="font-mono text-xs text-[#6C6863]">{stop.city}</p>
+                      <p className="font-serif italic text-lg text-[#A91D22]">{stop.role}</p>
+                      <p className="font-mono text-xs text-[#766C63]">{stop.city}</p>
                     </div>
 
                     <div className="lg:col-span-8 space-y-4">
-                      <p className="text-base leading-relaxed text-[#A19D97] prose-measure">
+                      <p className="text-base leading-relaxed text-[#554C45] prose-measure">
                         {stop.summary}
                       </p>
                       <ul className="space-y-2 list-none p-0 m-0">
                         {stop.highlights.map((item, hIdx) => (
                           <li
                             key={hIdx}
-                            className="grid grid-cols-[18px_1fr] gap-2 text-sm text-[#A19D97]"
+                            className="grid grid-cols-[18px_1fr] gap-2 text-sm text-[#554C45]"
                           >
-                            <span className="font-mono text-xs text-[#6C6863] pt-0.5">—</span>
+                            <span className="font-mono text-xs text-[#766C63] pt-0.5">—</span>
                             <span>{item}</span>
                           </li>
                         ))}

@@ -430,7 +430,7 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
               <path
                 d={`M 0 ${effectiveRadius} A ${effectiveRadius} ${effectiveRadius} 0 0 1 ${orbitDiameter} ${effectiveRadius}`}
                 fill="none"
-                stroke="rgba(244, 241, 234, 0.14)"
+                stroke="rgba(43, 35, 30, 0.18)"
                 strokeWidth="2"
                 strokeDasharray="4 10"
               />
@@ -438,7 +438,7 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
                 ref={backArcPathRef}
                 d={`M 0 ${effectiveRadius} A ${effectiveRadius} ${effectiveRadius} 0 0 1 ${orbitDiameter} ${effectiveRadius}`}
                 fill="none"
-                stroke="rgba(196, 176, 220, 0.72)"
+                stroke="rgba(169, 29, 34, 0.72)"
                 strokeWidth="3.5"
                 strokeLinecap="round"
               />
@@ -474,18 +474,18 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
                   className="absolute"
                 >
                   <div
-                    className="absolute inset-0 flex flex-col justify-between rounded-[6px] border border-white/[0.08] bg-[#0E0E13] p-5 shadow-[0_18px_40px_rgba(0,0,0,0.65)]"
+                    className="absolute inset-0 flex flex-col justify-between rounded-[6px] border border-[#2B231E]/[0.16] bg-[#FBF6EF] p-5 shadow-[0_18px_36px_rgba(43,35,30,0.16)]"
                     style={{
                       transform: "rotateY(180deg) translateZ(1px)",
                       backfaceVisibility: "hidden",
                       WebkitBackfaceVisibility: "hidden",
                     }}
                   >
-                    <div className="flex items-center justify-between font-mono text-[11px] text-[#6C6863] tabular-nums">
+                    <div className="flex items-center justify-between font-mono text-[11px] text-[#766C63] tabular-nums">
                       <span>{item.index ?? String(i + 1).padStart(2, "0")}</span>
                       <span>{item.binomial}</span>
                     </div>
-                    <div className="border-t border-white/[0.06] pt-3 font-mono text-[11px] text-[#6C6863]">
+                    <div className="border-t border-[#2B231E]/[0.12] pt-3 font-mono text-[11px] text-[#554C45]">
                       {item.common}
                     </div>
                   </div>
@@ -532,7 +532,7 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
               <path
                 d={`M ${orbitDiameter} ${effectiveRadius} A ${effectiveRadius} ${effectiveRadius} 0 0 1 0 ${effectiveRadius}`}
                 fill="none"
-                stroke="rgba(244, 241, 234, 0.14)"
+                stroke="rgba(43, 35, 30, 0.18)"
                 strokeWidth="2"
                 strokeDasharray="4 10"
               />
@@ -540,7 +540,7 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
                 ref={frontArcPathRef}
                 d={`M ${orbitDiameter} ${effectiveRadius} A ${effectiveRadius} ${effectiveRadius} 0 0 1 0 ${effectiveRadius}`}
                 fill="none"
-                stroke="rgba(196, 176, 220, 0.85)"
+                stroke="rgba(169, 29, 34, 0.85)"
                 strokeWidth="3.5"
                 strokeLinecap="round"
               />
@@ -594,10 +594,10 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
                     aria-label={`Inspect ${item.common} case study`}
                     aria-current={isFront ? "true" : undefined}
                     className={cn(
-                      "group relative block w-full h-full text-left rounded-[6px] overflow-hidden border bg-[#101014] transition-[border-color,box-shadow] duration-200 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#C4B0DC] focus-visible:outline-offset-4",
+                      "group relative block w-full h-full text-left rounded-[6px] overflow-hidden border bg-[#261F1C] transition-[border-color,box-shadow] duration-200 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#A91D22] focus-visible:outline-offset-4",
                       isSelected || isFront
-                        ? "border-[#C4B0DC]/75 shadow-[0_24px_64px_rgba(0,0,0,0.78)]"
-                        : "border-white/[0.1] shadow-[0_18px_40px_rgba(0,0,0,0.6)] hover:border-white/25"
+                        ? "border-[#A91D22] shadow-[0_24px_54px_rgba(43,35,30,0.34)]"
+                        : "border-[#2B231E]/[0.24] shadow-[0_16px_34px_rgba(43,35,30,0.22)] hover:border-[#A91D22]/70"
                     )}
                   >
                     {hasFailed ? (
@@ -605,11 +605,11 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
                         className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center"
                         style={{
                           background:
-                            "radial-gradient(circle at 50% 35%, rgba(196,176,220,0.12), #121216 72%)",
+                            "radial-gradient(circle at 50% 35%, rgba(169,29,34,0.18), #261F1C 72%)",
                         }}
                       >
-                        <Layers size={28} strokeWidth={1.5} className="text-[#C4B0DC]" />
-                        <span className="font-mono text-xs tracking-[0.04em] text-[#A19D97]">
+                        <Layers size={28} strokeWidth={1.5} className="text-[#F4C4A8]" />
+                        <span className="font-mono text-xs tracking-[0.04em] text-[#E6DDD3]">
                           {item.common}
                         </span>
                       </div>
@@ -630,33 +630,33 @@ const CircularGallery = React.forwardRef<HTMLDivElement, CircularGalleryProps>(
 
                     <div
                       aria-hidden="true"
-                      className="absolute inset-0 bg-gradient-to-t from-[#0A0A0C] via-[#0A0A0C]/55 to-transparent"
+                      className="absolute inset-0 bg-gradient-to-t from-[#191310]/95 via-[#191310]/55 to-[#191310]/20"
                     />
 
-                    <div className="absolute top-3.5 left-4 right-4 flex items-center justify-between gap-2 text-[11px] font-mono tracking-[0.04em] text-[#A19D97]">
-                      <span className="tabular-nums text-[#C4B0DC]">
+                    <div className="absolute top-3.5 left-4 right-4 flex items-center justify-between gap-2 text-[11px] font-mono tracking-[0.04em] text-[#E6DDD3]">
+                      <span className="tabular-nums text-[#F4C4A8]">
                         {item.index ?? String(i + 1).padStart(2, "0")}
                       </span>
-                      <span className="inline-flex items-center gap-1 text-[#F4F1EA]/85 transition-colors group-hover:text-[#C4B0DC]">
+                      <span className="inline-flex items-center gap-1 text-[#FBF6EF]/90 transition-colors group-hover:text-[#F4C4A8]">
                         <span>Inspect</span>
                         <MoveUpRight size={13} strokeWidth={1.6} aria-hidden="true" />
                       </span>
                     </div>
 
-                    <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 text-[#F4F1EA]">
-                      <div className="font-mono text-[10px] sm:text-[11px] tracking-[0.03em] text-[#A19D97]">
+                    <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5 text-[#FBF6EF]">
+                      <div className="font-mono text-[10px] sm:text-[11px] tracking-[0.03em] text-[#D8CEC3]">
                         {item.binomial}
                       </div>
-                      <h3 className="mt-1 text-lg sm:text-xl font-semibold tracking-[-0.025em] leading-tight text-[#F4F1EA]">
+                      <h3 className="mt-1 text-lg sm:text-xl font-semibold tracking-[-0.025em] leading-tight text-[#FBF6EF]">
                         {item.common}{" "}
                         {item.accent ? (
-                          <em className="type-serif-accent font-normal">{item.accent}</em>
+                          <em className="font-serif italic font-normal text-[#F4C4A8]">{item.accent}</em>
                         ) : null}
                       </h3>
-                      <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-white/[0.1] pt-2 text-[10px] sm:text-[11px] font-mono text-[#A19D97] tabular-nums">
+                      <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-white/[0.16] pt-2 text-[10px] sm:text-[11px] font-mono text-[#D8CEC3] tabular-nums">
                         <span className="truncate">{item.photo.by}</span>
                         {item.metricValue ? (
-                          <span className="text-[#F4F1EA] shrink-0">{item.metricValue}</span>
+                          <span className="text-[#FBF6EF] shrink-0">{item.metricValue}</span>
                         ) : null}
                       </div>
                     </div>

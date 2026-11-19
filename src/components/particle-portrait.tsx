@@ -40,6 +40,8 @@ interface RevealUniforms {
   uRevealRadius: { value: number };
   uRevealMix: { value: number };
   uFullCutaway: { value: number };
+  uWashiMistMix: { value: number };
+  uSunRimMix: { value: number };
 }
 
 function detectSoftwareWebGL(): boolean {
@@ -125,21 +127,55 @@ function applyTextureSafeguards(
   configureTex(cloned.aoMap, false);
 
   cloned.customProgramCacheKey = () =>
-    isOuterSamuraiLayer ? "samurai-hover-reveal-v2" : "cute-hover-mask-v2";
+    isOuterSamuraiLayer ? "samurai-washi-blend-v3" : "cute-washi-blend-v3";
   cloned.onBeforeCompile = (shader) => {
     shader.uniforms.uRevealCenter = revealUniforms.uRevealCenter;
     shader.uniforms.uRevealRadius = revealUniforms.uRevealRadius;
     shader.uniforms.uRevealMix = revealUniforms.uRevealMix;
     shader.uniforms.uFullCutaway = revealUniforms.uFullCutaway;
+    shader.uniforms.uWashiMistMix = revealUniforms.uWashiMistMix;
+    shader.uniforms.uSunRimMix = revealUniforms.uSunRimMix;
+
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        "#include <common>",
+        `#include <common>
+varying vec3 vCatWorldPos;`
+      )
+      .replace(
+        "#include <begin_vertex>",
+        `#include <begin_vertex>
+vec4 catWorldPos = modelMatrix * vec4(transformed, 1.0);
+vCatWorldPos = catWorldPos.xyz;`
+      );
 
     shader.fragmentShader = shader.fragmentShader.replace(
       "#include <common>",
       `#include <common>
+varying vec3 vCatWorldPos;
 uniform vec2 uRevealCenter;
 uniform float uRevealRadius;
 uniform float uRevealMix;
-uniform float uFullCutaway;`
+uniform float uFullCutaway;
+uniform float uWashiMistMix;
+uniform float uSunRimMix;`
     );
+
+    const washiBlendBlock = `
+// Warm rising-sun crimson edge rim behind upper helmet & ears
+vec3 catViewDir = normalize(vViewPosition);
+float catFresnel = pow(1.0 - clamp(abs(dot(normalize(vNormal), catViewDir)), 0.0, 1.0), 2.35);
+float upperSunMask = smoothstep(-0.35, 0.72, vCatWorldPos.y);
+vec3 crimsonSunGlow = vec3(0.86, 0.23, 0.19);
+gl_FragColor.rgb = mix(gl_FragColor.rgb, crimsonSunGlow, catFresnel * upperSunMask * 0.34 * uSunRimMix);
+
+// Seamless organic morning mist feathering along the lower armor edge into warm washi paper (#F4EADF)
+float cloudWave = sin(vCatWorldPos.x * 3.6 + 0.5) * 0.075 + cos(vCatWorldPos.x * 7.2 - 0.8) * 0.035;
+float mistHeight = vCatWorldPos.y + cloudWave;
+float mistBand = (1.0 - smoothstep(-1.46, -0.76, mistHeight)) * uWashiMistMix;
+vec3 washiPaperColor = vec3(0.957, 0.918, 0.875);
+gl_FragColor.rgb = mix(gl_FragColor.rgb, washiPaperColor, clamp(mistBand * 0.98, 0.0, 0.98));
+`;
 
     if (isOuterSamuraiLayer) {
       shader.fragmentShader = shader.fragmentShader.replace(
@@ -151,8 +187,9 @@ if (uRevealMix > 0.01) {
   if (distToPointer < revealR) discard;
   float rimWidth = max(3.5, revealR * 0.075);
   float edgeGlow = 1.0 - smoothstep(revealR, revealR + rimWidth, distToPointer);
-  gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.77, 0.69, 0.86), edgeGlow * 0.85 * uRevealMix);
+  gl_FragColor.rgb = mix(gl_FragColor.rgb, vec3(0.84, 0.23, 0.22), edgeGlow * 0.85 * uRevealMix);
 }
+${washiBlendBlock}
 #include <dithering_fragment>`
       );
     } else {
@@ -164,6 +201,7 @@ if (uRevealMix > 0.01) {
   float distToPointer = distance(gl_FragCoord.xy, uRevealCenter);
   if (distToPointer > revealR + 1.5) discard;
 }
+${washiBlendBlock}
 #include <dithering_fragment>`
       );
     }
@@ -318,22 +356,28 @@ function buildSegmentedCatRig(params: {
 }
 
 function attachStudioLights(scene: THREE.Scene) {
-  const hemi = new THREE.HemisphereLight(0xeae2f8, 0x1d1a26, 1.05);
+  // Warm parchment hemisphere light so underside armor folds reflect warm washi paper
+  const hemi = new THREE.HemisphereLight(0xfff6e9, 0x8e6b54, 1.32);
   scene.add(hemi);
 
-  const key = new THREE.DirectionalLight(0xfff5ea, 1.85);
-  key.position.set(2.4, 3.6, 5.2);
+  const key = new THREE.DirectionalLight(0xfff4e4, 1.82);
+  key.position.set(2.1, 3.6, 5.4);
   scene.add(key);
 
-  const fill = new THREE.DirectionalLight(0xc4b0dc, 0.95);
-  fill.position.set(-4.2, 1.4, 3.2);
+  const fill = new THREE.DirectionalLight(0xf3d8c0, 1.04);
+  fill.position.set(-4.2, 1.5, 3.4);
   scene.add(fill);
 
-  const rim = new THREE.DirectionalLight(0xd9cae8, 1.3);
-  rim.position.set(0.2, 2.8, -4.6);
-  scene.add(rim);
+  // Dual crimson rising-sun back-rim lights wrapping the ears & kabuto edges in sun warmth
+  const crimsonRimLeft = new THREE.DirectionalLight(0xe5443b, 1.52);
+  crimsonRimLeft.position.set(-2.7, 2.3, -3.8);
+  scene.add(crimsonRimLeft);
 
-  const pointerLight = new THREE.PointLight(0xe9defa, 1.75, 12, 1.5);
+  const crimsonRimRight = new THREE.DirectionalLight(0xea5342, 1.48);
+  crimsonRimRight.position.set(2.7, 2.3, -3.8);
+  scene.add(crimsonRimRight);
+
+  const pointerLight = new THREE.PointLight(0xffe7cf, 1.4, 12, 1.5);
   pointerLight.position.set(0, 1.2, 3.2);
   scene.add(pointerLight);
 
@@ -556,11 +600,11 @@ export default function ParticlePortrait({
           alpha: true,
           powerPreference: "high-performance",
         });
-        renderer.setClearColor("#0D0B12", 0);
+        renderer.setClearColor("#F4EADF", 0);
         renderer.autoClear = false;
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.06;
+        renderer.toneMappingExposure = 1.08;
         stage.appendChild(renderer.domElement);
 
         const maxAniso = isSoftwareGl
@@ -578,8 +622,8 @@ export default function ParticlePortrait({
         const samuraiScene = new THREE.Scene();
         cuteScene.environment = envTexture;
         samuraiScene.environment = envTexture;
-        cuteScene.environmentIntensity = 0.72;
-        samuraiScene.environmentIntensity = 0.88;
+        cuteScene.environmentIntensity = 0.78;
+        samuraiScene.environmentIntensity = 0.92;
 
         const cuteLights = attachStudioLights(cuteScene);
         const samuraiLights = attachStudioLights(samuraiScene);
@@ -589,6 +633,8 @@ export default function ParticlePortrait({
           uRevealRadius: { value: 220 },
           uRevealMix: { value: 0 },
           uFullCutaway: { value: 0 },
+          uWashiMistMix: { value: 1 },
+          uSunRimMix: { value: 1 },
         };
 
         const alignment = computeDualLayerAlignment(
@@ -656,20 +702,20 @@ export default function ParticlePortrait({
           const transition = computeHeroToCarouselState(rawHero, rawProjects);
           const centerMix = centerMixRef?.current ?? transition.centerMix;
 
-          const heroShiftX = isDesktop ? 1.12 : 0;
-          const heroCamX = modelCenter.x - heroShiftX * 1.04;
-          const heroLookX = modelCenter.x - heroShiftX * 0.88;
-          const heroCamY = isDesktop ? modelCenter.y - 0.06 : modelCenter.y - 0.35;
-          const heroLookY = isDesktop ? modelCenter.y - 0.04 : modelCenter.y - 1.18;
+          const heroShiftX = 0;
+          const heroCamX = modelCenter.x - heroShiftX;
+          const heroLookX = modelCenter.x - heroShiftX;
+          const heroCamY = isDesktop ? modelCenter.y + 0.06 : modelCenter.y + 0.04;
+          const heroLookY = isDesktop ? modelCenter.y - 0.04 : modelCenter.y - 0.02;
           const heroCamZ = isDesktop
-            ? Math.max(7.6, baseDistance * 1.08)
-            : Math.max(9.2, baseDistance * 1.28);
+            ? Math.max(7.25, baseDistance * 1.03)
+            : Math.max(7.95, baseDistance * 1.12);
 
           const orbitCamX = modelCenter.x;
           const orbitLookX = modelCenter.x;
-          const orbitCamY = isDesktop ? modelCenter.y + 0.1 : modelCenter.y + 0.08;
-          const orbitLookY = isDesktop ? modelCenter.y + 0.04 : modelCenter.y + 0.04;
-          const orbitCamZ = Math.max(10.6, baseDistance * (isDesktop ? 1.54 : 1.66));
+          const orbitCamY = isDesktop ? modelCenter.y + 0.24 : modelCenter.y + 0.18;
+          const orbitLookY = isDesktop ? modelCenter.y + 0.18 : modelCenter.y + 0.12;
+          const orbitCamZ = Math.max(11.8, baseDistance * (isDesktop ? 1.72 : 1.78));
 
           const pullback = transition.orbitPullbackMix;
           const camX =
@@ -806,10 +852,17 @@ export default function ParticlePortrait({
           revealUniforms.uFullCutaway.value = targetFullCutaway;
 
           const wantsReveal =
-            layerMode === "reveal" && modelHovered && targetFullCutaway < 0.5;
+            layerMode === "reveal" &&
+            modelHovered &&
+            targetFullCutaway < 0.5 &&
+            transition.carouselMix < 0.2;
           const revealAlpha = reduced || isSoftwareGl ? 0.72 : 1 - Math.exp(-dt * 12);
           revealUniforms.uRevealMix.value +=
             ((wantsReveal ? 1 : 0) - revealUniforms.uRevealMix.value) * revealAlpha;
+
+          // Keep lower mist blending rich on hero and softly atmospheric during orbiting gallery
+          revealUniforms.uWashiMistMix.value = 1 - transition.centerMix * 0.28;
+          revealUniforms.uSunRimMix.value = 1 - transition.centerMix * 0.45;
 
           // Synchronized pointer light across both scenes
           if (pointerMoved) {
@@ -957,7 +1010,7 @@ export default function ParticlePortrait({
           className="relative h-full w-full overflow-hidden"
           style={{
             background:
-              "radial-gradient(circle at 68% 44%, rgba(196,176,220,0.16), #0A0A0C 64%)",
+              "radial-gradient(circle at 50% 42%, rgba(169,29,34,0.18), #F4EADF 64%)",
           }}
         />
       ) : (
