@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -10,8 +10,12 @@ import {
   computeAboutStoryState,
   computePinePointerTarget,
 } from "@/lib/about-story";
+import { usePrefersReducedMotion } from "@/components/portfolio/camera-primitives";
 
 gsap.registerPlugin(ScrollTrigger);
+
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 /**
  * Ultra-fine static monochrome paper grain data URI (composited once, zero runtime filter lag).
@@ -64,21 +68,18 @@ export function ChapterAbout() {
   // Lightweight state only for discrete active marker & scene telemetry (updates at most 4 times)
   const [activeIndex, setActiveIndex] = useState<0 | 1 | 2 | 3>(0);
   const [activeScene, setActiveScene] = useState<1 | 2 | 3 | 4 | 5>(1);
-  const [reducedMotion, setReducedMotion] = useState(false);
+  const reducedMotion = usePrefersReducedMotion();
 
   const lastActiveIndexRef = useRef<0 | 1 | 2 | 3>(0);
   const lastActiveSceneRef = useRef<1 | 2 | 3 | 4 | 5>(1);
 
   // 1. Desktop pinned 5-scene reversible scroll choreography
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     const pinEl = pinStageRef.current;
-    if (!pinEl) return;
-
-    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    setReducedMotion(prefersReduced);
+    if (!pinEl || reducedMotion) return;
 
     const isDesktop = window.matchMedia("(min-width: 768px)").matches;
-    if (prefersReduced || !isDesktop) return;
+    if (!isDesktop) return;
 
     const applyStoryToDom = (progress: number) => {
       const state = computeAboutStoryState(progress);
@@ -170,7 +171,7 @@ export function ChapterAbout() {
       scrollTriggerRef.current = null;
       ctx.revert();
     };
-  }, []);
+  }, [reducedMotion]);
 
   // 2. Bounded smooth pointer parallax for foreground pine (active only while pointer moves; zero idle drift)
   useEffect(() => {
@@ -257,13 +258,16 @@ export function ChapterAbout() {
           DESKTOP & TABLET PINNED CINEMATIC SUMI-E STORYTELLING STAGE
           (Automatically switches to static readable editorial layout when reduced motion is enabled)
          ═══════════════════════════════════════════════════════════════════════ */}
-      {!reducedMotion ? (
+      <div
+        className={reducedMotion ? "hidden" : "hidden md:block"}
+        aria-hidden={reducedMotion || undefined}
+      >
         <div
           ref={pinStageRef}
           data-testid="about-sumie-stage"
           data-about-scene={String(activeScene)}
           data-about-progress="0.000"
-          className="relative hidden md:flex min-h-[100svh] w-full flex-col justify-between overflow-hidden bg-[#792B33]"
+          className="relative flex min-h-[100svh] w-full flex-col justify-between overflow-hidden bg-[#792B33]"
         >
           {/* Layer 0: Extremely fine static washi paper grain */}
           <div
@@ -498,7 +502,7 @@ export function ChapterAbout() {
             </div>
           </div>
         </div>
-      ) : null}
+      </div>
 
       {/* ═══════════════════════════════════════════════════════════════════════
           MOBILE LAYOUT (< 768px) & REDUCED-MOTION FALLBACK

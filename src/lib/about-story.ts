@@ -163,12 +163,12 @@ export function computeAboutStoryState(rawProgress: number): AboutStoryState {
     activeStatementIndex = 1;
   }
 
-  // 3-layer restrained parallax (monotonic, smooth, strictly bounded)
+  // 3-layer restrained parallax (strictly bounded: bg 0-5px, mid 5-12px, fg 10-24px)
   const parallaxCurve = smoothstep(0, 1, p);
-  const sunShiftY = -6 * parallaxCurve || 0;
-  const mountainShiftY = -14 * parallaxCurve || 0; // 14px (within 10-15px target)
-  const pineShiftY = -30 * parallaxCurve || 0; // 30px (within 20-35px target)
-  const pineShiftX = -10 * parallaxCurve || 0; // subtle relative depth shift against mountains
+  const sunShiftY = -4 * parallaxCurve || 0; // 4px (within 0-5px background range)
+  const mountainShiftY = -10 * parallaxCurve || 0; // 10px (within 5-12px midground range)
+  const pineShiftY = -20 * parallaxCurve || 0; // 20px (within 10-24px foreground range)
+  const pineShiftX = -6 * parallaxCurve || 0; // subtle relative depth shift against mountains
   const artworkPresence = 0.84 + 0.16 * smoothstep(0.0, 0.18, p);
 
   return {

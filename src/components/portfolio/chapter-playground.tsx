@@ -120,16 +120,13 @@ export function ChapterPlayground() {
                   onClick={() => setSelected(exp)}
                   aria-expanded={isSelected}
                   data-testid={`playground-tile-${exp.code}`}
-                  className="group block w-full text-left cursor-pointer transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] hover:!rotate-0 hover:-translate-y-1.5 focus-visible:outline-2 focus-visible:outline-[#792B33] focus-visible:outline-offset-4"
-                  style={{
-                    transform: `rotate(${exp.layout.rotateDeg}deg)`,
-                  }}
+                  className="group block w-full text-left cursor-pointer transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-safe:hover:-translate-y-[6px] focus-visible:outline-2 focus-visible:outline-[#792B33] focus-visible:outline-offset-4"
                 >
                   <div
-                    className={`border p-4 sm:p-5 transition-colors duration-200 ${
+                    className={`border p-4 sm:p-5 transition-[border-color,background-color,color,box-shadow] duration-300 ${
                       isSelected
-                        ? "border-[#792B33] bg-[#792B33] text-[#F3E9DE]"
-                        : "border-[#792B33]/26 bg-[#F3E9DE] text-[#792B33] group-hover:border-[#792B33]"
+                        ? "border-[#792B33] bg-[#792B33] text-[#F3E9DE] shadow-[0_14px_30px_rgba(121,43,51,0.16)]"
+                        : "border-[#792B33]/26 bg-[#F3E9DE] text-[#792B33] group-hover:border-[#792B33] group-hover:shadow-[0_14px_28px_rgba(121,43,51,0.10)]"
                     }`}
                   >
                     <PlaceholderVisual

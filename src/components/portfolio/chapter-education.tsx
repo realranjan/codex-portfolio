@@ -33,15 +33,16 @@ export function ChapterEducation() {
       years.forEach((el) => {
         gsap.fromTo(
           el,
-          { yPercent: 105 },
+          { y: 16, opacity: 0 },
           {
-            yPercent: 0,
-            duration: 0.9,
-            ease: "power3.out",
+            y: 0,
+            opacity: 1,
+            duration: 0.48,
+            ease: "power2.out",
             scrollTrigger: {
               trigger: el,
-              start: "top 86%",
-              toggleActions: "play none none reverse",
+              start: "top 88%",
+              once: true,
             },
           }
         );
@@ -87,7 +88,7 @@ export function ChapterEducation() {
           }
         />
 
-        {/* Restrained Oversized Year Editorial Entries */}
+        {/* Restrained Oversized Year Editorial Entries (Visual Rest) */}
         <div className="mt-12 sm:mt-16 space-y-12 sm:space-y-16">
           {EDUCATION_ENTRIES.map((entry, idx) => {
             const isFocused = idx === activeIdx;
@@ -96,8 +97,8 @@ export function ChapterEducation() {
                 key={entry.id}
                 onMouseEnter={() => setActiveIdx(idx)}
                 data-testid={`education-entry-${entry.index}`}
-                className={`grid grid-cols-1 lg:grid-cols-12 gap-8 items-start border-b border-[#F3E9DE]/20 pb-12 transition-opacity duration-300 ${
-                  isFocused ? "opacity-100" : "opacity-65 hover:opacity-100"
+                className={`grid grid-cols-1 lg:grid-cols-12 gap-8 items-start border-b pb-12 transition-colors duration-300 ${
+                  isFocused ? "border-[#F3E9DE]/38" : "border-[#F3E9DE]/18"
                 }`}
               >
                 {/* Oversized Masked Years Column */}

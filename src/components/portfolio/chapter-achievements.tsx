@@ -100,15 +100,12 @@ export function ChapterAchievements() {
           }
         />
 
-        {/* Desktop Staggered Layered Showcase */}
+        {/* Desktop Restful Layered Showcase (Flat 2D, Zero 3D Rotation) */}
         <div
           data-testid="achievements-layered-gallery"
           className="relative mt-12 sm:mt-16"
         >
-          <div
-            className="relative hidden md:block h-[470px] lg:h-[500px] w-full overflow-visible"
-            style={{ perspective: "1400px" }}
-          >
+          <div className="relative hidden md:block h-[470px] lg:h-[500px] w-full overflow-visible">
             {items.map((item, idx) => {
               const state = computeSpatialSlideState(idx, safeIndex, count);
               const mediaIdx = galleryIdxByItem[item.id] ?? 0;
@@ -122,13 +119,13 @@ export function ChapterAchievements() {
                   onClick={() => {
                     if (!state.isActive) setActiveIndex(idx);
                   }}
-                  className={`absolute left-1/2 top-0 w-[min(780px,72vw)] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform ${
+                  className={`absolute left-1/2 top-0 w-[min(780px,72vw)] transition-[transform,opacity] duration-300 ease-out will-change-transform ${
                     state.isActive ? "" : "cursor-pointer"
                   }`}
                   style={{
                     zIndex: state.zIndex,
                     opacity: state.opacity,
-                    transform: `translate3d(calc(-50% + ${state.translateXPct * 0.86}%), ${state.translateYPx}px, 0) scale(${state.scale}) rotateY(${state.rotateYDeg * 0.85}deg)`,
+                    transform: `translate3d(calc(-50% + ${state.translateXPct * 0.84}%), ${state.translateYPx * 0.5}px, 0) scale(${state.isActive ? 1 : 0.94})`,
                   }}
                 >
                   <div

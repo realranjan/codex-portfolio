@@ -87,27 +87,30 @@ test("Scene 05 holds statement 04 and Philosophy paragraphs readable through end
   assert.equal(holdEnd.philosophyTranslateY, 0);
 });
 
-test("3-layer parallax stays strictly within restrained motion envelopes (mountains 10-15px, pine 20-35px)", () => {
+test("3-layer parallax stays strictly within subtle depth envelopes (bg 0-5px, mid 5-12px, fg 10-24px)", () => {
   const start = computeAboutStoryState(0);
   const mid = computeAboutStoryState(0.5);
   const end = computeAboutStoryState(1);
 
+  const bgRange = Math.abs(end.sunShiftY - start.sunShiftY);
   const mountainRange = Math.abs(end.mountainShiftY - start.mountainShiftY);
   const pineRange = Math.abs(end.pineShiftY - start.pineShiftY);
 
+  assert.ok(bgRange >= 0 && bgRange <= 5, `expected background parallax 0-5px, got ${bgRange}`);
   assert.ok(
-    mountainRange >= 10 && mountainRange <= 15,
-    `expected mountain parallax 10-15px, got ${mountainRange}`
+    mountainRange >= 5 && mountainRange <= 12,
+    `expected midground parallax 5-12px, got ${mountainRange}`
   );
   assert.ok(
-    pineRange >= 20 && pineRange <= 35,
-    `expected pine parallax 20-35px, got ${pineRange}`
+    pineRange >= 10 && pineRange <= 24,
+    `expected foreground parallax 10-24px, got ${pineRange}`
   );
   assert.ok(
-    Math.abs(mid.pineShiftY) > Math.abs(mid.mountainShiftY),
-    "foreground pine moves slightly faster than distant mountains for depth separation"
+    Math.abs(mid.pineShiftY) > Math.abs(mid.mountainShiftY) &&
+      Math.abs(mid.mountainShiftY) > Math.abs(mid.sunShiftY),
+    "foreground moves slightly more than midground, which moves slightly more than background"
   );
-  assert.ok(Math.abs(end.pineShiftX) <= 12, "horizontal depth drift stays restrained");
+  assert.ok(Math.abs(end.pineShiftX) <= 8, "horizontal depth drift stays restrained");
 });
 
 test("scroll choreography is purely deterministic and reversible", () => {

@@ -94,6 +94,19 @@ export function SiteNav({ onOpenResume }: SiteNavProps) {
     window.scrollTo({ top, behavior: "smooth" });
   }, []);
 
+  // Align direct hash URLs (e.g. /#projects, /#experience) after pinned ScrollTriggers mount
+  useEffect(() => {
+    const hash = window.location.hash.replace(/^#/, "");
+    if (!hash || hash === "top") return;
+    const timer = window.setTimeout(() => {
+      const target = document.getElementById(hash);
+      if (!target) return;
+      const top = target.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({ top, behavior: "auto" });
+    }, 340);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   const isBurgundyBar = scrolled && activeSurface === "burgundy";
   const barClass = !scrolled
     ? "is-on-hero"
