@@ -60,7 +60,7 @@ export const HeroJapaneseBackdrop = forwardRef<HTMLDivElement, HeroBackdropProps
         {/* Large Centered Painterly Crimson Rising Sun Disc */}
         <div
           ref={sunRef}
-          className="absolute left-1/2 top-[46%] sm:top-[44%] -translate-x-1/2 -translate-y-1/2 w-[min(84vw,375px)] sm:w-[min(70vh,580px)] lg:w-[min(74vh,650px)] aspect-square will-change-[opacity,transform]"
+          className="absolute left-1/2 top-[46%] sm:top-[45%] -translate-x-1/2 -translate-y-1/2 w-[min(74vw,330px)] sm:w-[min(60vh,495px)] lg:w-[min(64vh,555px)] aspect-square will-change-[opacity,transform]"
         >
           <svg
             viewBox="0 0 520 520"

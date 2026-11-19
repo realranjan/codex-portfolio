@@ -35,27 +35,10 @@ const ParticlePortrait = dynamic(() => import("@/components/particle-portrait"),
   ssr: false,
 });
 
-const SCULPTURE_MODES: readonly {
-  id: "reveal" | "samurai" | "cute";
-  label: string;
-  values: SpatialControlValues;
-}[] = [
-  {
-    id: "reveal",
-    label: "Hover Reveal",
-    values: { layerMode: "reveal", lightAzimuth: 0 },
-  },
-  {
-    id: "samurai",
-    label: "Samurai",
-    values: { layerMode: "samurai", lightAzimuth: 0.45 },
-  },
-  {
-    id: "cute",
-    label: "Cute Cat",
-    values: { layerMode: "cute", lightAzimuth: -0.35 },
-  },
-];
+const DEFAULT_SPATIAL_CONTROLS: SpatialControlValues = {
+  layerMode: "reveal",
+  lightAzimuth: 0,
+};
 
 export default function Home() {
   const pageRef = useRef<HTMLElement>(null);
@@ -64,7 +47,6 @@ export default function Home() {
   const projectsBandRef = useRef<HTMLElement>(null);
 
   const heroOverlayRef = useRef<HTMLDivElement>(null);
-  const heroDockRef = useRef<HTMLDivElement>(null);
   const heroBackdropDecorRef = useRef<HTMLDivElement>(null);
   const heroSunRef = useRef<HTMLDivElement>(null);
   const heroForegroundRef = useRef<HTMLDivElement>(null);
@@ -76,9 +58,8 @@ export default function Home() {
   const centerMixRef = useRef<number>(0);
   const ringDrawMixRef = useRef<number>(0);
   const carouselMixRef = useRef<number>(0);
-  const spatialControlsRef = useRef<SpatialControlValues>(SCULPTURE_MODES[0].values);
+  const spatialControlsRef = useRef<SpatialControlValues>(DEFAULT_SPATIAL_CONTROLS);
 
-  const [sculptureMode, setSculptureMode] = useState<"reveal" | "samurai" | "cute">("reveal");
   const [selectedProject, setSelectedProject] = useState<ProjectCaseStudy | null>(null);
   const [lastTriggerId, setLastTriggerId] = useState<string | null>(null);
   const [resumeOpen, setResumeOpen] = useState(false);
@@ -89,11 +70,6 @@ export default function Home() {
   const [contactMessage, setContactMessage] = useState("");
   const [contactError, setContactError] = useState<string | null>(null);
   const [contactSent, setContactSent] = useState(false);
-
-  const handleSculptureMode = (mode: (typeof SCULPTURE_MODES)[number]) => {
-    setSculptureMode(mode.id);
-    spatialControlsRef.current = mode.values;
-  };
 
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -130,11 +106,6 @@ export default function Home() {
         heroOverlayRef.current.style.opacity = String(transition.heroOverlayOpacity);
         heroOverlayRef.current.style.visibility =
           transition.heroOverlayOpacity > 0.02 ? "visible" : "hidden";
-      }
-
-      const heroInteractive = transition.heroOverlayOpacity > 0.25 ? "auto" : "none";
-      if (heroDockRef.current) {
-        heroDockRef.current.style.pointerEvents = heroInteractive;
       }
 
       // Fade peripheral sakura/mountains/pagoda/brushstroke on scroll while preserving warm washi paper + soft crimson sun halo for #projects
@@ -340,12 +311,12 @@ export default function Home() {
                 {IDENTITY.name} — Interactive 3D Portfolio
               </h1>
 
-              <div className="page-container pointer-events-none relative flex items-center justify-center sm:justify-end">
+              <div className="page-container pointer-events-none flex items-center justify-center">
                 {/* Minimal centered scroll-down mouse icon cue (no text) */}
                 <a
                   href="#projects"
                   aria-label="Scroll to selected work"
-                  className="pointer-events-auto hidden sm:inline-flex absolute left-1/2 -translate-x-1/2 flex-col items-center gap-1 text-[#2B231E]/80 transition-colors hover:text-[#A91D22]"
+                  className="pointer-events-auto inline-flex flex-col items-center gap-1 text-[#2B231E]/80 transition-colors hover:text-[#A91D22]"
                 >
                   <span
                     aria-hidden="true"
@@ -355,32 +326,6 @@ export default function Home() {
                   </span>
                   <ChevronDown size={13} strokeWidth={1.8} aria-hidden="true" />
                 </a>
-
-                <div
-                  ref={heroDockRef}
-                  className="pointer-events-auto flex items-center gap-1 rounded-full border border-[#2B231E]/18 bg-[#FBF5ED]/85 p-1 backdrop-blur-sm"
-                  role="group"
-                  aria-label="Cat layer mode"
-                >
-                  {SCULPTURE_MODES.map((mode) => {
-                    const active = sculptureMode === mode.id;
-                    return (
-                      <button
-                        key={mode.id}
-                        type="button"
-                        onClick={() => handleSculptureMode(mode)}
-                        aria-pressed={active}
-                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors duration-150 cursor-pointer whitespace-nowrap shrink-0 ${
-                          active
-                            ? "bg-[#A91D22] text-[#FBF5ED]"
-                            : "text-[#433B36] hover:text-[#1E1916]"
-                        }`}
-                      >
-                        {mode.label}
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
             </div>
 

@@ -705,11 +705,11 @@ export default function ParticlePortrait({
           const heroShiftX = 0;
           const heroCamX = modelCenter.x - heroShiftX;
           const heroLookX = modelCenter.x - heroShiftX;
-          const heroCamY = isDesktop ? modelCenter.y + 0.06 : modelCenter.y + 0.04;
-          const heroLookY = isDesktop ? modelCenter.y - 0.04 : modelCenter.y - 0.02;
+          const heroCamY = isDesktop ? modelCenter.y + 0.04 : modelCenter.y + 0.02;
+          const heroLookY = isDesktop ? modelCenter.y - 0.02 : modelCenter.y - 0.01;
           const heroCamZ = isDesktop
-            ? Math.max(7.25, baseDistance * 1.03)
-            : Math.max(7.95, baseDistance * 1.12);
+            ? Math.max(8.45, baseDistance * 1.19)
+            : Math.max(9.05, baseDistance * 1.27);
 
           const orbitCamX = modelCenter.x;
           const orbitLookX = modelCenter.x;
@@ -753,7 +753,7 @@ export default function ParticlePortrait({
           );
           applyCameraFraming(w);
           camera.updateProjectionMatrix();
-          revealUniforms.uRevealRadius.value = (w < 700 ? 78 : 108) * dpr;
+          revealUniforms.uRevealRadius.value = (w < 700 ? 72 : 96) * dpr;
           if (shown) {
             renderer.clear();
             if (revealUniforms.uRevealMix.value > 0.01 || revealUniforms.uFullCutaway.value > 0.01) {
