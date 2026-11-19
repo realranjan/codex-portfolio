@@ -869,19 +869,23 @@ export interface SocialLinkConfig {
 }
 
 export const CONTACT_CONTENT = {
-  chapterNumber: "08",
-  chapterLabel: "Contact & Closing",
-  heading: "THE STORY ISN'T FINISHED.",
+  chapterNumber: "09",
+  chapterLabel: "CONTACT",
+  heading: "The story isn't finished.",
   supportingStatement: "Perhaps we could build the next part together.",
   additionalCopy:
     "Have an idea, a question, or something unusual in mind? I'd love to hear it.",
+  ctaLabel: "Get in touch",
   email: "ranjanvernekar45@gmail.com",
   name: "Ranjan Vernekar",
+  legalLeft: "Ranjan Vernekar — Full-Stack Developer & AI Engineer",
+  legalRight: "Built with curiosity. © 2026",
   resumeUrl: null as string | null,
-  characterReturnSlot: {
-    slotId: "samurai-cat-return",
-    label: "SAMURAI CAT · CLOSING BOW",
-    sublabel: "Reuses /samurai-cat.glb · Lazy Integration Point",
+  footerArtwork: {
+    realisticBodyUrl: "/assets/footer/realistic-cat-body.webp",
+    realisticPawUrl: "/assets/footer/realistic-cat-paw.webp",
+    woodblockBodyUrl: "/assets/footer/woodblock-cat-body.webp",
+    woodblockPawUrl: "/assets/footer/woodblock-cat-paw.webp",
   },
 } as const;
 
@@ -906,14 +910,8 @@ export const SOCIAL_LINKS: readonly SocialLinkConfig[] = [
   },
   {
     id: "resume",
-    label: "Résumé",
+    label: "Resume",
     url: null,
     handlePlaceholder: "Not configured — link PDF in portfolio-content.ts",
-  },
-  {
-    id: "other",
-    label: "Other Profile",
-    url: null,
-    handlePlaceholder: "Optional social profile — unconfigured",
   },
 ] as const;

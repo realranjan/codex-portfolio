@@ -289,15 +289,15 @@ export default function Home() {
         {/* CHAPTER 07 — ACHIEVEMENTS & CERTIFICATIONS (Burgundy #792B33) */}
         <ChapterAchievements />
 
-        {/* TRANSITION 07 -> 08 — REUSABLE BURGUNDY TORN-PAPER PEEL REVEALING FINAL IVORY CONTACT */}
+        {/* TRANSITION 07 -> 09 — REUSABLE BURGUNDY TORN-PAPER PEEL REVEALING FINAL IVORY FOOTER */}
         <TornPaperPeel
           testId="torn-paper-achievements-to-contact"
-          upperCaption="Chapter 07 → Chapter 08"
-          lowerHint="08 · The Story Isn't Finished"
+          upperCaption="07 / Achievements → 09 / Contact"
+          lowerHint="Epilogue"
           phaseOffset={4.6}
         />
 
-        {/* CHAPTER 08 — CONTACT & FOOTER (Ivory #F3E9DE) */}
+        {/* 09 / CONTACT — CINEMATIC JAPANESE SAMURAI CAT FOOTER (Ivory #F3E9DE) */}
         <ChapterContact onOpenResume={() => setResumeOpen(true)} />
       </main>
 
