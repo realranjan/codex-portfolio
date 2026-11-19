@@ -1,13 +1,15 @@
 /**
  * Pure deterministic scroll choreography for the Cinematic Japanese Samurai Cat Footer ("THE TOUCH").
  *
- * Inspired by Michelangelo's "The Creation of Adam":
- * - Both cat bodies remain anchored/mostly stationary at the outer viewport edges.
- * - Independent reaching paws extend from their shoulder pivots across 4 deliberate scroll phases:
- *   - Phase A (0.00 - 0.25): Entrance — visible gap between extended paws.
- *   - Phase B (0.25 - 0.60): Approach — restrained, intentional reach toward center + subtle head lean.
- *   - Phase C (0.60 - 0.85): Almost touching — slow anticipation crawl across the final gap; scenery still.
- *   - Phase D (0.85 - 1.00): Contact — fingertips meet at center; ink ripple, sumi-e brushstroke, plum blossom, CTA emphasis.
+ * Michelangelo "Creation of Adam" whole-figure composition:
+ * - Each samurai cat (body + proportionate reaching arm bonded together as ONE unified figure)
+ *   glides smoothly inward as a whole from the outer edges toward the center burgundy sun.
+ * - Zero detached/sliding limbs: both cats move with sculptural weight across 4 scroll phases:
+ *   - Phase A (0.00 - 0.25): Entrance — both whole cats poised back with a wide, dramatic gap.
+ *   - Phase B (0.25 - 0.60): Approach — both entire cats glide smoothly inward & level slightly.
+ *   - Phase C (0.60 - 0.85): Anticipation — slow, breathless crawl across the final narrow gap; scenery still.
+ *   - Phase D (0.85 - 1.00): Contact — paws touch gently dead-center over the textured sun; ink ripple,
+ *     sumi-e brushstroke, delicate plum blossom, and calm CTA emphasis.
  */
 
 export type FooterTouchPhase = "entrance" | "approach" | "anticipation" | "contact";
@@ -17,42 +19,35 @@ export interface FooterTouchState {
   progress: number;
   /** Current narrative phase */
   phase: FooterTouchPhase;
-  /** Normalized remaining gap between paws (1 = wide initial gap, 0 = touching) */
+  /** Normalized remaining gap between the two reaching paws (1 = wide initial gap, 0 = touching) */
   gapRatio: number;
 
-  /** Left realistic cat body micro-lean (kept minimal so body stays anchored) */
-  leftBodyShiftPx: number;
-  leftHeadRotateDeg: number;
-  /** Right woodblock cat body micro-lean (kept minimal so body stays anchored) */
-  rightBodyShiftPx: number;
-  rightHeadRotateDeg: number;
+  /**
+   * Entire Left Realistic Samurai Cat unit horizontal offset in % of its own unit width:
+   * negative pulls the entire cat outward toward the left edge; 0 places its fingertip at exact center.
+   */
+  leftCatTranslateXPct: number;
+  /** Subtle vertical rise as the left cat reaches upward into contact (px) */
+  leftCatTranslateYPx: number;
+  /** Gentle whole-figure sculptural tilt as the left cat leans into the touch (deg) */
+  leftCatRotateDeg: number;
 
   /**
-   * Left paw horizontal offset in % of its own width:
-   * negative pulls it back toward the left body; 0 reaches exact center touch point.
+   * Entire Right Woodblock Samurai Cat unit horizontal offset in % of its own unit width:
+   * positive pulls the entire cat outward toward the right edge; 0 places its fingertip at exact center.
    */
-  leftPawTranslateXPct: number;
-  /** Left paw subtle vertical lift in px */
-  leftPawTranslateYPx: number;
-  /** Left paw shoulder-pivot rotation in degrees (+ tilts slightly down, 0 levels horizontally) */
-  leftPawRotateDeg: number;
-
-  /**
-   * Right woodblock paw horizontal offset in % of its own width:
-   * positive pulls it back toward the right body; 0 reaches exact center touch point.
-   */
-  rightPawTranslateXPct: number;
-  /** Right paw subtle vertical lift in px */
-  rightPawTranslateYPx: number;
-  /** Right paw shoulder-pivot rotation in degrees (- tilts slightly down, 0 levels horizontally) */
-  rightPawRotateDeg: number;
+  rightCatTranslateXPct: number;
+  /** Subtle vertical rise as the right cat reaches upward into contact (px) */
+  rightCatTranslateYPx: number;
+  /** Gentle whole-figure sculptural tilt as the right cat leans into the touch (deg) */
+  rightCatRotateDeg: number;
 
   /** Contact moment strength in [0, 1] (strictly 0 before 0.85) */
   contactStrength: number;
-  /** Ink-like concentric ripple scale & opacity */
+  /** Subtle ink-like concentric ripple scale & opacity */
   rippleScale: number;
   rippleOpacity: number;
-  /** Expanding subtle burgundy sumi-e brushstroke progress [0, 1] */
+  /** Restrained horizontal burgundy sumi-e brushstroke progress [0, 1] */
   brushstrokeProgress: number;
   /** Delicate plum blossom reveal at touching point */
   blossomScale: number;
@@ -60,7 +55,7 @@ export interface FooterTouchState {
   blossomRotateDeg: number;
   /** Primary "Get in touch" CTA emphasis [0, 1] */
   ctaEmphasis: number;
-  /** True during Phase C & D when background scenery must stay completely still */
+  /** True during Phase C & D when background scenery remains completely still */
   backgroundStill: boolean;
 }
 
@@ -89,7 +84,7 @@ function easeInOutSine(t: number): number {
 }
 
 /**
- * Computes all synchronized transform & contact values for a given scroll progress in [0, 1].
+ * Computes synchronized whole-cat transforms & contact overlays for normalized scroll progress in [0, 1].
  * 100% pure and reversible for GSAP ScrollTrigger `scrub: true`.
  */
 export function computeFooterTouchState(rawProgress: number): FooterTouchState {
@@ -106,73 +101,64 @@ export function computeFooterTouchState(rawProgress: number): FooterTouchState {
     phase = "contact";
   }
 
-  // Gap ratio across the 4 phases:
-  // - 0.00 -> 0.25 (Entrance): holds wide gap with gentle poised settle (1.00 -> 0.92)
-  // - 0.25 -> 0.60 (Approach): deliberate smooth reach closing most of the gap (0.92 -> 0.22)
-  // - 0.60 -> 0.85 (Anticipation): slow breathless crawl across tiny remaining gap (0.22 -> 0.06)
-  // - 0.85 -> 1.00 (Contact): final millimeter touch (0.06 -> 0.00)
+  // Gap ratio across the 4 deliberate scroll phases:
+  // - 0.00 -> 0.25 (Entrance): holds poised initial wide gap with subtle settle (1.00 -> 0.92)
+  // - 0.25 -> 0.60 (Approach): smooth, weightful whole-cat inward glide (0.92 -> 0.20)
+  // - 0.60 -> 0.85 (Anticipation): slow breathless crawl across the final gap (0.20 -> 0.05)
+  // - 0.85 -> 1.00 (Contact): final millimeter kiss at center (0.05 -> 0.00)
   let gapRatio: number;
   if (p <= 0.25) {
     const t = smoothstep(p / 0.25);
     gapRatio = 1.0 - t * 0.08;
   } else if (p <= 0.6) {
     const t = easeInOutSine((p - 0.25) / 0.35);
-    gapRatio = 0.92 - t * 0.7;
+    gapRatio = 0.92 - t * 0.72;
   } else if (p <= 0.85) {
     const t = smoothstep((p - 0.6) / 0.25);
-    gapRatio = 0.22 - t * 0.16;
+    gapRatio = 0.2 - t * 0.15;
   } else {
     const t = easeOutCubic((p - 0.85) / 0.15);
-    gapRatio = 0.06 * (1 - t);
+    gapRatio = 0.05 * (1 - t);
   }
 
   const reachProgress = 1 - gapRatio;
 
-  // Bodies remain mostly stationary (max 6px subtle lean over entire scroll)
-  const bodyLeanT = smoothstep((p - 0.15) / 0.55);
-  const leftBodyShiftPx = normalizeZero(bodyLeanT * 6);
-  const rightBodyShiftPx = normalizeZero(-bodyLeanT * 6);
+  // Both entire cat figures glide inward symmetrically from outer edges toward center.
+  // Max outward pull is 24% of each cat unit's width — creates dramatic Michelangelo framing
+  // while keeping both cats partially visible and gliding buttery-smoothly to exact contact.
+  const maxOutwardPct = 24;
+  const leftCatTranslateXPct = normalizeZero(-gapRatio * maxOutwardPct);
+  const rightCatTranslateXPct = normalizeZero(gapRatio * maxOutwardPct);
 
-  // Subtle independent head incline during approach, holding steady during anticipation & contact
-  const headT = easeInOutSine(clamp01((p - 0.22) / 0.45));
-  const leftHeadRotateDeg = normalizeZero(headT * 2.2);
-  const rightHeadRotateDeg = normalizeZero(-headT * 2.2);
+  // Gentle vertical lift (14px -> 0px) as both cats rise softly into the touch
+  const leftCatTranslateYPx = normalizeZero(gapRatio * 14);
+  const rightCatTranslateYPx = normalizeZero(gapRatio * 14);
 
-  // Reaching paws travel independently from their shoulder pivots toward the center contact axis.
-  // Max retraction is 28% of paw width so paws remain solidly joined to each shoulder armor sleeve.
-  const maxRetractPct = 28;
-  const leftPawTranslateXPct = normalizeZero(-gapRatio * maxRetractPct);
-  const rightPawTranslateXPct = normalizeZero(gapRatio * maxRetractPct);
-
-  // Gentle vertical lift as paws rise to meet horizontally
-  const leftPawTranslateYPx = normalizeZero(gapRatio * 10);
-  const rightPawTranslateYPx = normalizeZero(gapRatio * 10);
-
-  // Subtle shoulder pivot leveling (+5.2deg -> 0deg on left, -5.2deg -> 0deg on right)
-  const leftPawRotateDeg = normalizeZero(gapRatio * 5.2);
-  const rightPawRotateDeg = normalizeZero(-gapRatio * 5.2);
+  // Subtle sculptural incline (-2.4deg -> 0deg on left, +2.4deg -> 0deg on right)
+  const leftCatRotateDeg = normalizeZero(-gapRatio * 2.4);
+  const rightCatRotateDeg = normalizeZero(gapRatio * 2.4);
 
   // Phase D — Contact (0.85 -> 1.00)
   const contactRaw = p <= 0.85 ? 0 : clamp01((p - 0.85) / 0.15);
   const contactStrength = normalizeZero(easeOutCubic(contactRaw));
 
-  // Subtle ink-like ripple expanding gently without bright flashes or bounce
-  const rippleScale = normalizeZero(0.28 + contactStrength * 1.12);
+  // Restrained ink-like ripple expanding softly without bright flashes or bounce
+  const rippleScale = normalizeZero(0.28 + contactStrength * 1.05);
   const rippleOpacity =
     contactRaw <= 0
       ? 0
-      : normalizeZero(Math.sin(Math.min(1, contactRaw) * Math.PI * 0.78) * 0.56);
+      : normalizeZero(Math.sin(Math.min(1, contactRaw) * Math.PI * 0.76) * 0.48);
 
-  // Restrained horizontal burgundy brushstroke expanding outward from touch point
+  // Subtle horizontal burgundy brushstroke expanding calmly from touch point
   const brushstrokeProgress = normalizeZero(smoothstep(contactRaw));
 
-  // Delicate small plum blossom blooming quietly at the contact point
+  // Delicate five-petal plum blossom blooming quietly above the touching fingertips
   const blossomT = smoothstep((contactRaw - 0.12) / 0.88);
   const blossomScale = normalizeZero(0.35 + blossomT * 0.65);
-  const blossomOpacity = normalizeZero(blossomT * 0.94);
-  const blossomRotateDeg = normalizeZero(-16 * (1 - blossomT));
+  const blossomOpacity = normalizeZero(blossomT * 0.92);
+  const blossomRotateDeg = normalizeZero(-14 * (1 - blossomT));
 
-  // Contact CTA becomes calmly emphasized as the paws complete their gesture
+  // Contact CTA becomes calmly emphasized as the two cats complete their gesture
   const ctaEmphasis = normalizeZero(
     clamp01(reachProgress * 0.35 + contactStrength * 0.65)
   );
@@ -181,16 +167,12 @@ export function computeFooterTouchState(rawProgress: number): FooterTouchState {
     progress: normalizeZero(p),
     phase,
     gapRatio: normalizeZero(gapRatio),
-    leftBodyShiftPx,
-    leftHeadRotateDeg,
-    rightBodyShiftPx,
-    rightHeadRotateDeg,
-    leftPawTranslateXPct,
-    leftPawTranslateYPx,
-    leftPawRotateDeg,
-    rightPawTranslateXPct,
-    rightPawTranslateYPx,
-    rightPawRotateDeg,
+    leftCatTranslateXPct,
+    leftCatTranslateYPx,
+    leftCatRotateDeg,
+    rightCatTranslateXPct,
+    rightCatTranslateYPx,
+    rightCatRotateDeg,
     contactStrength,
     rippleScale,
     rippleOpacity,
