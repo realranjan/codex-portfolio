@@ -275,7 +275,7 @@ export function TornPaperPeel({
     };
   }, [phaseOffset]);
 
-  // 2. GSAP ScrollTrigger pinned physical upward peel (100% scroll-driven & reversible)
+  // 2. Compact scroll-scrubbed physical upward peel (zero full-screen blank interstitial void)
   useEffect(() => {
     const rootEl = rootRef.current;
     const sheetEl = sheetRef.current;
@@ -283,7 +283,7 @@ export function TornPaperPeel({
 
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced) {
-      gsap.set(sheetEl, { yPercent: -50 });
+      gsap.set(sheetEl, { yPercent: -14 });
       rootEl.dataset.peelProgress = "0.50";
       return;
     }
@@ -292,22 +292,20 @@ export function TornPaperPeel({
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: rootEl,
-          start: "top top",
-          end: "+=115%",
+          start: "top bottom",
+          end: "bottom top",
           scrub: true,
-          pin: true,
-          anticipatePin: 1,
           onUpdate: (self) => {
             rootEl.dataset.peelProgress = self.progress.toFixed(2);
           },
         },
       });
 
-      // Physical occlusion lift: Burgundy sheet + attached jagged tear skirt sweep cleanly upward
+      // Physical upward lift as the torn edge sweeps cleanly across the Burgundy -> Ivory seam
       tl.fromTo(
         sheetEl,
-        { yPercent: -10 },
-        { yPercent: -136, ease: "none", duration: 1 },
+        { yPercent: 0 },
+        { yPercent: -34, ease: "none", duration: 1 },
         0
       );
     }, rootRef);
@@ -320,56 +318,28 @@ export function TornPaperPeel({
       ref={rootRef}
       data-testid={testId}
       data-peel-progress="0.00"
-      className="relative h-[100svh] w-full overflow-hidden bg-[#F3E9DE]"
+      className="relative h-[168px] sm:h-[208px] lg:h-[236px] w-full overflow-hidden bg-[#F3E9DE]"
       aria-hidden="true"
     >
-      {/* Underlying Warm Ivory (#F3E9DE) layer revealed physically as the Burgundy sheet peels up */}
-      <div className="relative z-[1] flex h-full w-full flex-col justify-between bg-[#F3E9DE] py-24 sm:py-28">
-        <div className="page-container flex items-center justify-between text-[11px] font-mono uppercase tracking-[0.2em] text-[#792B33]/55">
-          <span>Washi Peel Transition</span>
-          <span>Ivory · #F3E9DE</span>
-        </div>
-
-        {lowerHint && (
-          <div className="page-container my-auto">
-            <p className="m-0 font-mono text-xs uppercase tracking-[0.22em] text-[#792B33]/64">
-              Entering Next Chapter
-            </p>
-            <p
-              className="mt-3 m-0 font-normal uppercase leading-[0.88] tracking-[-0.03em] text-[#792B33]"
-              style={{
-                fontFamily: "var(--font-anton), Impact, sans-serif",
-                fontSize: "clamp(48px, 8.5vw, 136px)",
-              }}
-            >
-              {lowerHint}
-            </p>
-          </div>
-        )}
-
-        <div className="page-container flex items-center justify-between border-t border-[#792B33]/16 pt-5 text-[11px] font-mono uppercase tracking-[0.18em] text-[#792B33]/55">
-          <span>Continue scrolling</span>
-          <span>Physical Paper Occlusion</span>
-        </div>
-      </div>
-
-      {/* Physical Burgundy (#792B33) upper sheet + attached jagged torn-paper skirt peeling upward */}
+      {/* Physical Burgundy (#792B33) upper lip + live scroll-morphing jagged torn-paper edge */}
       <div
         ref={sheetRef}
-        className="pointer-events-none absolute inset-x-0 top-0 z-[10] h-full will-change-transform"
+        className="pointer-events-none absolute inset-x-0 -top-6 z-[10] will-change-transform"
       >
-        {/* Solid full-viewport Burgundy paper body */}
-        <div className="relative flex h-full w-full flex-col justify-end bg-[#792B33] pb-8">
-          <div className="page-container flex items-center justify-between border-t border-[#F3E9DE]/18 pt-5 text-[11px] font-mono uppercase tracking-[0.2em] text-[#F3E9DE]/64">
-            <span>{upperCaption}</span>
-            <span className="hidden sm:inline">Burgundy · #792B33 · Washi Tear</span>
-          </div>
+        {/* Solid Burgundy anchor connecting seamlessly to the Burgundy chapter above */}
+        <div className="relative h-12 sm:h-14 w-full bg-[#792B33]">
+          {upperCaption && (
+            <div className="page-container flex h-full items-end justify-between pb-1.5 text-[10px] font-mono uppercase tracking-[0.2em] text-[#F3E9DE]/58">
+              <span>{upperCaption}</span>
+              {lowerHint && <span className="hidden sm:inline">{lowerHint}</span>}
+            </div>
+          )}
         </div>
 
         {/* Full-width live scroll-morphing jagged torn edge hanging directly off the Burgundy sheet */}
         <div
           ref={edgeWrapRef}
-          className="relative -mt-[2px] h-[210px] sm:h-[260px] lg:h-[300px] w-full overflow-hidden"
+          className="relative -mt-[2px] h-[145px] sm:h-[180px] lg:h-[208px] w-full overflow-hidden"
         >
           {!useSvgFallback ? (
             <canvas

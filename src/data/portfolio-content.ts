@@ -329,9 +329,9 @@ export const EXPERIMENTS: readonly PlaygroundExperiment[] = [
     externalUrl: null,
     layout: {
       colSpanClass: "md:col-span-7",
-      aspectClass: "aspect-[16/10]",
-      rotateDeg: -1.1,
-      offsetYClass: "md:mt-0",
+      aspectClass: "aspect-[16/9]",
+      rotateDeg: 0,
+      offsetYClass: "",
     },
   },
   {
@@ -349,9 +349,9 @@ export const EXPERIMENTS: readonly PlaygroundExperiment[] = [
     externalUrl: null,
     layout: {
       colSpanClass: "md:col-span-5",
-      aspectClass: "aspect-[4/5]",
-      rotateDeg: 1.4,
-      offsetYClass: "md:mt-14",
+      aspectClass: "aspect-[16/10]",
+      rotateDeg: 0,
+      offsetYClass: "",
     },
   },
   {
@@ -368,10 +368,10 @@ export const EXPERIMENTS: readonly PlaygroundExperiment[] = [
     technologies: ["Tech Placeholder B", "Tech Placeholder D"],
     externalUrl: null,
     layout: {
-      colSpanClass: "md:col-span-4",
-      aspectClass: "aspect-[1/1]",
-      rotateDeg: -1.5,
-      offsetYClass: "md:-mt-8",
+      colSpanClass: "md:col-span-5",
+      aspectClass: "aspect-[16/10]",
+      rotateDeg: 0,
+      offsetYClass: "",
     },
   },
   {
@@ -388,10 +388,10 @@ export const EXPERIMENTS: readonly PlaygroundExperiment[] = [
     technologies: ["Tech Placeholder A", "Tech Placeholder E"],
     externalUrl: null,
     layout: {
-      colSpanClass: "md:col-span-8",
+      colSpanClass: "md:col-span-7",
       aspectClass: "aspect-[16/9]",
-      rotateDeg: 0.9,
-      offsetYClass: "md:mt-6",
+      rotateDeg: 0,
+      offsetYClass: "",
     },
   },
   {
@@ -409,9 +409,9 @@ export const EXPERIMENTS: readonly PlaygroundExperiment[] = [
     externalUrl: null,
     layout: {
       colSpanClass: "md:col-span-6",
-      aspectClass: "aspect-[16/11]",
-      rotateDeg: -0.8,
-      offsetYClass: "md:mt-4",
+      aspectClass: "aspect-[16/10]",
+      rotateDeg: 0,
+      offsetYClass: "",
     },
   },
   {
@@ -429,9 +429,9 @@ export const EXPERIMENTS: readonly PlaygroundExperiment[] = [
     externalUrl: null,
     layout: {
       colSpanClass: "md:col-span-6",
-      aspectClass: "aspect-[16/11]",
-      rotateDeg: 1.2,
-      offsetYClass: "md:mt-16",
+      aspectClass: "aspect-[16/10]",
+      rotateDeg: 0,
+      offsetYClass: "",
     },
   },
 ];

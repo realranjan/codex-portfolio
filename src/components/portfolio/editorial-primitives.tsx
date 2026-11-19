@@ -37,12 +37,12 @@ export function ChapterHeading({
 
   return (
     <div
-      className={`border-b ${rule} pb-8 sm:pb-10 ${
+      className={`border-b ${rule} pb-5 sm:pb-6 ${
         align === "center" ? "text-center" : ""
       } ${className}`}
     >
       <div
-        className={`mb-5 flex flex-wrap items-center gap-3 text-xs font-mono uppercase tracking-[0.2em] tabular-nums ${muted} ${
+        className={`mb-3 flex flex-wrap items-center gap-3 text-xs font-mono uppercase tracking-[0.2em] tabular-nums ${muted} ${
           align === "center" ? "justify-center" : "justify-between"
         }`}
       >
@@ -59,7 +59,7 @@ export function ChapterHeading({
         className={`m-0 font-normal uppercase leading-[0.88] tracking-[-0.03em] ${ink}`}
         style={{
           fontFamily: "var(--font-anton), Impact, sans-serif",
-          fontSize: "clamp(48px, 7.6vw, 128px)",
+          fontSize: "clamp(42px, 6.2vw, 96px)",
           textWrap: "balance",
         }}
       >
@@ -68,12 +68,12 @@ export function ChapterHeading({
 
       {supportingText && (
         <p
-          className={`mt-5 max-w-[46ch] font-serif italic leading-[1.28] ${muted} ${
+          className={`mt-3 max-w-[46ch] font-serif italic leading-[1.26] ${muted} ${
             align === "center" ? "mx-auto" : ""
           }`}
           style={{
             fontFamily: "var(--font-cormorant), Georgia, serif",
-            fontSize: "clamp(22px, 2.2vw, 32px)",
+            fontSize: "clamp(20px, 2vw, 28px)",
           }}
         >
           {supportingText}
@@ -144,7 +144,7 @@ export function PlaceholderVisual({
           className="h-full w-full object-cover"
         />
       ) : (
-        <div className="relative flex h-full w-full flex-col justify-between p-5 sm:p-7 select-none">
+        <div className="relative flex h-full w-full flex-col justify-between p-4 sm:p-5 select-none">
           {/* Fine architectural registration grid lines */}
           <div
             aria-hidden="true"
@@ -158,50 +158,50 @@ export function PlaceholderVisual({
           {/* Registration corner brackets */}
           <span
             aria-hidden="true"
-            className={`pointer-events-none absolute left-3 top-3 h-3 w-3 border-l border-t ${cornerStroke}`}
+            className={`pointer-events-none absolute left-2.5 top-2.5 h-2.5 w-2.5 border-l border-t ${cornerStroke}`}
           />
           <span
             aria-hidden="true"
-            className={`pointer-events-none absolute right-3 top-3 h-3 w-3 border-r border-t ${cornerStroke}`}
+            className={`pointer-events-none absolute right-2.5 top-2.5 h-2.5 w-2.5 border-r border-t ${cornerStroke}`}
           />
           <span
             aria-hidden="true"
-            className={`pointer-events-none absolute bottom-3 left-3 h-3 w-3 border-b border-l ${cornerStroke}`}
+            className={`pointer-events-none absolute bottom-2.5 left-2.5 h-2.5 w-2.5 border-b border-l ${cornerStroke}`}
           />
           <span
             aria-hidden="true"
-            className={`pointer-events-none absolute bottom-3 right-3 h-3 w-3 border-b border-r ${cornerStroke}`}
+            className={`pointer-events-none absolute bottom-2.5 right-2.5 h-2.5 w-2.5 border-b border-r ${cornerStroke}`}
           />
 
           {/* Top bar metadata */}
-          <div className="relative z-[1] flex items-center justify-between gap-2 text-[11px] font-mono uppercase tracking-[0.16em] tabular-nums">
+          <div className="relative z-[1] flex items-center justify-between gap-2 text-[10px] font-mono uppercase tracking-[0.16em] tabular-nums">
             <span className={subInk}>{sublabel ?? "Placeholder Asset"}</span>
             {number && <span className="font-medium">{number}</span>}
           </div>
 
           {/* Center oversized typographic anchor */}
-          <div className="relative z-[1] my-auto flex flex-col items-center justify-center text-center py-4">
+          <div className="relative z-[1] my-auto flex flex-col items-center justify-center text-center py-2">
             {number && (
               <span
                 aria-hidden="true"
                 className={`block leading-none tracking-[-0.04em] ${numInk}`}
                 style={{
                   fontFamily: "var(--font-anton), Impact, sans-serif",
-                  fontSize: "clamp(64px, 10vw, 132px)",
+                  fontSize: "clamp(48px, 6.8vw, 96px)",
                 }}
               >
                 {number}
               </span>
             )}
-            <span className="mt-1 font-mono text-xs sm:text-[13px] font-medium uppercase tracking-[0.22em]">
+            <span className="mt-1 font-mono text-[11px] sm:text-xs font-medium uppercase tracking-[0.2em]">
               {label}
             </span>
           </div>
 
           {/* Bottom registration hairline */}
-          <div className="relative z-[1] flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.16em]">
+          <div className="relative z-[1] flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.15em]">
             <span className={subInk}>Replace in portfolio-content.ts</span>
-            <span className={subInk}>1:1 Ready</span>
+            <span className={subInk}>Ready</span>
           </div>
         </div>
       )}

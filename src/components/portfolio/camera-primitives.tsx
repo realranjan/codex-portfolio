@@ -31,6 +31,41 @@ export function usePrefersReducedMotion(): boolean {
   );
 }
 
+const DESKTOP_1024_QUERY = "(min-width: 1024px)";
+const DESKTOP_768_QUERY = "(min-width: 768px)";
+
+function createMediaQueryStore(query: string) {
+  return {
+    subscribe: (onStoreChange: () => void): (() => void) => {
+      if (typeof window === "undefined") return () => {};
+      const mq = window.matchMedia(query);
+      mq.addEventListener("change", onStoreChange);
+      return () => mq.removeEventListener("change", onStoreChange);
+    },
+    getSnapshot: (): boolean => {
+      if (typeof window === "undefined") return true;
+      return window.matchMedia(query).matches;
+    },
+    getServerSnapshot: (): boolean => true,
+  };
+}
+
+const desktop1024Store = createMediaQueryStore(DESKTOP_1024_QUERY);
+const desktop768Store = createMediaQueryStore(DESKTOP_768_QUERY);
+
+/**
+ * SSR-safe, live-updating viewport breakpoint hook so pinned desktop chapters
+ * and mobile touch layouts never mount duplicate DOM trees simultaneously.
+ */
+export function useIsDesktop(breakpoint: 768 | 1024 = 1024): boolean {
+  const store = breakpoint === 768 ? desktop768Store : desktop1024Store;
+  return useSyncExternalStore(
+    store.subscribe,
+    store.getSnapshot,
+    store.getServerSnapshot
+  );
+}
+
 interface CameraStageProps {
   stageRef?: RefObject<HTMLDivElement | null>;
   className?: string;
