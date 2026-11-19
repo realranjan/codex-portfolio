@@ -284,3 +284,60 @@ export function computeTornPaperPeelState(rawProgress: number): TornPaperPeelSta
     headlineYPercent,
   };
 }
+
+export interface TornPaperDynamicsState {
+  /** Smoothed virtual scroll position in px */
+  smoothedScrollY: number;
+  /** Continuous 3D noise Z-phase driven smoothly by scroll */
+  phase: number;
+  /** Damped normalized scroll speed [0..1] boosting tear turbulence during active scroll */
+  velocity: number;
+  /** True when the damped animation is still settling and needs another frame */
+  isActive: boolean;
+}
+
+export const INITIAL_TORN_PAPER_DYNAMICS: TornPaperDynamicsState = {
+  smoothedScrollY: 0,
+  phase: 0,
+  velocity: 0,
+  isActive: false,
+};
+
+/**
+ * Exponentially damped scroll dynamics for buttery-smooth, live-morphing torn paper.
+ * Advances noise phase smoothly with scroll (forward & backward) and decays turbulence
+ * cleanly to zero once scrolling stops.
+ */
+export function stepTornPaperDynamics(
+  current: TornPaperDynamicsState,
+  targetScrollY: number,
+  dtSeconds: number
+): TornPaperDynamicsState {
+  const safeTarget = Number.isFinite(targetScrollY) ? targetScrollY : current.smoothedScrollY;
+  const dt = Math.min(0.05, Math.max(0.001, Number.isFinite(dtSeconds) ? dtSeconds : 0.016));
+
+  // Smooth exponential follow (silky even on notched mouse wheels)
+  const followAlpha = 1 - Math.exp(-dt * 11.5);
+  const deltaY = safeTarget - current.smoothedScrollY;
+  const stepY = deltaY * followAlpha;
+  const nextSmoothedY = current.smoothedScrollY + stepY;
+
+  // Map scroll displacement smoothly into 3D fBm noise Z-slice phase
+  const nextPhase = nextSmoothedY * 0.0028;
+
+  // Instantaneous normalized scroll speed -> smoothly damped turbulence boost [0..1]
+  const instantSpeed = Math.min(1, Math.abs(stepY) / (dt * 1450));
+  const velRate = instantSpeed > current.velocity ? 14.0 : 5.2;
+  const velAlpha = 1 - Math.exp(-dt * velRate);
+  const nextVelocity = current.velocity + (instantSpeed - current.velocity) * velAlpha;
+
+  const settled = Math.abs(safeTarget - nextSmoothedY) < 0.25 && nextVelocity < 0.002;
+
+  return {
+    smoothedScrollY: settled ? safeTarget : nextSmoothedY,
+    phase: settled ? safeTarget * 0.0028 : nextPhase,
+    velocity: settled ? 0 : nextVelocity,
+    isActive: !settled,
+  };
+}
+

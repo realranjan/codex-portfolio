@@ -93,3 +93,38 @@ test("computeTornPaperPeelState executes all 4 scroll phases accurately and reve
   assert.deepEqual(computeTornPaperPeelState(1.4), p100);
   assert.deepEqual(computeTornPaperPeelState(0.35), p35);
 });
+
+import {
+  INITIAL_TORN_PAPER_DYNAMICS,
+  stepTornPaperDynamics,
+} from "./torn-paper";
+
+test("stepTornPaperDynamics smoothly advances noise phase on scroll, boosts velocity, reverses, and settles cleanly", () => {
+  let state = INITIAL_TORN_PAPER_DYNAMICS;
+
+  // Scroll down to 1200px across several frames
+  for (let i = 0; i < 15; i++) {
+    state = stepTornPaperDynamics(state, 1200, 1 / 60);
+  }
+  assert.ok(state.phase > 1.5, "Phase should advance smoothly as user scrolls down");
+  assert.ok(state.velocity > 0.08, "Scroll velocity should boost tear turbulence while moving");
+  assert.equal(state.isActive, true);
+
+  const peakPhase = state.phase;
+
+  // Hold scroll stationary — velocity should decay cleanly to 0 and settle
+  for (let i = 0; i < 180; i++) {
+    state = stepTornPaperDynamics(state, 1200, 1 / 60);
+  }
+  assert.equal(state.velocity, 0);
+  assert.equal(state.isActive, false);
+  assert.ok(state.phase > peakPhase);
+
+  // Scroll back up toward 200px — phase reverses cleanly
+  for (let i = 0; i < 20; i++) {
+    state = stepTornPaperDynamics(state, 200, 1 / 60);
+  }
+  assert.ok(state.phase < peakPhase, "Scrolling back up should smoothly reverse noise phase");
+  assert.ok(state.velocity > 0.05, "Reverse scroll should also drive smooth organic tear motion");
+});
+

@@ -403,12 +403,12 @@ export default function Home() {
           aria-labelledby="about-heading"
           className="relative"
         >
-          {/* Pinned 4-phase dark umber (#3A241D) torn-paper peel revealing warm ivory (#F3E8DC) Practice header */}
+          {/* Live scroll-morphing WebGL torn-paper transition (#3A241D -> #F3E8DC) revealing Practice header */}
           <TornPaperPeelTransition />
 
           {/* Seamless natural-scroll continuation of Practice on warm washi ivory */}
           <div
-            className="section-band overflow-hidden pt-10 sm:pt-14"
+            className="section-band !border-t-0 overflow-hidden pt-4 sm:pt-8"
             style={{
               background:
                 "linear-gradient(180deg, #F3E8DC 0%, #F4EADF 32%, #F4EADF 100%)",
