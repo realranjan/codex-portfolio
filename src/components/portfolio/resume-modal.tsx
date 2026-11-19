@@ -1,14 +1,25 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Download, Printer, X } from "lucide-react";
-import { CAREER_STOPS, IDENTITY, RESUME_SUMMARY, STACK_CATEGORIES } from "@/data/portfolio";
+import { Printer, X } from "lucide-react";
+import {
+  ABOUT_CONTENT,
+  CONTACT_CONTENT,
+  EDUCATION_ENTRIES,
+  EXPERIENCE_STOPS,
+  SKILL_CATEGORIES,
+} from "@/data/portfolio-content";
 
 interface ResumeModalProps {
   open: boolean;
   onClose: () => void;
 }
 
+/**
+ * Editorial Resume Summary overlay strictly using Primary Burgundy (#792B33)
+ * and Warm Ivory (#F3E9DE), populated from the replaceable `portfolio-content.ts`
+ * data registry with no invented metrics or fake links.
+ */
 export function ResumeModal({ open, onClose }: ResumeModalProps) {
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 
@@ -32,85 +43,53 @@ export function ResumeModal({ open, onClose }: ResumeModalProps) {
 
   if (!open) return null;
 
-  const handleDownloadTxt = () => {
-    const lines = [
-      RESUME_SUMMARY.headline,
-      `${IDENTITY.location} | ${IDENTITY.email}`,
-      "",
-      "SUMMARY",
-      ...RESUME_SUMMARY.highlights.map((h) => `- ${h}`),
-      "",
-      "EXPERIENCE",
-      ...CAREER_STOPS.flatMap((stop) => [
-        `${stop.company} — ${stop.role} (${stop.period}, ${stop.city})`,
-        stop.summary,
-        ...stop.highlights.map((hl) => `  * ${hl}`),
-        "",
-      ]),
-      "TECHNICAL STACK",
-      ...STACK_CATEGORIES.map((c) => `${c.name}: ${c.items.join(", ")}`),
-      "",
-      "EDUCATION",
-      RESUME_SUMMARY.education,
-    ];
-    const blob = new Blob([lines.join("\n")], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "Ranjan_Vernekar_Resume.txt";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8"
+      className="fixed inset-0 z-[85] flex items-center justify-center p-4 sm:p-8"
       role="dialog"
       aria-modal="true"
       aria-labelledby="resume-dialog-title"
       data-testid="resume-modal"
     >
       <div
-        className="fixed inset-0 bg-[#1E1916]/55 backdrop-blur-[2px]"
+        className="fixed inset-0 bg-[#792B33]/48"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      <div className="relative z-10 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[6px] border border-[#2B231E]/[0.16] bg-[#FBF6EF] p-6 sm:p-10 text-[#1E1916] shadow-[0_24px_64px_rgba(30,25,22,0.24)]">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#2B231E]/[0.14] pb-5">
+      <div className="relative z-10 max-h-[90vh] w-full max-w-3xl overflow-y-auto border border-[#792B33]/35 bg-[#F3E9DE] p-6 sm:p-10 text-[#792B33] shadow-[0_24px_64px_rgba(121,43,51,0.28)]">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#792B33]/20 pb-5">
           <div>
-            <p className="type-tech-label text-[#A91D22]">Curriculum Vitae</p>
-            <h2 id="resume-dialog-title" className="mt-1 text-2xl font-semibold tracking-[-0.03em] text-[#1E1916]">
-              {IDENTITY.name}
+            <p className="m-0 font-mono text-xs uppercase tracking-[0.18em] text-[#792B33]/68">
+              Curriculum Vitae · Placeholder Summary
+            </p>
+            <h2
+              id="resume-dialog-title"
+              className="mt-1 m-0 font-normal uppercase leading-none text-[#792B33]"
+              style={{
+                fontFamily: "var(--font-anton), Impact, sans-serif",
+                fontSize: "clamp(32px, 3.6vw, 48px)",
+              }}
+            >
+              {CONTACT_CONTENT.name}
             </h2>
           </div>
 
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={handleDownloadTxt}
-              className="btn-secondary"
-              aria-label="Download plain text resume"
-            >
-              <Download size={15} strokeWidth={1.6} aria-hidden="true" />
-              <span>Download</span>
-            </button>
-            <button
-              type="button"
               onClick={() => window.print()}
-              className="btn-primary"
-              aria-label="Print or save resume as PDF"
+              className="inline-flex h-10 items-center gap-2 bg-[#792B33] px-4 font-mono text-xs uppercase tracking-[0.14em] text-[#F3E9DE] hover:opacity-90 cursor-pointer"
+              aria-label="Print resume summary"
             >
-              <Printer size={15} strokeWidth={1.6} aria-hidden="true" />
-              <span>Print PDF</span>
+              <Printer size={14} strokeWidth={1.6} aria-hidden="true" />
+              <span>Print</span>
             </button>
             <button
               ref={closeBtnRef}
               type="button"
               onClick={onClose}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-[4px] border border-[#2B231E]/[0.18] bg-[#F4EADF] text-[#1E1916] hover:border-[#A91D22] hover:text-[#A91D22] cursor-pointer"
+              className="inline-flex h-10 w-10 items-center justify-center border border-[#792B33]/32 text-[#792B33] hover:bg-[#792B33] hover:text-[#F3E9DE] cursor-pointer"
               aria-label="Close resume dialog"
             >
               <X size={18} strokeWidth={1.6} />
@@ -118,59 +97,74 @@ export function ResumeModal({ open, onClose }: ResumeModalProps) {
           </div>
         </div>
 
-        <div className="mt-6 space-y-7 text-sm sm:text-base">
-          <div className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs text-[#554C45]">
-            <span>{IDENTITY.email}</span>
-            <span aria-hidden="true">·</span>
-            <span>{IDENTITY.location}</span>
-            <span aria-hidden="true">·</span>
-            <span>{RESUME_SUMMARY.education}</span>
+        <div className="mt-6 space-y-8 text-sm sm:text-base">
+          <div className="flex flex-wrap items-center justify-between gap-2 font-mono text-xs text-[#792B33]/75">
+            <span>{CONTACT_CONTENT.email}</span>
+            <span>
+              PDF Link: {CONTACT_CONTENT.resumeUrl ? "Configured" : "Not configured"}
+            </span>
           </div>
 
           <div>
-            <h3 className="type-tech-label text-[#A91D22] mb-3">Engineering Profile</h3>
-            <ul className="space-y-2 text-[#554C45] list-none p-0 m-0">
-              {RESUME_SUMMARY.highlights.map((h, i) => (
-                <li key={i} className="grid grid-cols-[18px_1fr] gap-2">
-                  <span className="font-mono text-xs text-[#766C63] pt-1">—</span>
-                  <span>{h}</span>
-                </li>
-              ))}
-            </ul>
+            <h3 className="m-0 mb-2 font-mono text-xs uppercase tracking-[0.18em] text-[#792B33]/65">
+              Statement
+            </h3>
+            <p className="m-0 leading-relaxed text-[#792B33]/88">
+              {ABOUT_CONTENT.mainStatement} {ABOUT_CONTENT.supportingStatement}
+            </p>
           </div>
 
           <div>
-            <h3 className="type-tech-label text-[#A91D22] mb-3">Career Chronology</h3>
-            <div className="border-t border-[#2B231E]/[0.14]">
-              {CAREER_STOPS.slice()
-                .reverse()
-                .map((stop) => (
-                  <div
-                    key={stop.id}
-                    className="border-b border-[#2B231E]/[0.12] py-4"
-                  >
-                    <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <span className="font-semibold text-[#1E1916]">
-                        {stop.company} · {stop.role}
-                      </span>
-                      <span className="font-mono text-xs text-[#766C63] tabular-nums">
-                        {stop.period}
-                      </span>
-                    </div>
-                    <p className="mt-1.5 text-sm text-[#554C45]">{stop.summary}</p>
+            <h3 className="m-0 mb-3 font-mono text-xs uppercase tracking-[0.18em] text-[#792B33]/65">
+              Experience Stops (Placeholders)
+            </h3>
+            <div className="border-t border-[#792B33]/18">
+              {EXPERIENCE_STOPS.map((stop) => (
+                <div
+                  key={stop.id}
+                  className="border-b border-[#792B33]/14 py-3.5"
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="font-semibold text-[#792B33]">
+                      {stop.companyName} — {stop.roleTitle}
+                    </span>
+                    <span className="font-mono text-xs text-[#792B33]/65 tabular-nums">
+                      {stop.dates}
+                    </span>
                   </div>
-                ))}
+                  <p className="mt-1 m-0 text-sm text-[#792B33]/80">{stop.overview}</p>
+                </div>
+              ))}
             </div>
           </div>
 
           <div>
-            <h3 className="type-tech-label text-[#A91D22] mb-3">Systems & Stack</h3>
+            <h3 className="m-0 mb-3 font-mono text-xs uppercase tracking-[0.18em] text-[#792B33]/65">
+              Education (Placeholders)
+            </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {STACK_CATEGORIES.map((cat) => (
-                <div key={cat.name} className="border-t border-[#2B231E]/[0.14] pt-3">
-                  <div className="font-medium text-[#1E1916]">{cat.name}</div>
-                  <div className="mt-1 text-xs font-mono text-[#554C45]">
-                    {cat.items.join(" · ")}
+              {EDUCATION_ENTRIES.map((edu) => (
+                <div key={edu.id} className="border-t border-[#792B33]/18 pt-3">
+                  <div className="font-semibold text-[#792B33]">{edu.institution}</div>
+                  <div className="text-sm text-[#792B33]/82">{edu.degree}</div>
+                  <div className="mt-1 font-mono text-xs text-[#792B33]/62 tabular-nums">
+                    {edu.startYear} — {edu.graduationYear} · {edu.location}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="m-0 mb-3 font-mono text-xs uppercase tracking-[0.18em] text-[#792B33]/65">
+              Technology Landscape ({SKILL_CATEGORIES.length} Categories)
+            </h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {SKILL_CATEGORIES.map((cat) => (
+                <div key={cat.id} className="border-t border-[#792B33]/18 pt-3">
+                  <div className="font-medium text-[#792B33]">{cat.title}</div>
+                  <div className="mt-1 font-mono text-xs text-[#792B33]/72">
+                    {cat.tools.map((t) => t.name).join(" · ")}
                   </div>
                 </div>
               ))}

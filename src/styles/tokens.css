@@ -1,19 +1,22 @@
 :root {
-  /* Color Palette — Japanese Washi Paper, Sumi Charcoal Ink & Vermilion Seal Crimson */
-  --bg-primary: #f4eadf;
-  --bg-elevated: #fbf6ef;
-  --bg-surface: #eae0d2;
+  /* Color Palette — Strict Two-Tone Japanese Editorial System (#F3E9DE Warm Ivory & #792B33 Primary Burgundy) */
+  --ivory: #f3e9de;
+  --burgundy: #792b33;
 
-  --text-primary: #1e1916;
-  --text-secondary: #554c45;
-  --text-muted: #766c63;
+  --bg-primary: #f3e9de;
+  --bg-elevated: #f3e9de;
+  --bg-surface: rgba(121, 43, 51, 0.06);
 
-  --accent-primary: #a91d22;
-  --accent-soft: #c4292f;
+  --text-primary: #792b33;
+  --text-secondary: rgba(121, 43, 51, 0.78);
+  --text-muted: rgba(121, 43, 51, 0.58);
+
+  --accent-primary: #792b33;
+  --accent-soft: rgba(121, 43, 51, 0.85);
   --accent-gold: #a27739;
 
-  --border-subtle: rgba(43, 35, 30, 0.14);
-  --border-strong: rgba(169, 29, 34, 0.42);
+  --border-subtle: rgba(121, 43, 51, 0.2);
+  --border-strong: rgba(121, 43, 51, 0.48);
 
   /* Font Scale */
   --font-display: clamp(3rem, 7.2vw, 7.75rem);

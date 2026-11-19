@@ -1,0 +1,1003 @@
+# CODEX MASTER PROMPT — EXPERIMENTAL PORTFOLIO REDESIGN
+
+## 1. Project objective
+
+Redesign and implement **EVERY section AFTER the existing Hero section** of my portfolio.
+
+**CRITICAL: DO NOT MODIFY THE HERO SECTION.**
+
+The existing Hero has already been designed. Preserve its:
+
+- 3D samurai cat model
+- Typography, colors, layout, and animations
+- Existing interactions and visual effects
+- Responsive styling
+- Navigation and preloader, except for minimal integration changes necessary to connect the new sections
+
+Your job is to build everything that comes after the Hero and make the entire website feel like one cohesive, cinematic, experimental experience.
+
+### Design inspiration
+
+Take inspiration from the editorial layouts, expressive typography, and storytelling of high-end experimental portfolios, including Gokul R's portfolio.
+
+However, do not copy its design.
+
+Our portfolio should feel:
+
+- Japanese-inspired, but contemporary and minimalist
+- Experimental and artistically directed
+- Cinematic, immersive, and premium
+- Strongly typography-driven
+- Curious, playful, and technically sophisticated
+- Like an interactive visual story rather than a standard developer résumé
+
+Avoid generic SaaS layouts, ordinary feature grids, excessive rounded cards, repeated fade-up animations, and unnecessary Japanese decorative imagery.
+
+---
+
+# 2. EXISTING COLORS — DO NOT CHANGE
+
+Only use the established portfolio palette.
+
+**Primary burgundy:** `#792B33`
+
+**Warm ivory:** `#F3E9DE`
+
+These two colors must define the entire website.
+
+- Ivory background → Burgundy typography
+- Burgundy background → Ivory typography
+- Use existing typography and font assets where appropriate
+- Reuse existing project design tokens and CSS variables
+- Reuse alpha/transparency variations of the existing colors for overlays, shadows, borders, and depth
+- Do not introduce dark brown, black backgrounds, new reds, unrelated gradients, or additional section colors
+- Gold remains part of the existing 3D samurai model, not a new dominant UI color
+
+Add subtle paper grain only if it enhances the visual quality.
+
+Keep layouts spacious with excellent contrast, strong negative space, and oversized editorial typography.
+
+---
+
+# 3. PAGE STRUCTURE AND SECTION ORDER
+
+Keep the existing Hero first.
+
+After the Hero, implement these chapters in exactly this order:
+
+1. About & Philosophy — Burgundy
+2. Selected Projects — Ivory
+3. The Playground / Experiments — Ivory
+4. Skills & Technology — Burgundy
+5. Experience & Journey — Ivory
+6. Education — Burgundy
+7. Achievements & Certifications — Burgundy
+8. Contact & Footer — Ivory
+
+These are narrative chapters, not standard stacked web sections.
+
+Every chapter should have its own visual composition and interaction, while retaining a cohesive design language.
+
+Use mock data and clearly marked placeholders for all content that will be added later.
+
+---
+
+# 4. SECTION 01 — ABOUT & PHILOSOPHY
+
+### Heading
+
+**MORE THAN MEETS THE EYE.**
+
+### Main statement
+
+"I'm the kind of person who can't leave a question unanswered."
+
+Supporting text:
+
+"Sometimes it becomes a project. Sometimes an experiment. Sometimes a very long night."
+
+### Design
+
+Background: Burgundy.
+
+Typography: Ivory.
+
+Create an experimental editorial layout with enormous typography, unusual but balanced spacing, and a strong sense of visual hierarchy.
+
+Do not create a typical two-column biography with an image and paragraph.
+
+Instead:
+
+- Use a scroll-controlled sequence of large statements.
+- Reveal individual phrases through typographic masks.
+- Mix huge condensed headings with elegant editorial body text.
+- Introduce a designated area for a future 3D unmasked cat model.
+- The model container should support a future GLB or Spline asset.
+- For now, display an elegant, intentionally designed placeholder that says "3D CHARACTER / COMING SOON".
+- Provide a short philosophy subsection with readable text.
+
+### Philosophy copy
+
+"I've always been interested in how things work. Not just what they do, but what happens when you push them a little further.
+
+Sometimes that means building something from scratch. Other times, it means taking something apart, questioning the obvious, or following an idea simply because it interests me.
+
+I don't think I'll ever know everything. But that's what makes the journey interesting."
+
+### Interactions
+
+- Pinned typography sequence during the introductory reveal
+- Text revealed using masks and subtle transforms
+- Background remains Burgundy
+- Subtle pointer parallax on the future 3D character container
+- Avoid random movement
+- The section must settle into a readable state
+
+### Transition to Projects
+
+Implement a **realistic torn-paper peel transition**.
+
+The Burgundy section must physically move upward to reveal the Ivory Projects section beneath it.
+
+Requirements:
+
+- Irregular, realistic paper edge
+- Small fibers and uneven torn contours
+- Subtle contact shadows
+- Edge moves with the Burgundy layer
+- Ivory section exists beneath the moving layer
+- No opacity fade between sections
+- GSAP ScrollTrigger scrubbed animation
+- Fully reversible when scrolling backward
+- Smooth on mobile and desktop
+
+This should look like peeling a sheet of Burgundy Japanese paper from an Ivory surface.
+
+---
+
+# 5. SECTION 02 — SELECTED PROJECTS
+
+### Heading
+
+**IDEAS, GIVEN FORM.**
+
+Supporting text:
+
+"An idea is only the beginning. What matters is what you make of it."
+
+### Background
+
+Ivory.
+
+### Layout and interaction
+
+Create an experimental project showcase.
+
+Do not use a traditional three-column card grid.
+
+Instead, implement a sophisticated **horizontal project carousel / spatial gallery**.
+
+It should feel like a contemporary design exhibition.
+
+Features:
+
+- Large project preview panels
+- Asymmetrical layouts
+- Oversized project numbering
+- Smooth transitions between projects
+- Project titles that behave like editorial typography
+- Subtle 3D depth and perspective
+- Active project noticeably emphasized
+- Inactive projects partially visible
+- Drag/swipe support
+- Mouse and keyboard controls
+- Previous/next navigation
+- Scroll-controlled horizontal progression on desktop where appropriate
+- Accessible mobile alternative
+
+### Placeholder projects
+
+Create 4 reusable placeholder project entries:
+
+**PROJECT 01**
+- Title: Project One
+- Category: AI / Machine Learning
+- Description: Project description coming soon
+- Preview: Placeholder image
+- Technologies: Placeholder tags
+- Links: Not configured
+
+**PROJECT 02**
+- Title: Project Two
+- Category: Full-Stack Development
+- Description: Project description coming soon
+- Preview: Placeholder image
+- Technologies: Placeholder tags
+- Links: Not configured
+
+**PROJECT 03**
+- Title: Project Three
+- Category: Desktop Application
+- Description: Project description coming soon
+- Preview: Placeholder image
+- Technologies: Placeholder tags
+- Links: Not configured
+
+**PROJECT 04**
+- Title: Project Four
+- Category: Creative Experiment
+- Description: Project description coming soon
+- Preview: Placeholder image
+- Technologies: Placeholder tags
+- Links: Not configured
+
+Create a reusable project data structure so I can later replace placeholder titles, screenshots, descriptions, technology lists, GitHub links, demos, and case-study content without rebuilding the component.
+
+### Project details interaction
+
+Clicking a project should open a beautifully designed fullscreen or large editorial overlay.
+
+The overlay should support:
+
+- Project title
+- Hero screenshot
+- Overview
+- Problem
+- Approach
+- Solution
+- Technical architecture
+- Technology stack
+- Gallery / screenshot carousel
+- Challenges and lessons learned
+- Demo and GitHub links
+- Next/previous project navigation
+- Close and Escape interactions
+
+For now, populate the detail view with clearly labeled placeholder areas.
+
+Make the overlay functional, not just decorative.
+
+Do not create fake GitHub or demo URLs.
+
+---
+
+# 6. SECTION 03 — THE PLAYGROUND
+
+### Heading
+
+**WHAT IF I TRIED THIS?**
+
+Supporting text:
+
+"Not everything needs a purpose. Sometimes curiosity is reason enough."
+
+### Background
+
+Ivory.
+
+This chapter is for experiments, prototypes, hardware projects, small applications, unusual ideas, and things built purely out of curiosity.
+
+### Design
+
+This section should feel more playful than Selected Projects.
+
+Avoid repeating the exact same carousel.
+
+Instead, create an **experimental interactive gallery** with a curated, asymmetric composition.
+
+Ideas:
+
+- Different-sized experiment tiles
+- Interesting spatial positioning
+- Slight rotations
+- Elements that respond to hovering
+- Layered images and typography
+- A freeform layout that still feels intentional
+- Selective expanding panels
+
+Use CSS and lightweight motion effects.
+
+Do not make elements move randomly.
+
+### Placeholder content
+
+Create 6 experiment placeholders.
+
+Each should support:
+
+- Experiment title
+- Thumbnail or 3D asset
+- Short description
+- Type/category
+- Status
+- Technologies
+- Optional external link
+- Optional expanded explanation
+
+For now, use simple placeholder names such as Experiment 001 through Experiment 006.
+
+Clicking one opens a small detail flyout or expanded panel.
+
+Do not invent completed experiments or claim results.
+
+### Transition
+
+As the visitor leaves the Playground, selected graphical lines or labels converge toward the screen center.
+
+The composition transforms into the bold typography of the Tech Stack section.
+
+The color changes from Ivory to Burgundy through an intentional masked reveal, not a generic fade.
+
+---
+
+# 7. SECTION 04 — SKILLS & TECHNOLOGY
+
+### Heading
+
+**THE ART OF MAKING THINGS.**
+
+Supporting text:
+
+"Different problems call for different tools. I enjoy learning both."
+
+### Background
+
+Burgundy.
+
+### Layout
+
+Make this primarily typography-driven.
+
+Do not build a generic massive grid of technology logos.
+
+Create an interactive technical landscape organized into meaningful categories.
+
+Suggested groups:
+
+1. Languages
+2. Frontend
+3. Backend
+4. Artificial Intelligence & Machine Learning
+5. Databases
+6. DevOps & Cloud
+7. Tools & Systems
+
+Each group should contain editable placeholder technologies.
+
+### Visual behavior
+
+- Categories appear as oversized editorial text
+- Hovering or selecting a category reveals its tools
+- Tools can expand into smaller labels or a compact detail arrangement
+- The selected category becomes the focal point
+- Other categories remain visible but visually secondary
+- Smooth transitions between selected categories
+- No random floating icon animations
+- No unnecessary particle systems
+
+Create reusable data arrays for skills and categories.
+
+All technologies should be easy to update later.
+
+### Transition to Experience
+
+Use a single fine line emerging from the composition.
+
+The line extends and bends into a flight path as the Experience section is introduced.
+
+This connects the technical chapter to the professional journey without a hard visual cut.
+
+---
+
+# 8. SECTION 05 — EXPERIENCE & JOURNEY
+
+### Heading
+
+**EVERY PATH LEAVES A MARK.**
+
+Supporting text:
+
+"Different places. Different challenges. Something learned at every stop."
+
+### Background
+
+Ivory.
+
+### Main concept
+
+Create a **cinematic airplane journey** that represents my professional experience.
+
+This should be one of the signature experiences of the portfolio.
+
+The user scrolls, and a small plane travels through a minimalist visual world.
+
+Do not use a traditional vertical timeline.
+
+### Visual layout
+
+- Small stylized airplane
+- Curved route line
+- Numbered destinations / milestones
+- Large company names
+- Minimal landscape silhouettes or abstract geometric scenery
+- Subtle depth and parallax
+- Plenty of Ivory negative space
+- Burgundy route details and typography
+
+The plane should follow a curved SVG or 3D path.
+
+Its orientation should respond naturally to the direction of travel.
+
+### Timeline behavior
+
+- Scroll controls the plane's position.
+- The camera or surrounding scene subtly follows the plane.
+- At designated waypoints, a company information panel appears.
+- The plane slows or pauses visually at milestone sections.
+- The visitor can read each experience panel comfortably.
+- Scrolling again continues the journey.
+- Reverse scrolling retraces the route naturally.
+
+### Experience placeholders
+
+Create 4 company stops.
+
+Each stop should support:
+
+- Company logo
+- Company name
+- Job title
+- Employment dates
+- Location
+- Short overview
+- Responsibilities
+- Achievements
+- Technologies
+- Optional company URL
+
+Use placeholder labels:
+
+- Company 01 — Role Placeholder
+- Company 02 — Role Placeholder
+- Company 03 — Role Placeholder
+- Company 04 — Role Placeholder
+
+Do not invent experience claims, companies, dates, or metrics.
+
+### Interaction
+
+On each stop, show a clean editorial card/panel.
+
+Include optional carousel navigation within a stop for future screenshots, accomplishments, or media.
+
+Build the structure now with placeholders.
+
+Include a manual milestone navigation option so users don't need to scrub the entire journey to reach a company.
+
+### Responsive behavior
+
+On desktop, use the animated airplane experience.
+
+On mobile, preserve the plane motif but simplify the path and present the stops in a readable, touch-friendly journey.
+
+Do not sacrifice readability for animation.
+
+### Transition
+
+The plane's route simplifies into a straight typographic line.
+
+That line leads into the oversized graduation year in the Education chapter.
+
+---
+
+# 9. SECTION 06 — EDUCATION
+
+### Heading
+
+**ROOTS BEFORE WINGS.**
+
+### Background
+
+Burgundy.
+
+### Layout
+
+Keep this chapter elegant, short, and typography-focused.
+
+No generic résumé timeline or decorative academic icons.
+
+Use oversized years, institution names, and carefully positioned supporting information.
+
+### Placeholder entries
+
+Create 2 reusable education entries.
+
+Fields:
+
+- Institution
+- Degree or qualification
+- Specialization
+- Start year
+- Graduation year
+- Location
+- Short description
+- Optional achievements
+- Optional institution logo
+
+Use editable placeholder content rather than inventing academic records.
+
+### Animations
+
+- Giant years reveal through masks
+- Supporting details appear with restrained staggered typography
+- An elegant line or layout shift connects entries
+- A small indicator shows which entry is being explored
+
+Education should not take multiple unnecessary fullscreen scroll lengths.
+
+---
+
+# 10. SECTION 07 — ACHIEVEMENTS & CERTIFICATIONS
+
+### Heading
+
+**SMALL VICTORIES. LONG ROADS.**
+
+### Background
+
+Burgundy.
+
+### Structure
+
+Separate the content into two content types:
+
+**A. Achievements**
+- Hackathons
+- Open-source contributions
+- Competition results
+- Technical milestones
+- Awards
+
+**B. Certifications**
+- Course certificates
+- Professional certifications
+- Technical learning credentials
+
+Use placeholder entries for both.
+
+### Design
+
+Create a beautifully designed editorial showcase.
+
+Avoid the standard grid of certification cards.
+
+Use an interactive carousel or staggered layered gallery featuring:
+
+- Large certificate or achievement preview
+- Oversized numbering
+- Title
+- Issuer or organization
+- Year
+- Short description
+- Verification link
+- Optional image gallery
+
+The active item should appear prominently, while neighboring items remain partially visible.
+
+Add filters or tabs for Achievements and Certifications.
+
+### Placeholder data
+
+- Achievement 001
+- Achievement 002
+- Achievement 003
+- Certificate 001
+- Certificate 002
+- Certificate 003
+
+Make the content data-driven and easily replaceable.
+
+Do not create fake awards, certificate IDs, or verification links.
+
+### Final section transition
+
+The Burgundy chapter ends with another torn-paper peel.
+
+The Burgundy layer lifts away, revealing the final Ivory Contact scene.
+
+Use the same reusable paper-peel component created earlier, with consistent visual quality.
+
+---
+
+# 11. SECTION 08 — CONTACT & FOOTER
+
+### Heading
+
+**THE STORY ISN'T FINISHED.**
+
+Supporting statement:
+
+"Perhaps we could build the next part together."
+
+Additional copy:
+
+"Have an idea, a question, or something unusual in mind? I'd love to hear it."
+
+### Background
+
+Ivory.
+
+### Design
+
+Create a dramatic but minimal ending.
+
+This should feel like the final shot of a film, not an ordinary website footer.
+
+Elements:
+
+- Massive Burgundy heading
+- Strong editorial composition
+- Plenty of negative space
+- Small supporting text
+- Primary contact CTA
+- Social links
+- Résumé link
+- Back-to-top interaction
+
+### Character placeholder
+
+Create a dedicated area for the original samurai cat model to return.
+
+Prefer reusing the existing 3D asset where possible, without rebuilding or changing the Hero.
+
+If reuse is not technically appropriate, provide a clean placeholder and clear integration point.
+
+A future subtle bow or head movement can be added.
+
+### Links
+
+Provide editable configuration fields for:
+
+- Email
+- GitHub
+- LinkedIn
+- Résumé
+- Optional other social profiles
+
+Do not invent links.
+
+Unavailable links should be visibly marked as unconfigured during development, not presented as working links.
+
+### Ending
+
+The final layout should visually echo the opening Hero.
+
+Create a clear sense of narrative closure.
+
+---
+
+# 12. GLOBAL SCROLL & TRANSITION SYSTEM
+
+This is extremely important.
+
+**The website must NOT feel like a collection of regular vertically scrolling sections with fade-in animations.**
+
+Use scrolling to orchestrate cinematic transformations between chapters.
+
+### Core principles
+
+- One continuous visual narrative
+- Different motion language for different chapters
+- Pin scenes when needed
+- Horizontal movement only where it improves the experience
+- Large masked typographic reveals
+- Physical paper peel transitions
+- Spatial camera-like movement
+- Layered depth and parallax
+- Natural transitions between light and dark compositions
+- No random animations
+
+### Suggested system
+
+Use GSAP with ScrollTrigger where appropriate.
+
+- `scrub: true` for scroll-controlled scenes
+- Pin only sections that benefit from it
+- Release pinning at clear reading points
+- All animations must reverse smoothly
+- No sudden snapping unless intentional
+- Avoid overlong scroll distances
+- Avoid nested scrollbars
+- Preserve normal document flow
+
+Use transforms and opacity on animated elements rather than frequent layout recalculations.
+
+### Chapter transition rules
+
+**Hero → About**
+
+Create a seamless entry into the About chapter without changing the existing Hero implementation.
+
+**About → Projects**
+
+Burgundy paper peels upward to reveal Ivory.
+
+**Projects → Playground**
+
+Horizontal gallery progression evolves into a playful experimental layout.
+
+**Playground → Tech Stack**
+
+Graphic elements converge into large typography; Ivory gives way to Burgundy.
+
+**Tech Stack → Experience**
+
+A line transforms into the airplane flight route; Burgundy transitions to Ivory.
+
+**Experience → Education**
+
+Flight path visually resolves into a typographic academic-year composition.
+
+**Education → Achievements**
+
+Oversized academic typography rearranges into achievement numbering and gallery content.
+
+**Achievements → Contact**
+
+Burgundy paper peels upward, revealing Ivory.
+
+Not every section needs the same transition.
+
+Give each important transition a unique purpose.
+
+---
+
+# 13. GLOBAL NAVIGATION
+
+Preserve the existing navigation design as much as possible.
+
+Make sure it can reach all new chapters.
+
+Include:
+
+- About
+- Projects
+- Playground
+- Skills
+- Experience
+- Education
+- Achievements
+- Contact
+
+A compact menu or chapter indicator is preferred over an overcrowded horizontal navigation bar.
+
+### Navigation behavior
+
+- Clicking a chapter takes the visitor directly to its appropriate entry point
+- Current chapter is visually indicated
+- Navigation works with pinned sections
+- Back/forward browser navigation should behave sensibly
+- Accessible keyboard interaction
+- Mobile menu support
+
+Optional: add a minimal chapter progress indicator that follows the existing visual identity.
+
+---
+
+# 14. PLACEHOLDER SYSTEM — VERY IMPORTANT
+
+All content must be replaceable later.
+
+Organize content into separate structured data files or typed configuration objects.
+
+For example:
+
+- `projects`
+- `experiments`
+- `skills`
+- `experience`
+- `education`
+- `achievements`
+- `certifications`
+- `socialLinks`
+
+Use these as logical names; adapt the exact file structure to the existing repository.
+
+Every reusable entry should support future real images, descriptions, metadata, and links.
+
+### Placeholder visual language
+
+Do not display broken images or empty white rectangles.
+
+Instead, create elegant placeholder compositions that fit the website:
+
+- Burgundy and Ivory blocks
+- Oversized numbering
+- Small category labels
+- "IMAGE COMING SOON"
+- "3D ASSET COMING SOON"
+- "PROJECT PREVIEW"
+- "COMPANY LOGO"
+- "CERTIFICATE PREVIEW"
+
+Give them correct aspect ratios and responsive behavior.
+
+Make the layout look professionally designed even before real content is added.
+
+Do not invent professional achievements or use fake metrics.
+
+---
+
+# 15. TECHNICAL REQUIREMENTS
+
+First inspect the current repository and determine:
+
+- Existing framework
+- Routing structure
+- Component organization
+- Styling system
+- Existing fonts and design tokens
+- Existing animation dependencies
+- Hero component boundaries
+- Current loading behavior
+- 3D integration
+- Existing performance considerations
+
+Use the existing stack wherever possible.
+
+For animation, prefer GSAP + ScrollTrigger if available or appropriate.
+
+Use Three.js / React Three Fiber only for interactions that genuinely require 3D.
+
+Most typography and interface components should remain HTML/CSS for accessibility and readability.
+
+### Architecture
+
+Build reusable components for:
+
+- Chapter heading
+- Editorial text reveal
+- Torn paper transition
+- Project carousel
+- Project detail overlay
+- Experiment gallery
+- Technology explorer
+- Airplane journey
+- Experience stop
+- Education entry
+- Achievements carousel
+- Contact footer
+- Chapter navigation
+
+Keep components reasonably modular.
+
+Separate content data from rendering logic.
+
+Avoid unnecessary libraries and duplicated animations.
+
+---
+
+# 16. PERFORMANCE & ACCESSIBILITY
+
+The portfolio must remain performant despite the cinematic effects.
+
+Requirements:
+
+- Optimize images and assets
+- Lazy-load content not needed immediately
+- Avoid excessive simultaneous animations
+- Use GPU-friendly transforms
+- Avoid expensive blur or backdrop filters throughout the page
+- Dispose of 3D and animation resources correctly
+- Clean up ScrollTrigger instances when components unmount
+- Recalculate geometry on resize
+- Prevent layout shift from placeholder media
+- Respect `prefers-reduced-motion`
+- Support keyboard controls for carousels and overlays
+- Use semantic headings and landmarks
+- Maintain readable text contrast
+- Preserve visible focus indicators
+- Ensure mobile and tablet usability
+
+Scroll behavior must feel smooth without trapping users or interfering with normal navigation.
+
+---
+
+# 17. RESPONSIVE DESIGN
+
+### Desktop
+
+Create the full cinematic experience with scroll-driven compositions and spatial effects.
+
+### Tablet
+
+Simplify camera movements and reduce extreme typography sizes while maintaining the same visual hierarchy.
+
+### Mobile
+
+- Keep the same narrative and colors
+- Reduce pinning and complex spatial effects
+- Replace desktop horizontal galleries with touch-friendly carousels where necessary
+- Simplify the airplane journey
+- Maintain accessible controls
+- Ensure all content remains readable
+- Avoid horizontal page overflow
+
+Do not simply scale down the desktop version.
+
+---
+
+# 18. DESIGN QUALITY REQUIREMENTS
+
+The website must look like a carefully art-directed portfolio, not a template.
+
+Prioritize:
+
+1. Exceptional typography
+2. Strong visual composition
+3. Consistent spacing
+4. Intentional transitions
+5. Cohesive color identity
+6. High-quality interaction design
+7. Clear content hierarchy
+8. Narrative pacing
+
+Avoid:
+
+- Generic cards everywhere
+- Repeated scroll fade-up effects
+- Unnecessary glassmorphism
+- Random parallax
+- Floating tech logos everywhere
+- Too many Japanese ornaments
+- Excessive gradients
+- Fake functionality
+- Placeholder content presented as real professional work
+- Long empty pinned scenes
+
+The site should balance visual experimentation with usability.
+
+---
+
+# 19. IMPLEMENTATION INSTRUCTIONS
+
+Do not stop after creating static section mockups.
+
+Implement the actual components, layouts, interactions, animation hooks, responsive behavior, placeholder content, and section transitions.
+
+Work within the existing codebase.
+
+Preserve the Hero.
+
+Ensure the app builds and runs.
+
+If a complex effect requires an asset that is not available yet, implement its functional container, loading behavior, fallback, and a clearly documented integration point.
+
+For example, use a stylized SVG/CSS airplane temporarily if the final 3D model is unavailable.
+
+Do not silently skip an entire section because final images or assets are missing.
+
+After implementation:
+
+- Validate compilation and type checking
+- Check desktop and mobile layouts
+- Check scroll behavior in both directions
+- Check navigation to all chapters
+- Check carousels and overlays
+- Confirm that the Hero remains unchanged
+- Verify that only Burgundy `#792B33` and Ivory `#F3E9DE` are used as the main theme colors
+- Provide a summary of implemented sections
+- List placeholder data locations
+- Clearly identify remaining assets I must provide later
+
+## FINAL CREATIVE DIRECTION
+
+**Do not build a traditional portfolio website that simply scrolls from one section to another.**
+
+Build a continuous, Japanese-inspired editorial experience in which typography, layouts, objects, and backgrounds transform as the visitor explores.
+
+The Hero is already complete.
+
+Your task is to build the entire world that follows it.
+
+**Make the framework fully functional today. We will replace the placeholder content, images, 3D assets, and detailed case studies later.**

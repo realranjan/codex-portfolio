@@ -74,15 +74,9 @@ textarea:focus-visible {
   top: 16px;
 }
 
-/* Subtle handmade washi paper grain overlay */
+/* Ultra-lightweight paper texture (avoids expensive per-frame SVG feTurbulence compositing) */
 .grain-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 40;
-  pointer-events: none;
-  opacity: 0.032;
-  mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.78' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)' opacity='.6'/%3E%3C/svg%3E");
+  display: none;
 }
 
 /* Typography Utilities */
@@ -185,10 +179,13 @@ textarea:focus-visible {
 }
 
 .site-nav-wrap.is-scrolled {
-  background-color: rgba(244, 234, 223, 0.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom-color: var(--border-subtle);
+  background-color: rgba(243, 233, 222, 0.96);
+  border-bottom-color: rgba(121, 43, 51, 0.18);
+}
+
+.site-nav-wrap.is-scrolled-burgundy {
+  background-color: rgba(121, 43, 51, 0.96);
+  border-bottom-color: rgba(243, 233, 222, 0.18);
 }
 
 @keyframes heroPetalFloatA {
@@ -382,17 +379,17 @@ textarea:focus-visible {
 }
 
 @layer components {
-  /* Interactive Buttons — Vermilion Seal & Sumi Ink Outlined */
+  /* Interactive Buttons — Strict Primary Burgundy #792B33 & Warm Ivory #F3E9DE */
   .btn-primary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
     min-height: 40px;
-    padding: 8px 18px;
+    padding: 8px 20px;
     border-radius: 9999px;
-    background-color: #9e1a20;
-    color: #fbf6ef;
+    background-color: #792b33;
+    color: #f3e9de;
     font-family: var(--font-jakarta), system-ui, sans-serif;
     font-size: var(--font-small);
     font-weight: 600;
@@ -400,12 +397,13 @@ textarea:focus-visible {
     flex-shrink: 0;
     cursor: pointer;
     transition: background-color var(--motion-fast) var(--ease-ui),
-      color var(--motion-fast) var(--ease-ui);
+      color var(--motion-fast) var(--ease-ui),
+      transform var(--motion-fast) var(--ease-ui);
   }
 
   .btn-primary:hover {
-    background-color: #7d1217;
-    color: #fbf6ef;
+    background-color: rgba(121, 43, 51, 0.88);
+    color: #f3e9de;
   }
 
   .btn-secondary {
@@ -414,11 +412,11 @@ textarea:focus-visible {
     justify-content: center;
     gap: 8px;
     min-height: 40px;
-    padding: 8px 18px;
+    padding: 8px 20px;
     border-radius: 9999px;
-    border: 1px solid rgba(43, 35, 30, 0.28);
-    background-color: rgba(251, 246, 239, 0.72);
-    color: var(--text-primary);
+    border: 1px solid rgba(121, 43, 51, 0.34);
+    background-color: transparent;
+    color: #792b33;
     font-family: var(--font-jakarta), system-ui, sans-serif;
     font-size: var(--font-small);
     font-weight: 500;
@@ -431,9 +429,9 @@ textarea:focus-visible {
   }
 
   .btn-secondary:hover {
-    border-color: var(--accent-primary);
-    background-color: var(--text-primary);
-    color: var(--bg-elevated);
+    border-color: #792b33;
+    background-color: #792b33;
+    color: #f3e9de;
   }
 }
 

@@ -453,7 +453,10 @@ export default function ParticlePortrait({
       rootRef.current.dataset.orbitRad = yawValue.toFixed(3);
     };
 
+    let isHeroVisible = true;
+
     const onWindowMove = (event: PointerEvent) => {
+      if (!isHeroVisible && !dragging) return;
       const inside = updatePointerFromClient(event.clientX, event.clientY);
       pointerMoved = true;
       pointerActive = inside || dragging;
@@ -944,16 +947,61 @@ export default function ParticlePortrait({
             renderer!.render(samuraiScene, camera);
           }
 
-          if (isSoftwareGl) {
-            afterDraw(tick);
-          } else {
-            frameId = requestAnimationFrame(tick);
+          if (isHeroVisible) {
+            if (isSoftwareGl) {
+              afterDraw(tick);
+            } else {
+              frameId = requestAnimationFrame(tick);
+            }
           }
         };
 
+        const observeTarget: Element =
+          (stage.closest(".hero-runway") as Element | null) ??
+          rootRef.current ??
+          stage;
+
+        const resumeLoop = () => {
+          if (cleaned) return;
+          if (!isHeroVisible) {
+            isHeroVisible = true;
+            if (rootRef.current) rootRef.current.dataset.paused = "false";
+            clock.getDelta();
+            last = clock.getElapsedTime();
+            tick();
+          }
+        };
+
+        const pauseLoop = () => {
+          if (isHeroVisible) {
+            isHeroVisible = false;
+            if (rootRef.current) rootRef.current.dataset.paused = "true";
+            cancelAnimationFrame(frameId);
+            clearTimeout(frameId);
+          }
+        };
+
+        const heroObserver =
+          typeof IntersectionObserver !== "undefined"
+            ? new IntersectionObserver(
+                (entries) => {
+                  const visible = Boolean(entries[0]?.isIntersecting);
+                  if (visible) {
+                    resumeLoop();
+                  } else {
+                    pauseLoop();
+                  }
+                },
+                { rootMargin: "120px 0px" }
+              )
+            : null;
+        heroObserver?.observe(observeTarget);
+
+        if (rootRef.current) rootRef.current.dataset.paused = "false";
         tick();
 
         controller.signal.addEventListener("abort", () => {
+          heroObserver?.disconnect();
           window.removeEventListener("resize", resize);
           samuraiRig.dispose();
           cuteRig.dispose();

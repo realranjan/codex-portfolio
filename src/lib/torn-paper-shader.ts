@@ -164,8 +164,8 @@ void main() {
   float aa = max(0.58 / max(uResolution.y, 1.0), 0.0016);
   float paperAlpha = smoothstep(-aa, aa, sdf);
 
-  // ── RAW, ROUGH HANDMADE TEXTURED #3A241D PAPER SURFACE (ZERO SEAM AT TOP!) ──
-  vec3 baseUmber = vec3(0.2275, 0.1412, 0.1137); // exact #3A241D
+  // ── RAW, ROUGH HANDMADE TEXTURED #792B33 BURGUNDY PAPER SURFACE (ZERO SEAM AT TOP!) ──
+  vec3 baseBurgundy = vec3(0.4745, 0.1686, 0.2000); // exact #792B33
 
   // Zero-mean organic parchment blotches + raw pulp clumping + crisp high-freq paper grit
   float blotch     = fbmJagged(vec3(ax * 1.25, vUv.y * 1.75, 2.4));
@@ -174,21 +174,28 @@ void main() {
   float crispSpeck = jaggedNoise3(vec3(gl_FragCoord.xy * 0.62, 4.1));
   float darkFleck  = smoothstep(0.66, 0.90, jaggedNoise3(vec3(gl_FragCoord.xy * 0.24, 9.5))) - 0.12;
 
-  // Feather ALL texture perturbations smoothly to exact #3A241D toward top edge (vUv.y -> 1.0)
-  // so the join with the upper #3A241D sheet is 100% invisible (zero horizontal line!)
-  float seamBlend = 1.0 - smoothstep(0.62, 0.97, vUv.y);
-  vec3 paperColor = baseUmber
-      + (vec3(0.036, 0.022, 0.015) * blotch
-      +  vec3(0.024, 0.015, 0.011) * pulpClumps
-      +  vec3(0.015, 0.010, 0.007) * fiberGrain
-      +  vec3(0.016, 0.012, 0.009) * crispSpeck
-      -  vec3(0.038, 0.025, 0.020) * darkFleck) * seamBlend;
+  // Feather ALL texture perturbations smoothly to exact #792B33 toward top edge (vUv.y -> 1.0)
+  // so the join with the upper #792B33 burgundy sheet is 100% invisible (zero horizontal line!)
+  float seamBlend = 1.0 - smoothstep(0.64, 0.97, vUv.y);
+  vec3 paperColor = baseBurgundy
+      + (vec3(0.032, 0.015, 0.016) * blotch
+      +  vec3(0.022, 0.011, 0.012) * pulpClumps
+      +  vec3(0.014, 0.008, 0.008) * fiberGrain
+      +  vec3(0.015, 0.009, 0.009) * crispSpeck
+      -  vec3(0.036, 0.016, 0.018) * darkFleck) * seamBlend;
 
-  // Subtle raw dry-pulp tone shift on the outermost 1-2px of ripped fibers (crisp, not glowing)
-  float rimTeeth = smoothstep(0.009, 0.0, sdf) * paperAlpha * seamBlend;
-  paperColor = mix(paperColor, vec3(0.32, 0.22, 0.17), rimTeeth * 0.26);
+  // Raw exposed warm-ivory kozo pulp fibers right along the outermost torn teeth
+  float rimTeeth = smoothstep(0.012, 0.0, sdf) * paperAlpha * seamBlend;
+  paperColor = mix(paperColor, vec3(0.84, 0.76, 0.72), rimTeeth * 0.34);
 
-  // Crisp premultiplied alpha output with ZERO blurry shadow halo over #F3E8DC ivory
-  gl_FragColor = vec4(paperColor * paperAlpha, paperAlpha);
+  // Subtle narrow contact shadow just beneath the torn edge (physical separation over Ivory #F3E9DE)
+  float shadowBand = (1.0 - paperAlpha) * smoothstep(-0.048, -0.002, sdf) * (1.0 - topLock);
+  float shadowAlpha = shadowBand * 0.18;
+  vec3 shadowTint = vec3(0.26, 0.09, 0.11); // deep burgundy alpha shadow (no black)
+
+  float outAlpha = clamp(paperAlpha + shadowAlpha, 0.0, 1.0);
+  vec3 outPremul = paperColor * paperAlpha + shadowTint * shadowAlpha;
+
+  gl_FragColor = vec4(outPremul, outAlpha);
 }
 `;
