@@ -2,9 +2,6 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import gsap from "gsap";
-
-const useIsomorphicLayoutEffect =
-  typeof window !== "undefined" ? useLayoutEffect : useEffect;
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import {
   ArrowLeft,
@@ -19,46 +16,256 @@ import {
   PROJECTS_CONTENT,
   type PortfolioProject,
 } from "@/data/portfolio-content";
-import { resolveDragStep, wrapIndex } from "@/lib/carousel";
+import { wrapIndex } from "@/lib/carousel";
 import {
-  computeProjectsCameraState,
-  getProjectCameraAnchorProgress,
-} from "@/lib/camera-system";
+  computeTumbleScrollPosition,
+  getTumbleProjectAnchorProgress,
+} from "@/lib/tumble-deck";
 import {
   CameraProgressRule,
-  CameraStage,
-  ParallaxLayer,
   usePrefersReducedMotion,
 } from "@/components/portfolio/camera-primitives";
 import {
   ChapterHeading,
   PlaceholderVisual,
 } from "@/components/portfolio/editorial-primitives";
+import TumbleDeckShowcase, {
+  type TumbleDeckHandle,
+} from "@/components/ui/tumble-deck-showcase";
 
 gsap.registerPlugin(ScrollTrigger);
+
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+/**
+ * Editorial folio plate rendered inside each 3D tumbling deck card.
+ * Designed so both the peeking top index header (visible in the receding stack)
+ * and the upright full spread (visible at the front) remain crisp in strict
+ * Warm Ivory (#F3E9DE) & Burgundy (#792B33).
+ */
+function ProjectTumblePlate({
+  project,
+  index,
+  total,
+  isActive,
+  compact = false,
+}: {
+  project: PortfolioProject;
+  index: number;
+  total: number;
+  isActive: boolean;
+  compact?: boolean;
+}) {
+  const hasImage = Boolean(project.heroImageUrl);
+
+  return (
+    <div
+      data-testid={`project-slide-${project.number}`}
+      data-active={isActive ? "true" : "false"}
+      className="relative flex h-full w-full flex-col bg-[#F3E9DE] text-[#792B33]"
+    >
+      {/* Top Archival Folio Tab Bar — visible even when stacked behind the front card */}
+      <div
+        className={`flex shrink-0 items-center justify-between gap-2 border-b border-[#792B33]/22 px-3.5 ${
+          compact ? "h-7" : "h-9 px-4"
+        } ${isActive ? "bg-[#792B33] text-[#F3E9DE]" : "bg-[#EADCCF] text-[#792B33]"} transition-colors duration-200`}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <span
+            className={`font-mono font-semibold tabular-nums tracking-[0.14em] ${
+              compact ? "text-[10px]" : "text-[11px]"
+            }`}
+          >
+            {project.number}
+          </span>
+          <span
+            aria-hidden="true"
+            className={isActive ? "text-[#F3E9DE]/40" : "text-[#792B33]/35"}
+          >
+            /
+          </span>
+          <span
+            className={`truncate font-mono uppercase tracking-[0.14em] ${
+              compact ? "text-[9px]" : "text-[10px]"
+            } ${isActive ? "text-[#F3E9DE]/90" : "text-[#792B33]/80"}`}
+          >
+            {project.category}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <span
+            className={`font-mono uppercase tracking-[0.14em] tabular-nums ${
+              compact ? "text-[9px]" : "text-[10px]"
+            } ${isActive ? "text-[#F3E9DE]/78" : "text-[#792B33]/65"}`}
+          >
+            {isActive ? "Active · Open Case" : `Plate ${project.number} / 0${total}`}
+          </span>
+        </div>
+      </div>
+
+      {/* Main Card Spread */}
+      {hasImage ? (
+        <div className="relative flex-1 overflow-hidden bg-[#EFE3D5]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={project.heroImageUrl ?? ""}
+            alt={`${project.title} preview`}
+            draggable={false}
+            className="h-full w-full object-cover object-top pointer-events-none"
+          />
+          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 border-t border-[#792B33]/25 bg-[#F3E9DE]/95 px-4 py-2">
+            <span
+              className="uppercase leading-none tracking-[-0.02em] text-[#792B33]"
+              style={{
+                fontFamily: "var(--font-anton), Impact, sans-serif",
+                fontSize: compact ? "16px" : "20px",
+              }}
+            >
+              {project.title}
+            </span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#792B33]/75">
+              {project.technologies.slice(0, 3).join(" · ")}
+            </span>
+          </div>
+        </div>
+      ) : (
+        <div className="grid flex-1 grid-cols-12 overflow-hidden">
+          {/* Left Editorial Column */}
+          <div
+            className={`col-span-6 flex flex-col justify-between border-r border-[#792B33]/18 ${
+              compact ? "p-3" : "p-5"
+            }`}
+          >
+            <div className="min-w-0">
+              <div className="flex items-baseline gap-2.5">
+                <span
+                  className="leading-none tracking-[-0.04em] text-[#792B33]"
+                  style={{
+                    fontFamily: "var(--font-anton), Impact, sans-serif",
+                    fontSize: compact ? "clamp(24px, 5vw, 34px)" : "clamp(38px, 3.6vw, 54px)",
+                  }}
+                >
+                  {project.number}
+                </span>
+                <h3
+                  className="m-0 truncate font-normal uppercase leading-[0.94] tracking-[-0.02em] text-[#792B33]"
+                  style={{
+                    fontFamily: "var(--font-anton), Impact, sans-serif",
+                    fontSize: compact ? "clamp(15px, 3.8vw, 22px)" : "clamp(22px, 2.2vw, 32px)",
+                  }}
+                >
+                  {project.title}
+                </h3>
+              </div>
+
+              {!compact ? (
+                <p className="mt-2.5 m-0 line-clamp-3 text-[13px] leading-snug text-[#792B33]/82">
+                  {project.shortDescription}
+                </p>
+              ) : (
+                <p className="mt-1.5 m-0 line-clamp-2 text-[11px] leading-snug text-[#792B33]/78">
+                  {project.shortDescription}
+                </p>
+              )}
+            </div>
+
+            <div className="border-t border-[#792B33]/16 pt-2 flex items-center justify-between gap-2">
+              <span
+                className={`truncate font-mono text-[#792B33]/72 ${
+                  compact ? "text-[9px]" : "text-[10px]"
+                }`}
+              >
+                {project.technologies.slice(0, compact ? 2 : 3).join(" · ")}
+              </span>
+              <span
+                className={`inline-flex shrink-0 items-center gap-1 font-mono uppercase tracking-[0.12em] text-[#792B33] ${
+                  compact ? "text-[9px]" : "text-[10px]"
+                }`}
+              >
+                <span>Case</span>
+                <ArrowUpRight size={compact ? 11 : 12} strokeWidth={1.8} aria-hidden="true" />
+              </span>
+            </div>
+          </div>
+
+          {/* Right Architectural Blueprint Plate */}
+          <div
+            className={`col-span-6 relative flex flex-col justify-between overflow-hidden bg-[#EFE3D5] ${
+              compact ? "p-2.5" : "p-4"
+            }`}
+          >
+            {/* Fine architectural hairline grid */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 opacity-[0.14]"
+              style={{
+                backgroundImage:
+                  "linear-gradient(to right, #792B33 1px, transparent 1px), linear-gradient(to bottom, #792B33 1px, transparent 1px)",
+                backgroundSize: compact ? "22px 22px" : "30px 30px",
+              }}
+            />
+
+            {/* Corner registration marks */}
+            <div className="relative z-10 flex items-center justify-between font-mono text-[9px] uppercase tracking-[0.16em] text-[#792B33]/65">
+              <span>ARCH // 0{index + 1}</span>
+              <span>{compact ? "PREVIEW" : "EDITION 2026"}</span>
+            </div>
+
+            {/* Distinct architectural plate diagram per project */}
+            <div className="relative z-10 my-auto flex items-center justify-center py-1">
+              <div className="relative flex w-full max-w-[88%] flex-col items-center justify-center border border-[#792B33]/30 bg-[#F3E9DE]/88 px-3 py-3 text-center">
+                <span
+                  className="pointer-events-none select-none leading-none text-[#792B33]/[0.12]"
+                  style={{
+                    fontFamily: "var(--font-anton), Impact, sans-serif",
+                    fontSize: compact ? "38px" : "62px",
+                  }}
+                >
+                  {project.number}
+                </span>
+                <span
+                  className={`-mt-2 font-mono uppercase tracking-[0.18em] text-[#792B33] ${
+                    compact ? "text-[8px]" : "text-[10px]"
+                  }`}
+                >
+                  {project.previewLabel}
+                </span>
+              </div>
+            </div>
+
+            <div className="relative z-10 flex items-center justify-between border-t border-[#792B33]/20 pt-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-[#792B33]/68">
+              <span className="truncate">{project.category}</span>
+              <span className="shrink-0">16:8</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 /**
  * CHAPTER 02 — SELECTED PROJECTS (Ivory #F3E9DE / Burgundy #792B33)
  *
- * PRIMARY cinematic camera interaction:
- * - Desktop (>= 1024px, normal motion): Pinned ScrollTrigger exhibition stage where
- *   vertical scroll glides the viewpoint sideways across 4 large real-HTML project
- *   panels arranged in restrained 2.5D perspective (rotations strictly <= 3.5deg,
- *   modest depth scale 0.85..1.00, smooth dwell settle at each active project).
- * - Controls: Vertical scroll, Prev/Next buttons, direct 01..04 buttons, keyboard
- *   arrows, clicking side panels to focus, clicking active panel for Case Study Overlay,
- *   Escape to close overlay.
- * - Mobile (< 1024px): Unpinned touch-swipeable project exhibition carousel.
+ * Interactive 3D Tumble Deck showcase:
+ * - Desktop (>= 1024px, normal motion): Pinned GSAP ScrollTrigger drives the
+ *   3D bottom-hinged tumbling deck through all 4 project plates (`01 -> 04`)
+ *   and releases cleanly into Chapter 03 with zero scroll trap.
+ * - Controls: Vertical scroll, Prev/Next buttons, direct `01..04` buttons,
+ *   keyboard arrows, clicking stacked cards behind to focus, clicking the front
+ *   card or `Open Case` to launch the fullscreen Case Study Overlay (`Escape` closes).
+ * - Mobile (< 1024px): Unpinned, horizontal-swipe + button-controlled 3D Tumble Deck
+ *   with zero vertical scroll trap and zero horizontal overflow.
  * - Reduced Motion: Static readable 2-column gallery grid with full Case Study Overlay.
  */
 export function ChapterProjects() {
   const sectionRef = useRef<HTMLElement>(null);
   const pinStageRef = useRef<HTMLDivElement>(null);
   const scrollTriggerRef = useRef<ScrollTrigger | null>(null);
-
-  // Direct DOM refs for 60fps zero-re-render camera scrub
-  const panelRefs = useRef<Array<HTMLElement | null>>([]);
-  const backdropGridRef = useRef<HTMLDivElement>(null);
+  const desktopDeckRef = useRef<TumbleDeckHandle>(null);
+  const mobileDeckRef = useRef<TumbleDeckHandle>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
 
   const [activeIndex, setActiveIndex] = useState(0);
@@ -66,9 +273,6 @@ export function ChapterProjects() {
   const [gallerySlideIdx, setGallerySlideIdx] = useState(0);
   const reducedMotion = usePrefersReducedMotion();
 
-  const lastActiveIdxRef = useRef(0);
-  const dragStartXRef = useRef<number | null>(null);
-  const dragDeltaXRef = useRef<number>(0);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const lastTriggerRef = useRef<HTMLElement | null>(null);
 
@@ -77,44 +281,26 @@ export function ChapterProjects() {
   const openProject: PortfolioProject | null =
     openProjectIndex !== null ? (PROJECTS[openProjectIndex] ?? null) : null;
 
-  const applyCameraToDom = useCallback(
+  const applyScrollProgress = useCallback(
     (rawProgress: number) => {
-      const camera = computeProjectsCameraState(rawProgress, count);
+      const pos = computeTumbleScrollPosition(rawProgress, count);
+      desktopDeckRef.current?.setPosition(pos);
 
       if (pinStageRef.current) {
-        pinStageRef.current.dataset.cameraProgress = camera.rawProgress.toFixed(3);
-        pinStageRef.current.dataset.activeProject = String(camera.activeIndex + 1);
-      }
-
-      if (backdropGridRef.current) {
-        backdropGridRef.current.style.transform = `translate3d(${camera.backdropShiftXPx.toFixed(2)}px, 0, 0)`;
+        pinStageRef.current.dataset.cameraProgress = rawProgress.toFixed(3);
+        pinStageRef.current.dataset.deckPos = pos.toFixed(3);
       }
 
       if (progressBarRef.current) {
-        progressBarRef.current.style.transform = `scaleX(${camera.rawProgress.toFixed(4)})`;
-      }
-
-      for (let i = 0; i < camera.panels.length; i++) {
-        const el = panelRefs.current[i];
-        const pose = camera.panels[i];
-        if (!el || !pose) continue;
-
-        el.style.zIndex = String(pose.zIndex);
-        el.style.opacity = pose.opacity.toFixed(4);
-        el.style.transform = `translate3d(calc(-50% + ${pose.translateXPct.toFixed(3)}%), ${pose.translateYPx.toFixed(2)}px, ${pose.translateZPx.toFixed(2)}px) scale(${pose.scale.toFixed(4)}) rotateY(${pose.rotateYDeg.toFixed(3)}deg)`;
-        el.style.pointerEvents = pose.opacity > 0.2 ? "auto" : "none";
-        el.dataset.active = pose.isActive ? "true" : "false";
-      }
-
-      if (lastActiveIdxRef.current !== camera.activeIndex) {
-        lastActiveIdxRef.current = camera.activeIndex;
-        setActiveIndex(camera.activeIndex);
+        progressBarRef.current.style.transform = `scaleX(${Math.max(0, Math.min(1, rawProgress)).toFixed(4)})`;
       }
     },
     [count]
   );
 
-  // Pinned desktop sideways camera journey (useLayoutEffect ensures GSAP unwraps pin-spacer before React commits)
+  // Pinned desktop 3D Tumble Deck scroll journey
+  // Uses useIsomorphicLayoutEffect + permanently mounted wrapper so GSAP pin-spacer
+  // unwraps safely before React commits on reduced-motion toggles.
   useIsomorphicLayoutEffect(() => {
     const pinEl = pinStageRef.current;
     if (!pinEl || reducedMotion) return;
@@ -123,18 +309,18 @@ export function ChapterProjects() {
     if (!isDesktop) return;
 
     const ctx = gsap.context(() => {
-      applyCameraToDom(0);
+      applyScrollProgress(0);
 
       scrollTriggerRef.current = ScrollTrigger.create({
         trigger: pinEl,
         start: "top top",
-        end: "+=270%",
+        end: "+=260%",
         pin: true,
         scrub: true,
         anticipatePin: 1,
         invalidateOnRefresh: true,
         onUpdate: (self) => {
-          applyCameraToDom(self.progress);
+          applyScrollProgress(self.progress);
         },
       });
     }, sectionRef);
@@ -143,7 +329,7 @@ export function ChapterProjects() {
       scrollTriggerRef.current = null;
       ctx.revert();
     };
-  }, [applyCameraToDom, reducedMotion]);
+  }, [applyScrollProgress, reducedMotion]);
 
   const navigateToProject = useCallback(
     (targetIdx: number) => {
@@ -151,29 +337,24 @@ export function ChapterProjects() {
       const st = scrollTriggerRef.current;
 
       if (st && window.matchMedia("(min-width: 1024px)").matches && !reducedMotion) {
-        const anchor = getProjectCameraAnchorProgress(clampedIdx, count);
+        const anchor = getTumbleProjectAnchorProgress(clampedIdx, count);
         const targetScrollY = st.start + (st.end - st.start) * anchor;
         window.scrollTo({ top: targetScrollY, behavior: "smooth" });
-        applyCameraToDom(anchor);
+        applyScrollProgress(anchor);
       } else {
-        lastActiveIdxRef.current = clampedIdx;
+        mobileDeckRef.current?.animateTo(clampedIdx);
         setActiveIndex(clampedIdx);
       }
     },
-    [count, reducedMotion, applyCameraToDom]
+    [count, reducedMotion, applyScrollProgress]
   );
 
   const stepProject = useCallback(
     (delta: number) => {
-      const st = scrollTriggerRef.current;
-      if (st && window.matchMedia("(min-width: 1024px)").matches && !reducedMotion) {
-        const nextIdx = Math.max(0, Math.min(count - 1, activeIndex + delta));
-        navigateToProject(nextIdx);
-      } else {
-        setActiveIndex((prev) => wrapIndex(prev + delta, count));
-      }
+      const nextIdx = Math.max(0, Math.min(count - 1, activeIndex + delta));
+      navigateToProject(nextIdx);
     },
-    [activeIndex, count, navigateToProject, reducedMotion]
+    [activeIndex, count, navigateToProject]
   );
 
   const openCaseStudy = useCallback((idx: number, triggerEl?: HTMLElement | null) => {
@@ -215,29 +396,6 @@ export function ChapterProjects() {
     };
   }, [openProjectIndex, closeCaseStudy, count]);
 
-  // Touch swipe handlers for mobile & tablet exhibition carousel
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement | null;
-    if (target?.closest("button, a")) return;
-    dragStartXRef.current = e.clientX;
-    dragDeltaXRef.current = 0;
-  };
-
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (dragStartXRef.current === null) return;
-    dragDeltaXRef.current = e.clientX - dragStartXRef.current;
-  };
-
-  const handlePointerEnd = () => {
-    if (dragStartXRef.current === null) return;
-    const step = resolveDragStep(dragDeltaXRef.current, 48);
-    if (step !== 0) {
-      stepProject(step);
-    }
-    dragStartXRef.current = null;
-    dragDeltaXRef.current = 0;
-  };
-
   const handleStageKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "ArrowRight") {
       e.preventDefault();
@@ -248,6 +406,31 @@ export function ChapterProjects() {
     }
   };
 
+  const renderDesktopCard = useCallback(
+    (project: PortfolioProject, idx: number, isActive: boolean) => (
+      <ProjectTumblePlate
+        project={project}
+        index={idx}
+        total={count}
+        isActive={isActive}
+      />
+    ),
+    [count]
+  );
+
+  const renderMobileCard = useCallback(
+    (project: PortfolioProject, idx: number, isActive: boolean) => (
+      <ProjectTumblePlate
+        project={project}
+        index={idx}
+        total={count}
+        isActive={isActive}
+        compact
+      />
+    ),
+    [count]
+  );
+
   return (
     <section
       ref={sectionRef}
@@ -257,8 +440,8 @@ export function ChapterProjects() {
       className="relative bg-[#F3E9DE] text-[#792B33] overflow-x-clip"
     >
       {/* ═══════════════════════════════════════════════════════════════════════
-          DESKTOP PINNED CINEMATIC SIDEWAYS CAMERA EXHIBITION (>= 1024px)
-          Vertical scroll translates viewpoint horizontally through 4 perspective panels
+          DESKTOP PINNED 3D TUMBLE DECK SHOWCASE (>= 1024px)
+          Vertical scroll tips each project card forward on its bottom floor hinge
          ═══════════════════════════════════════════════════════════════════════ */}
       <div
         className={reducedMotion ? "hidden" : "hidden lg:block"}
@@ -268,29 +451,30 @@ export function ChapterProjects() {
           ref={pinStageRef}
           tabIndex={0}
           role="region"
-          aria-roledescription="exhibition camera gallery"
-          aria-label="Selected Projects cinematic camera gallery"
+          aria-roledescription="3D tumbling project deck"
+          aria-label="Selected Projects 3D tumble deck"
           onKeyDown={handleStageKeyDown}
           data-testid="projects-camera-stage"
           data-camera-progress="0.000"
-          data-active-project="1"
-          className="relative flex min-h-[100svh] w-full flex-col justify-between bg-[#F3E9DE] pt-[86px] pb-6 focus-visible:outline-none"
+          data-deck-pos="0.000"
+          data-active-project={String(activeIndex + 1)}
+          className="relative flex h-[100svh] min-h-[680px] w-full flex-col justify-between bg-[#F3E9DE] pt-[84px] pb-5 focus-visible:outline-none"
         >
-          {/* Compact Exhibition Header Strip */}
-          <div className="page-container relative z-10 flex items-end justify-between gap-6 border-b border-[#792B33]/18 pb-4">
+          {/* Compact Editorial Header Strip */}
+          <div className="page-container relative z-10 flex items-end justify-between gap-6 border-b border-[#792B33]/18 pb-3.5">
             <div className="min-w-0">
               <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.2em] text-[#792B33]/68 tabular-nums">
                 <span>Chapter {PROJECTS_CONTENT.chapterNumber}</span>
                 <span aria-hidden="true">·</span>
                 <span>{PROJECTS_CONTENT.chapterLabel}</span>
               </div>
-              <div className="mt-1.5 flex items-baseline gap-6">
+              <div className="mt-1 flex items-baseline gap-6">
                 <h2
                   id="projects-heading"
                   className="m-0 font-normal uppercase leading-[0.9] tracking-[-0.03em] text-[#792B33]"
                   style={{
                     fontFamily: "var(--font-anton), Impact, sans-serif",
-                    fontSize: "clamp(38px, 4vw, 58px)",
+                    fontSize: "clamp(36px, 3.8vw, 54px)",
                   }}
                 >
                   {PROJECTS_CONTENT.heading}
@@ -319,173 +503,31 @@ export function ChapterProjects() {
             </div>
           </div>
 
-          {/* 2.5D Perspective Exhibition Hall Stage */}
-          <CameraStage
-            perspectivePx={1800}
-            testId="projects-spatial-carousel"
-            className="relative flex-1 w-full flex items-center justify-center my-2 min-h-[470px]"
-          >
-            {/* Subtle Architectural Depth Grid Parallax Backdrop (Pure hairlines, zero clutter) */}
-            <ParallaxLayer
-              layerRef={backdropGridRef}
-              testId="projects-camera-backdrop"
-              className="pointer-events-none absolute inset-y-6 -inset-x-24 z-0"
-            >
-              <div className="relative h-full w-full">
-                <div className="absolute inset-x-0 top-1/2 h-px bg-[#792B33]/10" />
-                <div className="absolute inset-x-0 top-[22%] h-px bg-[#792B33]/[0.06]" />
-                <div className="absolute inset-x-0 bottom-[22%] h-px bg-[#792B33]/[0.06]" />
-                <div className="grid h-full grid-cols-8">
-                  {Array.from({ length: 8 }).map((_, idx) => (
-                    <div
-                      key={idx}
-                      className="h-full border-r border-[#792B33]/[0.06]"
-                    />
-                  ))}
-                </div>
-              </div>
-            </ParallaxLayer>
+          {/* 3D Bottom-Hinged Tumble Deck Stage */}
+          <div className="relative flex-1 min-h-[420px] w-full">
+            <TumbleDeckShowcase
+              cards={PROJECTS}
+              deckRef={desktopDeckRef}
+              scrollMode="external"
+              loop={false}
+              depth={4}
+              aspect={1.96}
+              height="100%"
+              heightRatio={0.47}
+              background="#F3E9DE"
+              shadeColor="#792B33"
+              showFloorLine
+              testId="projects-tumble-deck"
+              ariaLabel="Selected Projects 3D Tumble Deck"
+              onActiveIndexChange={setActiveIndex}
+              onCardClick={(idx, el) => openCaseStudy(idx, el)}
+              onSelectCard={(idx) => navigateToProject(idx)}
+              renderCard={renderDesktopCard}
+            />
+          </div>
 
-            {/* 4 Real-HTML Exhibition Project Panels */}
-            <div className="relative h-[460px] xl:h-[500px] w-full">
-              {PROJECTS.map((project, idx) => {
-                const isActive = idx === activeIndex;
-                return (
-                  <article
-                    key={project.id}
-                    ref={(el) => {
-                      panelRefs.current[idx] = el;
-                    }}
-                    data-testid={`project-slide-${project.number}`}
-                    data-active={isActive ? "true" : "false"}
-                    className="absolute left-1/2 top-1/2 -mt-[225px] xl:-mt-[245px] w-[min(860px,68vw)] will-change-[transform,opacity]"
-                    style={{
-                      zIndex: isActive ? 30 : 20 - idx,
-                    }}
-                  >
-                    <div
-                      className={`border transition-colors duration-300 ${
-                        isActive
-                          ? "border-[#792B33]/50 bg-[#F3E9DE] shadow-[0_24px_56px_rgba(121,43,51,0.13)]"
-                          : "border-[#792B33]/22 bg-[#F3E9DE]"
-                      }`}
-                    >
-                      <div className="grid grid-cols-12">
-                        {/* Left column: Oversized number + stationary crisp HTML editorial copy */}
-                        <div className="col-span-5 flex flex-col justify-between border-r border-[#792B33]/18 p-6 xl:p-7">
-                          <div>
-                            <div className="flex items-baseline justify-between gap-2">
-                              <span
-                                className="leading-none tracking-[-0.04em] text-[#792B33]"
-                                style={{
-                                  fontFamily: "var(--font-anton), Impact, sans-serif",
-                                  fontSize: "clamp(54px, 5.2vw, 84px)",
-                                }}
-                              >
-                                {project.number}
-                              </span>
-                              <span className="font-mono text-[11px] uppercase tracking-[0.15em] text-[#792B33]/68 text-right">
-                                {project.category}
-                              </span>
-                            </div>
-
-                            <h3
-                              className="mt-5 m-0 font-normal uppercase leading-[0.94] tracking-[-0.025em] text-[#792B33]"
-                              style={{
-                                fontFamily: "var(--font-anton), Impact, sans-serif",
-                                fontSize: "clamp(30px, 2.8vw, 44px)",
-                              }}
-                            >
-                              {project.title}
-                            </h3>
-
-                            <p className="mt-3.5 m-0 text-sm xl:text-[15px] leading-relaxed text-[#792B33]/80">
-                              {project.shortDescription}
-                            </p>
-                          </div>
-
-                          <div className="space-y-4 pt-5 border-t border-[#792B33]/16">
-                            <p className="m-0 font-mono text-[11px] leading-relaxed text-[#792B33]/68">
-                              {project.technologies.join(" · ")}
-                            </p>
-
-                            <div className="flex items-center justify-between gap-3">
-                              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#792B33]/56">
-                                {isActive ? "Active Focus" : "Click to Focus"}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  if (isActive) {
-                                    openCaseStudy(idx, e.currentTarget);
-                                  } else {
-                                    navigateToProject(idx);
-                                  }
-                                }}
-                                aria-label={
-                                  isActive
-                                    ? `Open case study for ${project.title}`
-                                    : `Focus ${project.title}`
-                                }
-                                className="inline-flex items-center gap-2 border border-[#792B33] bg-[#792B33] px-4 py-2 text-xs font-mono uppercase tracking-[0.14em] text-[#F3E9DE] transition-colors hover:bg-[#F3E9DE] hover:text-[#792B33] cursor-pointer whitespace-nowrap"
-                              >
-                                <span>{isActive ? "Open Case" : "Focus"}</span>
-                                <ArrowUpRight size={14} strokeWidth={1.7} aria-hidden="true" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Right column: Large preview plate */}
-                        <div className="col-span-7 p-5 xl:p-6 flex flex-col justify-between">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              if (isActive) {
-                                openCaseStudy(idx, e.currentTarget);
-                              } else {
-                                navigateToProject(idx);
-                              }
-                            }}
-                            aria-label={
-                              isActive
-                                ? `Inspect ${project.title} case study`
-                                : `Focus ${project.title}`
-                            }
-                            className="block w-full text-left cursor-pointer group focus-visible:outline-2 focus-visible:outline-[#792B33]"
-                          >
-                            <div className="transition-transform duration-300 ease-out group-hover:scale-[1.012]">
-                              <PlaceholderVisual
-                                surface="ivory"
-                                number={project.number}
-                                label={project.previewLabel}
-                                sublabel={project.category}
-                                aspectClass="aspect-[16/11]"
-                                imageUrl={project.heroImageUrl}
-                                imageAlt={`${project.title} preview`}
-                              />
-                            </div>
-                          </button>
-
-                          <div className="mt-3.5 flex items-center justify-between gap-4 text-[11px] font-mono uppercase tracking-[0.14em] text-[#792B33]/65">
-                            <span className="truncate">
-                              Exhibition Plate {project.number} / 0{count}
-                            </span>
-                            <span className="shrink-0">
-                              {isActive ? "Click to open case study" : "Select to move camera"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </CameraStage>
-
-          {/* Bottom Exhibition Camera Controls Bar */}
-          <div className="page-container relative z-10 flex items-center justify-between gap-4 border-t border-[#792B33]/18 pt-4">
+          {/* Bottom Deck Controls & Active Project Summary Bar */}
+          <div className="page-container relative z-10 flex items-center justify-between gap-4 border-t border-[#792B33]/18 pt-3.5">
             <div className="flex items-center gap-3 min-w-0">
               <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#792B33] tabular-nums">
                 {activeProject.number} / 0{count}
@@ -497,12 +539,22 @@ export function ChapterProjects() {
                 {activeProject.title}
               </span>
               <span className="hidden xl:inline font-mono text-[11px] uppercase tracking-[0.14em] text-[#792B33]/58">
-                · Scroll sideways · Arrows · Click active
+                · Scroll to flip deck · Click active plate for case study
               </span>
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              <div className="flex items-center gap-1 mr-2" role="group" aria-label="Select project">
+              <button
+                type="button"
+                onClick={(e) => openCaseStudy(activeIndex, e.currentTarget)}
+                aria-label={`Open case study for ${activeProject.title}`}
+                className="mr-2 inline-flex h-9 items-center gap-1.5 border border-[#792B33] bg-[#792B33] px-3.5 font-mono text-[11px] uppercase tracking-[0.14em] text-[#F3E9DE] transition-colors hover:bg-[#F3E9DE] hover:text-[#792B33] cursor-pointer whitespace-nowrap"
+              >
+                <span>Open Case</span>
+                <ArrowUpRight size={13} strokeWidth={1.8} aria-hidden="true" />
+              </button>
+
+              <div className="flex items-center gap-1 mr-1.5" role="group" aria-label="Select project">
                 {PROJECTS.map((p, idx) => {
                   const isCurrent = idx === activeIndex;
                   return (
@@ -619,16 +671,12 @@ export function ChapterProjects() {
       ) : null}
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          MOBILE & TABLET SWIPEABLE PROJECT CAROUSEL (< 1024px, Zero Pinning)
+          MOBILE & TABLET INTERACTIVE 3D TUMBLE DECK (< 1024px, Zero Pinning)
          ═══════════════════════════════════════════════════════════════════════ */}
       {!reducedMotion ? (
         <div
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerEnd}
-          onPointerCancel={handlePointerEnd}
           data-testid="projects-mobile-carousel"
-          className="lg:hidden page-container pt-20 pb-20 select-none"
+          className="lg:hidden page-container pt-20 pb-20"
         >
           <ChapterHeading
             id="projects-heading-mobile"
@@ -644,42 +692,49 @@ export function ChapterProjects() {
             }
           />
 
-          <article className="mt-10 border border-[#792B33]/35 bg-[#F3E9DE] p-5 sm:p-6 space-y-5">
-            <div className="flex items-baseline justify-between gap-3">
-              <span
-                className="text-5xl leading-none text-[#792B33]"
-                style={{ fontFamily: "var(--font-anton), Impact, sans-serif" }}
-              >
-                {activeProject.number}
-              </span>
-              <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#792B33]/72">
-                {activeProject.category}
-              </span>
-            </div>
-
-            <PlaceholderVisual
-              surface="ivory"
-              number={activeProject.number}
-              label={activeProject.previewLabel}
-              sublabel={activeProject.category}
-              aspectClass="aspect-[4/3]"
-              imageUrl={activeProject.heroImageUrl}
+          {/* Compact Mobile 3D Tumble Deck (horizontal swipe + buttons, vertical scroll stays native) */}
+          <div className="mt-6 -mx-2 sm:mx-0">
+            <TumbleDeckShowcase
+              cards={PROJECTS}
+              deckRef={mobileDeckRef}
+              scrollMode="external"
+              swipeAxis="x"
+              loop={false}
+              depth={3}
+              aspect={1.68}
+              height="clamp(300px, 44vh, 390px)"
+              heightRatio={0.46}
+              background="#F3E9DE"
+              shadeColor="#792B33"
+              showFloorLine
+              testId="projects-mobile-tumble-deck"
+              ariaLabel="Selected Projects mobile 3D tumble deck"
+              onActiveIndexChange={setActiveIndex}
+              onCardClick={(idx, el) => openCaseStudy(idx, el)}
+              onSelectCard={(idx) => navigateToProject(idx)}
+              renderCard={renderMobileCard}
             />
+          </div>
 
-            <div>
+          {/* Active Project Details & CTA */}
+          <div className="mt-4 border border-[#792B33]/25 bg-[#F3E9DE] p-4 sm:p-5 space-y-4">
+            <div className="flex items-baseline justify-between gap-3">
               <h3
-                className="m-0 text-3xl uppercase leading-none text-[#792B33]"
+                className="m-0 text-2xl uppercase leading-none text-[#792B33]"
                 style={{ fontFamily: "var(--font-anton), Impact, sans-serif" }}
               >
                 {activeProject.title}
               </h3>
-              <p className="mt-2.5 text-sm leading-relaxed text-[#792B33]/80">
-                {activeProject.shortDescription}
-              </p>
-              <p className="mt-3 font-mono text-[11px] text-[#792B33]/65">
-                {activeProject.technologies.join(" · ")}
-              </p>
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#792B33]/70">
+                {activeProject.category}
+              </span>
             </div>
+            <p className="m-0 text-sm leading-relaxed text-[#792B33]/82">
+              {activeProject.shortDescription}
+            </p>
+            <p className="m-0 font-mono text-[11px] text-[#792B33]/65">
+              {activeProject.technologies.join(" · ")}
+            </p>
 
             <button
               type="button"
@@ -689,10 +744,10 @@ export function ChapterProjects() {
               <span>Open Project Case Study</span>
               <ArrowUpRight size={15} strokeWidth={1.7} aria-hidden="true" />
             </button>
-          </article>
+          </div>
 
           {/* Touch Controls Bar */}
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[#792B33]/20 pt-5">
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#792B33]/20 pt-4">
             <span className="font-mono text-xs uppercase tracking-[0.16em] text-[#792B33] tabular-nums">
               {activeProject.number} / 0{count}
             </span>
@@ -702,7 +757,7 @@ export function ChapterProjects() {
                 <button
                   key={p.id}
                   type="button"
-                  onClick={() => setActiveIndex(idx)}
+                  onClick={() => navigateToProject(idx)}
                   aria-label={`Show ${p.title}`}
                   aria-pressed={idx === activeIndex}
                   className={`h-10 min-w-[40px] px-2 font-mono text-xs tabular-nums ${
@@ -717,16 +772,18 @@ export function ChapterProjects() {
               <button
                 type="button"
                 onClick={() => stepProject(-1)}
+                disabled={activeIndex === 0}
                 aria-label="Previous project"
-                className="inline-flex h-10 w-10 items-center justify-center border border-[#792B33]/32 text-[#792B33]"
+                className="inline-flex h-10 w-10 items-center justify-center border border-[#792B33]/32 text-[#792B33] disabled:opacity-35"
               >
                 <ChevronLeft size={17} />
               </button>
               <button
                 type="button"
                 onClick={() => stepProject(1)}
+                disabled={activeIndex === count - 1}
                 aria-label="Next project"
-                className="inline-flex h-10 w-10 items-center justify-center border border-[#792B33]/32 text-[#792B33]"
+                className="inline-flex h-10 w-10 items-center justify-center border border-[#792B33]/32 text-[#792B33] disabled:opacity-35"
               >
                 <ChevronRight size={17} />
               </button>
