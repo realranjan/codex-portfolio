@@ -46,14 +46,10 @@ const useIsomorphicLayoutEffect =
  */
 function ProjectTumblePlate({
   project,
-  index,
-  total,
   isActive,
   compact = false,
 }: {
   project: PortfolioProject;
-  index: number;
-  total: number;
   isActive: boolean;
   compact?: boolean;
 }) {
@@ -61,14 +57,14 @@ function ProjectTumblePlate({
 
   return (
     <div
-      data-testid={`project-slide-${project.number}`}
+      data-testid={compact ? undefined : `project-slide-${project.number}`}
       data-active={isActive ? "true" : "false"}
       className="relative flex h-full w-full flex-col bg-[#F3E9DE] text-[#792B33]"
     >
-      {/* Top Archival Folio Tab Bar — visible even when stacked behind the front card */}
+      {/* Top Archival Folio Tab Bar — receding cards show title on peeking tab; active plate avoids repeating its display heading */}
       <div
-        className={`flex shrink-0 items-center justify-between gap-2 border-b border-[#792B33]/22 px-3.5 ${
-          compact ? "h-7" : "h-9 px-4"
+        className={`flex shrink-0 items-center justify-between gap-3 border-b border-[#792B33]/22 ${
+          compact ? "h-7 px-3" : "h-9 px-4"
         } ${isActive ? "bg-[#792B33] text-[#F3E9DE]" : "bg-[#EADCCF] text-[#792B33]"} transition-colors duration-200`}
       >
         <div className="flex items-center gap-2 min-w-0">
@@ -79,30 +75,32 @@ function ProjectTumblePlate({
           >
             {project.number}
           </span>
-          <span
-            aria-hidden="true"
-            className={isActive ? "text-[#F3E9DE]/40" : "text-[#792B33]/35"}
-          >
-            /
-          </span>
-          <span
-            className={`truncate font-mono uppercase tracking-[0.14em] ${
-              compact ? "text-[9px]" : "text-[10px]"
-            } ${isActive ? "text-[#F3E9DE]/90" : "text-[#792B33]/80"}`}
-          >
-            {project.category}
-          </span>
+          {(!isActive || hasImage) && (
+            <>
+              <span
+                aria-hidden="true"
+                className={isActive ? "text-[#F3E9DE]/40" : "text-[#792B33]/35"}
+              >
+                ·
+              </span>
+              <span
+                className={`truncate font-mono uppercase tracking-[0.14em] ${
+                  compact ? "text-[9px]" : "text-[11px]"
+                } ${isActive ? "text-[#F3E9DE]" : "text-[#792B33]/88"}`}
+              >
+                {project.title}
+              </span>
+            </>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <span
-            className={`font-mono uppercase tracking-[0.14em] tabular-nums ${
-              compact ? "text-[9px]" : "text-[10px]"
-            } ${isActive ? "text-[#F3E9DE]/78" : "text-[#792B33]/65"}`}
-          >
-            {isActive ? "Active · Open Case" : `Plate ${project.number} / 0${total}`}
-          </span>
-        </div>
+        <span
+          className={`shrink-0 truncate font-mono uppercase tracking-[0.14em] ${
+            compact ? "text-[8.5px]" : "text-[10px]"
+          } ${isActive ? "text-[#F3E9DE]/86" : "text-[#792B33]/68"}`}
+        >
+          {project.category}
+        </span>
       </div>
 
       {/* Main Card Spread */}
@@ -115,86 +113,49 @@ function ProjectTumblePlate({
             draggable={false}
             className="h-full w-full object-cover object-top pointer-events-none"
           />
-          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 border-t border-[#792B33]/25 bg-[#F3E9DE]/95 px-4 py-2">
-            <span
-              className="uppercase leading-none tracking-[-0.02em] text-[#792B33]"
-              style={{
-                fontFamily: "var(--font-anton), Impact, sans-serif",
-                fontSize: compact ? "16px" : "20px",
-              }}
-            >
-              {project.title}
-            </span>
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#792B33]/75">
-              {project.technologies.slice(0, 3).join(" · ")}
-            </span>
-          </div>
         </div>
       ) : (
         <div className="grid flex-1 grid-cols-12 overflow-hidden">
           {/* Left Editorial Column */}
           <div
-            className={`col-span-6 flex flex-col justify-between border-r border-[#792B33]/18 ${
-              compact ? "p-3" : "p-5"
-            }`}
+            className={`${compact ? "col-span-7 p-3" : "col-span-5 p-5"} flex flex-col justify-between border-r border-[#792B33]/18`}
           >
             <div className="min-w-0">
-              <div className="flex items-baseline gap-2.5">
-                <span
-                  className="leading-none tracking-[-0.04em] text-[#792B33]"
-                  style={{
-                    fontFamily: "var(--font-anton), Impact, sans-serif",
-                    fontSize: compact ? "clamp(24px, 5vw, 34px)" : "clamp(38px, 3.6vw, 54px)",
-                  }}
-                >
-                  {project.number}
-                </span>
-                <h3
-                  className="m-0 truncate font-normal uppercase leading-[0.94] tracking-[-0.02em] text-[#792B33]"
-                  style={{
-                    fontFamily: "var(--font-anton), Impact, sans-serif",
-                    fontSize: compact ? "clamp(15px, 3.8vw, 22px)" : "clamp(22px, 2.2vw, 32px)",
-                  }}
-                >
-                  {project.title}
-                </h3>
-              </div>
+              <h3
+                className="m-0 font-normal uppercase leading-[0.94] tracking-[-0.02em] text-[#792B33]"
+                style={{
+                  fontFamily: "var(--font-anton), Impact, sans-serif",
+                  fontSize: compact ? "clamp(18px, 4.8vw, 24px)" : "clamp(26px, 2.5vw, 38px)",
+                }}
+              >
+                {project.title}
+              </h3>
 
-              {!compact ? (
-                <p className="mt-2.5 m-0 line-clamp-3 text-[13px] leading-snug text-[#792B33]/82">
-                  {project.shortDescription}
-                </p>
-              ) : (
-                <p className="mt-1.5 m-0 line-clamp-2 text-[11px] leading-snug text-[#792B33]/78">
-                  {project.shortDescription}
-                </p>
-              )}
+              <p
+                className={`m-0 text-[#792B33]/82 ${
+                  compact
+                    ? "mt-1.5 text-[11px] leading-snug"
+                    : "mt-3 line-clamp-3 text-[13px] leading-relaxed"
+                }`}
+              >
+                {project.shortDescription}
+              </p>
             </div>
 
-            <div className="border-t border-[#792B33]/16 pt-2 flex items-center justify-between gap-2">
-              <span
-                className={`truncate font-mono text-[#792B33]/72 ${
-                  compact ? "text-[9px]" : "text-[10px]"
+            <div className="border-t border-[#792B33]/16 pt-2">
+              <p
+                className={`m-0 font-mono text-[#792B33]/72 ${
+                  compact ? "text-[8.5px] leading-[1.35]" : "text-[10px] leading-relaxed"
                 }`}
               >
-                {project.technologies.slice(0, compact ? 2 : 3).join(" · ")}
-              </span>
-              <span
-                className={`inline-flex shrink-0 items-center gap-1 font-mono uppercase tracking-[0.12em] text-[#792B33] ${
-                  compact ? "text-[9px]" : "text-[10px]"
-                }`}
-              >
-                <span>Case</span>
-                <ArrowUpRight size={compact ? 11 : 12} strokeWidth={1.8} aria-hidden="true" />
-              </span>
+                {project.technologies.join(" · ")}
+              </p>
             </div>
           </div>
 
-          {/* Right Architectural Blueprint Plate */}
+          {/* Right Architectural Preview Plate */}
           <div
-            className={`col-span-6 relative flex flex-col justify-between overflow-hidden bg-[#EFE3D5] ${
-              compact ? "p-2.5" : "p-4"
-            }`}
+            className={`${compact ? "col-span-5 p-2.5" : "col-span-7 p-5"} relative flex items-center justify-center overflow-hidden bg-[#EFE3D5]`}
           >
             {/* Fine architectural hairline grid */}
             <div
@@ -203,41 +164,22 @@ function ProjectTumblePlate({
               style={{
                 backgroundImage:
                   "linear-gradient(to right, #792B33 1px, transparent 1px), linear-gradient(to bottom, #792B33 1px, transparent 1px)",
-                backgroundSize: compact ? "22px 22px" : "30px 30px",
+                backgroundSize: compact ? "20px 20px" : "30px 30px",
               }}
             />
 
-            {/* Corner registration marks */}
-            <div className="relative z-10 flex items-center justify-between font-mono text-[9px] uppercase tracking-[0.16em] text-[#792B33]/65">
-              <span>ARCH // 0{index + 1}</span>
-              <span>{compact ? "PREVIEW" : "EDITION 2026"}</span>
-            </div>
-
-            {/* Distinct architectural plate diagram per project */}
-            <div className="relative z-10 my-auto flex items-center justify-center py-1">
-              <div className="relative flex w-full max-w-[88%] flex-col items-center justify-center border border-[#792B33]/30 bg-[#F3E9DE]/88 px-3 py-3 text-center">
-                <span
-                  className="pointer-events-none select-none leading-none text-[#792B33]/[0.12]"
-                  style={{
-                    fontFamily: "var(--font-anton), Impact, sans-serif",
-                    fontSize: compact ? "38px" : "62px",
-                  }}
-                >
-                  {project.number}
-                </span>
-                <span
-                  className={`-mt-2 font-mono uppercase tracking-[0.18em] text-[#792B33] ${
-                    compact ? "text-[8px]" : "text-[10px]"
-                  }`}
-                >
-                  {project.previewLabel}
-                </span>
-              </div>
-            </div>
-
-            <div className="relative z-10 flex items-center justify-between border-t border-[#792B33]/20 pt-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-[#792B33]/68">
-              <span className="truncate">{project.category}</span>
-              <span className="shrink-0">16:8</span>
+            <div
+              className={`relative z-10 flex w-full max-w-[86%] items-center justify-center border border-[#792B33]/28 bg-[#F3E9DE]/90 text-center ${
+                compact ? "px-2.5 py-3.5" : "px-4 py-5"
+              }`}
+            >
+              <span
+                className={`font-mono uppercase tracking-[0.16em] text-[#792B33]/85 ${
+                  compact ? "text-[8.5px]" : "text-[11px]"
+                }`}
+              >
+                {project.previewLabel}
+              </span>
             </div>
           </div>
         </div>
@@ -285,6 +227,7 @@ export function ChapterProjects() {
     (rawProgress: number) => {
       const pos = computeTumbleScrollPosition(rawProgress, count);
       desktopDeckRef.current?.setPosition(pos);
+      mobileDeckRef.current?.setPosition(pos);
 
       if (pinStageRef.current) {
         pinStageRef.current.dataset.cameraProgress = rawProgress.toFixed(3);
@@ -407,28 +350,17 @@ export function ChapterProjects() {
   };
 
   const renderDesktopCard = useCallback(
-    (project: PortfolioProject, idx: number, isActive: boolean) => (
-      <ProjectTumblePlate
-        project={project}
-        index={idx}
-        total={count}
-        isActive={isActive}
-      />
+    (project: PortfolioProject, _idx: number, isActive: boolean) => (
+      <ProjectTumblePlate project={project} isActive={isActive} />
     ),
-    [count]
+    []
   );
 
   const renderMobileCard = useCallback(
-    (project: PortfolioProject, idx: number, isActive: boolean) => (
-      <ProjectTumblePlate
-        project={project}
-        index={idx}
-        total={count}
-        isActive={isActive}
-        compact
-      />
+    (project: PortfolioProject, _idx: number, isActive: boolean) => (
+      <ProjectTumblePlate project={project} isActive={isActive} compact />
     ),
-    [count]
+    []
   );
 
   return (
@@ -486,19 +418,16 @@ export function ChapterProjects() {
             </div>
 
             <div className="flex flex-col items-end gap-2 shrink-0">
-              <div className="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.18em] text-[#792B33] tabular-nums">
-                <span data-testid="projects-camera-counter">
-                  {activeProject.number} / 0{count}
-                </span>
-                <span aria-hidden="true" className="text-[#792B33]/30">
-                  ·
-                </span>
-                <span className="text-[#792B33]/68">{activeProject.category}</span>
-              </div>
+              <span
+                data-testid="projects-camera-counter"
+                className="font-mono text-xs uppercase tracking-[0.18em] text-[#792B33] tabular-nums"
+              >
+                {activeProject.number} / 0{count}
+              </span>
               <CameraProgressRule
                 barRef={progressBarRef}
                 surface="ivory"
-                className="w-40"
+                className="w-36"
               />
             </div>
           </div>
@@ -526,22 +455,11 @@ export function ChapterProjects() {
             />
           </div>
 
-          {/* Bottom Deck Controls & Active Project Summary Bar */}
+          {/* Bottom Deck Controls Bar (Single primary CTA + project index) */}
           <div className="page-container relative z-10 flex items-center justify-between gap-4 border-t border-[#792B33]/18 pt-3.5">
-            <div className="flex items-center gap-3 min-w-0">
-              <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#792B33] tabular-nums">
-                {activeProject.number} / 0{count}
-              </span>
-              <span aria-hidden="true" className="text-[#792B33]/32">
-                /
-              </span>
-              <span className="text-sm font-medium text-[#792B33] truncate">
-                {activeProject.title}
-              </span>
-              <span className="hidden xl:inline font-mono text-[11px] uppercase tracking-[0.14em] text-[#792B33]/58">
-                · Scroll to flip deck · Click active plate for case study
-              </span>
-            </div>
+            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#792B33]/60 truncate">
+              Scroll to flip · Click front plate to open case study
+            </span>
 
             <div className="flex items-center gap-2 shrink-0">
               <button
@@ -693,7 +611,7 @@ export function ChapterProjects() {
           />
 
           {/* Compact Mobile 3D Tumble Deck (horizontal swipe + buttons, vertical scroll stays native) */}
-          <div className="mt-6 -mx-2 sm:mx-0">
+          <div className="mt-5 -mx-2 sm:mx-0">
             <TumbleDeckShowcase
               cards={PROJECTS}
               deckRef={mobileDeckRef}
@@ -701,9 +619,9 @@ export function ChapterProjects() {
               swipeAxis="x"
               loop={false}
               depth={3}
-              aspect={1.68}
-              height="clamp(300px, 44vh, 390px)"
-              heightRatio={0.46}
+              aspect={1.58}
+              height="clamp(275px, 39vh, 350px)"
+              heightRatio={0.54}
               background="#F3E9DE"
               shadeColor="#792B33"
               showFloorLine
@@ -716,77 +634,58 @@ export function ChapterProjects() {
             />
           </div>
 
-          {/* Active Project Details & CTA */}
-          <div className="mt-4 border border-[#792B33]/25 bg-[#F3E9DE] p-4 sm:p-5 space-y-4">
-            <div className="flex items-baseline justify-between gap-3">
-              <h3
-                className="m-0 text-2xl uppercase leading-none text-[#792B33]"
-                style={{ fontFamily: "var(--font-anton), Impact, sans-serif" }}
-              >
-                {activeProject.title}
-              </h3>
-              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#792B33]/70">
-                {activeProject.category}
-              </span>
-            </div>
-            <p className="m-0 text-sm leading-relaxed text-[#792B33]/82">
-              {activeProject.shortDescription}
-            </p>
-            <p className="m-0 font-mono text-[11px] text-[#792B33]/65">
-              {activeProject.technologies.join(" · ")}
-            </p>
-
+          {/* Primary Action + Compact Controls Bar (Zero duplicated card copy) */}
+          <div className="mt-3 space-y-4">
             <button
               type="button"
               onClick={(e) => openCaseStudy(activeIndex, e.currentTarget)}
               className="w-full inline-flex min-h-[44px] items-center justify-center gap-2 bg-[#792B33] px-5 py-3 text-xs font-mono uppercase tracking-[0.16em] text-[#F3E9DE] cursor-pointer"
             >
-              <span>Open Project Case Study</span>
+              <span>Open Case Study · {activeProject.title}</span>
               <ArrowUpRight size={15} strokeWidth={1.7} aria-hidden="true" />
             </button>
-          </div>
 
-          {/* Touch Controls Bar */}
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#792B33]/20 pt-4">
-            <span className="font-mono text-xs uppercase tracking-[0.16em] text-[#792B33] tabular-nums">
-              {activeProject.number} / 0{count}
-            </span>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#792B33]/20 pt-4">
+              <span className="font-mono text-xs uppercase tracking-[0.16em] text-[#792B33] tabular-nums">
+                {activeProject.number} / 0{count}
+              </span>
 
-            <div className="flex items-center gap-1.5">
-              {PROJECTS.map((p, idx) => (
+              <div className="flex items-center gap-1.5">
+                {PROJECTS.map((p, idx) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => navigateToProject(idx)}
+                    aria-label={`Show ${p.title}`}
+                    aria-pressed={idx === activeIndex}
+                    className={`h-10 min-w-[40px] px-2 font-mono text-xs tabular-nums ${
+                      idx === activeIndex
+                        ? "bg-[#792B33] text-[#F3E9DE]"
+                        : "border border-[#792B33]/28 text-[#792B33]"
+                    }`}
+                  >
+                    {p.number}
+                  </button>
+                ))}
                 <button
-                  key={p.id}
                   type="button"
-                  onClick={() => navigateToProject(idx)}
-                  aria-label={`Show ${p.title}`}
-                  aria-pressed={idx === activeIndex}
-                  className={`h-10 min-w-[40px] px-2 font-mono text-xs tabular-nums ${
-                    idx === activeIndex
-                      ? "bg-[#792B33] text-[#F3E9DE]"
-                      : "border border-[#792B33]/28 text-[#792B33]"
-                  }`}
+                  onClick={() => stepProject(-1)}
+                  disabled={activeIndex === 0}
+                  aria-label="Previous project"
+                  className="inline-flex h-10 w-10 items-center justify-center border border-[#792B33]/32 text-[#792B33] disabled:opacity-35"
                 >
-                  {p.number}
+                  <ChevronLeft size={17} />
                 </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => stepProject(-1)}
-                disabled={activeIndex === 0}
-                aria-label="Previous project"
-                className="inline-flex h-10 w-10 items-center justify-center border border-[#792B33]/32 text-[#792B33] disabled:opacity-35"
-              >
-                <ChevronLeft size={17} />
-              </button>
-              <button
-                type="button"
-                onClick={() => stepProject(1)}
-                disabled={activeIndex === count - 1}
-                aria-label="Next project"
-                className="inline-flex h-10 w-10 items-center justify-center border border-[#792B33]/32 text-[#792B33] disabled:opacity-35"
-              >
-                <ChevronRight size={17} />
-              </button>
+                <button
+                  type="button"
+                  onClick={() => stepProject(1)}
+                  disabled={activeIndex === count - 1}
+                  aria-label="Next project"
+                  className="inline-flex h-10 w-10 items-center justify-center border border-[#792B33]/32 text-[#792B33] disabled:opacity-35"
+                >
+                  <ChevronRight size={17} />
+                </button>
+              </div>
             </div>
           </div>
         </div>
