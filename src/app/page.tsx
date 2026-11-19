@@ -21,7 +21,6 @@ import {
 import type { SpatialControlValues } from "@/components/particle-portrait";
 import { DirectionalMediaReveal } from "@/components/motion/directional-media-reveal";
 import { MaskedLineReveal } from "@/components/motion/masked-line-reveal";
-import { ScrollWordReveal } from "@/components/motion/scroll-word-reveal";
 import { CareerJourney } from "@/components/portfolio/career-journey";
 import {
   applyHeroStoryToDom,
@@ -37,6 +36,7 @@ import { ProjectFlyout } from "@/components/portfolio/project-flyout";
 import { ProjectsGallerySection } from "@/components/portfolio/projects-gallery-section";
 import { ResumeModal } from "@/components/portfolio/resume-modal";
 import { SiteNav } from "@/components/portfolio/site-nav";
+import { TornPaperPeelTransition } from "@/components/portfolio/torn-paper-peel-transition";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -397,41 +397,25 @@ export default function Home() {
           />
         </div>
 
-        {/* 03 / PRACTICE & CRAFT */}
+        {/* 03 / JAPANESE TORN-PAPER PEEL TRANSITION -> PRACTICE & CRAFT */}
         <section
           id="about"
           aria-labelledby="about-heading"
-          className="section-band overflow-hidden"
+          className="relative"
         >
-          <div className="page-container">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12 items-start">
-              <div className="lg:col-span-2">
-                <span className="type-tech-label text-[#A91D22]">02. Practice</span>
-              </div>
-              <div className="lg:col-span-10">
-                <MaskedLineReveal
-                  as="h2"
-                  id="about-heading"
-                  className="type-h2 text-[#1E1916]"
-                  lines={[
-                    "From kernel tuning",
-                    <>
-                      to the <em className="type-serif-accent font-medium">final</em> frame.
-                    </>,
-                  ]}
-                />
-              </div>
-            </div>
+          {/* Pinned 4-phase dark umber (#3A241D) torn-paper peel revealing warm ivory (#F3E8DC) Practice header */}
+          <TornPaperPeelTransition />
 
-            <div className="lg:ml-[16.666%] mb-14 border-y border-[#2B231E]/[0.14] py-10">
-              <ScrollWordReveal
-                text="Across backend routers, storage engines, and browser shaders, good engineering cuts out unnecessary abstraction until the mechanism holds under load."
-                accentWords={["routers,", "shaders,", "holds"]}
-                className="type-intro max-w-[44ch]"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
+          {/* Seamless natural-scroll continuation of Practice on warm washi ivory */}
+          <div
+            className="section-band overflow-hidden pt-10 sm:pt-14"
+            style={{
+              background:
+                "linear-gradient(180deg, #F3E8DC 0%, #F4EADF 32%, #F4EADF 100%)",
+            }}
+          >
+            <div className="page-container">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
               <div
                 data-parallax="prose"
                 className="lg:col-span-7 space-y-12 will-change-transform"
@@ -519,6 +503,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
+          </div>
           </div>
         </section>
 
