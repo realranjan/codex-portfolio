@@ -117,10 +117,10 @@ export function ExperienceTypography({
       {/* Feather-soft invisible radial ivory wash for contrast only (zero visible box or edge) */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -inset-x-20 -inset-y-16 -z-10"
+        className="pointer-events-none absolute -inset-x-28 -inset-y-24 -z-10"
         style={{
           background:
-            "radial-gradient(ellipse 76% 72% at 48% 48%, rgba(243,233,222,0.96) 0%, rgba(243,233,222,0.82) 52%, rgba(243,233,222,0) 82%)",
+            "radial-gradient(ellipse 64% 62% at 50% 50%, rgba(243,233,222,0.92) 0%, rgba(243,233,222,0.62) 44%, rgba(243,233,222,0) 68%)",
         }}
       />
 
