@@ -1,8 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  computeChapterHingeTransform,
   computeContinuousStrokeState,
   computeStoryCardCamera,
+  computeWordRevealState,
 } from "./story-scroll-camera";
 
 test("computeStoryCardCamera keeps first section level and rotates subsequent sections from 30deg to 0deg", () => {
@@ -75,3 +77,44 @@ test("computeContinuousStrokeState tracks unbroken stroke fill and chapter node 
     ["passed", "passed", "passed", "passed", "active"]
   );
 });
+
+test("computeWordRevealState illuminates words progressively from muted ink to full opacity", () => {
+  const total = 20;
+  const firstAtStart = computeWordRevealState(0, 0, total);
+  const lastAtStart = computeWordRevealState(0, total - 1, total);
+  assert.equal(firstAtStart.opacity, 0.2);
+  assert.equal(firstAtStart.isLit, false);
+  assert.equal(lastAtStart.opacity, 0.2);
+
+  const firstMid = computeWordRevealState(0.45, 0, total);
+  const midWord = computeWordRevealState(0.45, 10, total);
+  const lastMid = computeWordRevealState(0.45, total - 1, total);
+  assert.equal(firstMid.opacity, 1);
+  assert.equal(firstMid.isLit, true);
+  assert.ok(midWord.opacity > lastMid.opacity, "Earlier words must illuminate ahead of later words");
+
+  const lastAtEnd = computeWordRevealState(1, total - 1, total);
+  assert.equal(lastAtEnd.opacity, 1);
+  assert.equal(lastAtEnd.yPx, 0);
+  assert.equal(lastAtEnd.isLit, true);
+});
+
+test("computeChapterHingeTransform swings cleanly from angled entry to settled flat state", () => {
+  const leftEntry = computeChapterHingeTransform(0, 11, "left");
+  assert.equal(leftEntry.rotationDeg, 11);
+  assert.equal(leftEntry.translateYPx, 34);
+  assert.equal(leftEntry.isSettled, false);
+
+  const rightEntry = computeChapterHingeTransform(0, 11, "right");
+  assert.equal(rightEntry.rotationDeg, -11);
+
+  const mid = computeChapterHingeTransform(0.5, 11, "left");
+  assert.ok(mid.rotationDeg > 0 && mid.rotationDeg < 6, "Eased hinge should unwind smoothly");
+
+  const settled = computeChapterHingeTransform(1, 11, "left");
+  assert.equal(settled.rotationDeg, 0);
+  assert.equal(settled.translateYPx, 0);
+  assert.equal(settled.scale, 1);
+  assert.equal(settled.isSettled, true);
+});
+

@@ -5,6 +5,8 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { EDUCATION_CONTENT, EDUCATION_ENTRIES } from "@/data/portfolio-content";
 import { ChapterHeading } from "@/components/portfolio/editorial-primitives";
+import { SpotIllustration } from "@/components/portfolio/spot-illustration";
+import craneCutout from "@/assets/illustrations/crane-cutout.png";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -58,9 +60,22 @@ export function ChapterEducation() {
       id="education"
       aria-labelledby="education-heading"
       data-chapter-surface="burgundy"
-      className="relative bg-[#792B33] text-[#F3E9DE] pt-8 sm:pt-12 pb-12 sm:pb-16 overflow-x-clip"
+      className="relative bg-[#792B33] text-[#F3E9DE] pt-24 sm:pt-28 lg:pt-32 pb-12 sm:pb-16 overflow-x-clip"
     >
-      <div className="page-container">
+      {/* Subtle high-contrast ivory-winged crane soaring cleanly over Burgundy */}
+      <SpotIllustration
+        src={craneCutout}
+        alt="Japanese ivory-winged red-crowned crane illustration"
+        surface="burgundy"
+        flipX
+        parallaxY={20}
+        baseRotate={4}
+        rotateDelta={2.6}
+        testId="education-crane-spot"
+        className="hidden lg:block absolute top-24 sm:top-28 right-[14vw] xl:right-[16vw] z-[2] w-[134px] xl:w-[156px] opacity-95"
+      />
+
+      <div className="page-container relative z-10">
         <ChapterHeading
           id="education-heading"
           number={EDUCATION_CONTENT.chapterNumber}

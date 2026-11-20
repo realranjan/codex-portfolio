@@ -22,6 +22,7 @@ import {
 import { SiteNav } from "@/components/portfolio/site-nav";
 import { ResumeModal } from "@/components/portfolio/resume-modal";
 import { TornPaperPeel } from "@/components/portfolio/torn-paper-peel";
+import { StoryScrollChapter } from "@/components/ui/story-scroll";
 import { ChapterAbout } from "@/components/portfolio/chapter-about";
 import { ChapterProjects } from "@/components/portfolio/chapter-projects";
 import { ChapterPlayground } from "@/components/portfolio/chapter-playground";
@@ -261,37 +262,92 @@ export default function Home() {
             POST-HERO NARRATIVE CHAPTERS (STRICT #792B33 BURGUNDY & #F3E9DE IVORY)
            ═══════════════════════════════════════════════════════════════════════ */}
 
-        {/* CHAPTER 01 — ABOUT & PHILOSOPHY (Burgundy #792B33) */}
-        <ChapterAbout />
+        {/* CHAPTER 01 — ABOUT & PHILOSOPHY (Story Scroll Hinged Entrance · Single Focused Page) */}
+        <StoryScrollChapter
+          testId="story-hinge-about"
+          hinge="left"
+          maxDeg={9}
+          backdropColor="#F3E9DE"
+        >
+          <ChapterAbout />
+        </StoryScrollChapter>
 
-        {/* TRANSITION 01 -> 02 — REALISTIC BURGUNDY TORN-PAPER PEEL REVEALING IVORY */}
+        {/* TRANSITION 01 -> 02 — BURGUNDY TORN-PAPER PEEL REVEALING IVORY */}
         <TornPaperPeel
+          variant="burgundy-to-ivory"
           testId="torn-paper-about-to-projects"
-          upperCaption="Chapter 01 → Chapter 02"
+          upperCaption="01 / About → 02 / Projects"
           lowerHint="02 · Selected Projects"
           phaseOffset={0}
         />
 
-        {/* CHAPTER 02 — SELECTED PROJECTS (Ivory #F3E9DE) */}
+        {/* CHAPTER 02 — SELECTED PROJECTS (Ivory · Preserved Sticky 3D Tumble Deck) */}
         <ChapterProjects />
 
-        {/* CHAPTER 03 — THE PLAYGROUND / EXPERIMENTS (Ivory #F3E9DE -> Masked Reveal to Burgundy) */}
-        <ChapterPlayground />
+        {/* CHAPTER 03 — THE PLAYGROUND (Story Scroll Hinged Entrance · Ivory) */}
+        <StoryScrollChapter
+          testId="story-hinge-playground"
+          hinge="right"
+          maxDeg={8.5}
+          backdropColor="#F3E9DE"
+        >
+          <ChapterPlayground />
+        </StoryScrollChapter>
 
-        {/* CHAPTER 04 — SKILLS & TECHNOLOGY (Burgundy #792B33 -> Flight-Line Bridge to Ivory) */}
-        <ChapterSkills />
+        {/* TRANSITION 03 -> 04 — IVORY TORN-PAPER PEEL REVEALING BURGUNDY */}
+        <TornPaperPeel
+          variant="ivory-to-burgundy"
+          testId="torn-paper-playground-to-skills"
+          upperCaption="03 / Playground → 04 / Skills"
+          lowerHint="04 · The Art of Making Things"
+          phaseOffset={2.3}
+        />
 
-        {/* CHAPTER 05 — EXPERIENCE & JOURNEY (Ivory #F3E9DE -> Straightening Line to Burgundy) */}
+        {/* CHAPTER 04 — SKILLS & TECHNOLOGY (Story Scroll Hinged Entrance · Burgundy) */}
+        <StoryScrollChapter
+          testId="story-hinge-skills"
+          hinge="left"
+          maxDeg={8}
+          backdropColor="#5E1E25"
+        >
+          <ChapterSkills />
+        </StoryScrollChapter>
+
+        {/* TRANSITION 04 -> 05 — BURGUNDY TORN-PAPER PEEL REVEALING 3D MOUNTAIN JOURNEY */}
+        <TornPaperPeel
+          variant="burgundy-to-ivory"
+          testId="torn-paper-skills-to-experience"
+          upperCaption="04 / Skills → 05 / Experience"
+          lowerHint="05 · Mountain Journey"
+          phaseOffset={6.1}
+        />
+
+        {/* CHAPTER 05 — EXPERIENCE & JOURNEY (Ivory · Preserved Sticky 3D Mountain Journey) */}
         <ChapterExperience />
 
-        {/* CHAPTER 06 — EDUCATION (Burgundy #792B33) */}
-        <ChapterEducation />
+        {/* CHAPTER 06 — EDUCATION (Story Scroll Hinged Entrance · Burgundy) */}
+        <StoryScrollChapter
+          testId="story-hinge-education"
+          hinge="left"
+          maxDeg={8.5}
+          backdropColor="#F3E9DE"
+        >
+          <ChapterEducation />
+        </StoryScrollChapter>
 
-        {/* CHAPTER 07 — ACHIEVEMENTS & CERTIFICATIONS (Burgundy #792B33) */}
-        <ChapterAchievements />
+        {/* CHAPTER 07 — ACHIEVEMENTS & CERTIFICATIONS (Story Scroll Hinged Entrance · Burgundy) */}
+        <StoryScrollChapter
+          testId="story-hinge-achievements"
+          hinge="right"
+          maxDeg={8}
+          backdropColor="#5E1E25"
+        >
+          <ChapterAchievements />
+        </StoryScrollChapter>
 
-        {/* TRANSITION 07 -> 09 — REUSABLE BURGUNDY TORN-PAPER PEEL REVEALING FINAL IVORY FOOTER */}
+        {/* TRANSITION 07 -> 09 — BURGUNDY TORN-PAPER PEEL REVEALING FINAL IVORY FOOTER */}
         <TornPaperPeel
+          variant="burgundy-to-ivory"
           testId="torn-paper-achievements-to-contact"
           upperCaption="07 / Achievements → 09 / Contact"
           lowerHint="Epilogue"

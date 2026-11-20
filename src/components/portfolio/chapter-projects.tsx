@@ -33,6 +33,8 @@ import {
 import TumbleDeckShowcase, {
   type TumbleDeckHandle,
 } from "@/components/ui/tumble-deck-showcase";
+import { SpotIllustration } from "@/components/portfolio/spot-illustration";
+import craneCutout from "@/assets/illustrations/crane-cutout.png";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -418,18 +420,31 @@ export function ChapterProjects() {
               </div>
             </div>
 
-            <div className="flex flex-col items-end gap-2 shrink-0">
-              <span
-                data-testid="projects-camera-counter"
-                className="font-mono text-xs uppercase tracking-[0.18em] text-[#792B33] tabular-nums"
-              >
-                {activeProject.number} / 0{count}
-              </span>
-              <CameraProgressRule
-                barRef={progressBarRef}
+            <div className="relative flex items-end gap-5 shrink-0">
+              {/* Subtle Kigo-style background-free gliding crane accent */}
+              <SpotIllustration
+                src={craneCutout}
+                alt="Gliding red-crowned Japanese crane illustration"
                 surface="ivory"
-                className="w-36"
+                parallaxY={14}
+                baseRotate={-4}
+                rotateDelta={2.5}
+                testId="projects-crane-spot"
+                className="hidden lg:block w-[108px] xl:w-[126px] -my-6 -mr-1 opacity-95"
               />
+              <div className="flex flex-col items-end gap-2 shrink-0">
+                <span
+                  data-testid="projects-camera-counter"
+                  className="font-mono text-xs uppercase tracking-[0.18em] text-[#792B33] tabular-nums"
+                >
+                  {activeProject.number} / 0{count}
+                </span>
+                <CameraProgressRule
+                  barRef={progressBarRef}
+                  surface="ivory"
+                  className="w-36"
+                />
+              </div>
             </div>
           </div>
 

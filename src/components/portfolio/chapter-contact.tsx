@@ -17,6 +17,10 @@ import {
 } from "lucide-react";
 import { CONTACT_CONTENT, SOCIAL_LINKS } from "@/data/portfolio-content";
 import { computeFooterTouchState } from "@/lib/footer-touch";
+import footerSakuraCutout from "@/assets/illustrations/footer-sakura-cutout.png";
+import footerWavesCutout from "@/assets/illustrations/footer-waves-cutout.png";
+import footerColorCatCutout from "@/assets/illustrations/footer-color-cat-cutout.png";
+import footerColorPawCutout from "@/assets/illustrations/footer-color-paw-cutout.png";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -221,8 +225,6 @@ export function ChapterContact({ onOpenResume }: ChapterContactProps) {
   const {
     realisticBodyUrl,
     realisticPawUrl,
-    woodblockBodyUrl,
-    woodblockPawUrl,
   } = CONTACT_CONTENT.footerArtwork;
 
   return (
@@ -236,130 +238,64 @@ export function ChapterContact({ onOpenResume }: ChapterContactProps) {
       data-touch-progress="0.00"
       className="relative overflow-x-clip bg-[#F3E9DE] text-[#792B33] pt-10 sm:pt-12 pb-6 sm:pb-7"
     >
-      {/* Subtle handmade washi paper grain texture (pure lightweight CSS) */}
+      {/* Soft warm sunset atmospheric wash lending subtle color depth behind the footer */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-0 opacity-[0.05]"
+        className="pointer-events-none absolute inset-0 z-0"
         style={{
-          backgroundImage:
-            "radial-gradient(#792B33 0.55px, transparent 0.55px), radial-gradient(#792B33 0.45px, transparent 0.45px)",
-          backgroundSize: "20px 20px, 29px 29px",
-          backgroundPosition: "0 0, 10px 13px",
+          background:
+            "radial-gradient(ellipse 64% 48% at 50% 48%, rgba(244, 184, 89, 0.16) 0%, rgba(217, 72, 54, 0.06) 44%, rgba(243, 233, 222, 0) 78%)",
         }}
       />
 
-      {/* ── UPPER CORNER PLUM BLOSSOM BRANCHES (Left: filled dark-burgundy | Right: woodblock outline) ── */}
-      <svg
+      {/* ── COLORFUL SWEEPING JAPANESE SAKURA CHERRY BLOSSOM BRANCHES (Kigo-Studio Style Cutouts) ── */}
+      <div
         aria-hidden="true"
-        viewBox="0 0 380 240"
-        className="pointer-events-none absolute top-0 left-0 z-[2] hidden md:block w-[240px] lg:w-[320px] h-auto text-[#792B33]"
-        fill="none"
+        data-testid="footer-sakura-left"
+        className="pointer-events-none select-none absolute -top-3 -left-6 z-[3] hidden md:block w-[270px] lg:w-[355px] xl:w-[400px]"
+        style={{
+          filter: "drop-shadow(0 12px 22px rgba(121, 43, 51, 0.14))",
+        }}
       >
-        {/* Main dark gnarled ink branch */}
-        <path
-          d="M-12 118 C36 92, 74 62, 134 42 C188 24, 246 18, 304 6"
-          stroke="currentColor"
-          strokeWidth="6.5"
-          strokeLinecap="round"
+        <Image
+          src={footerSakuraCutout}
+          alt=""
+          referrerPolicy="no-referrer"
+          className="block h-auto w-full object-contain"
         />
-        <path
-          d="M66 72 C108 78, 152 68, 206 48"
-          stroke="currentColor"
-          strokeWidth="3.2"
-          strokeLinecap="round"
-        />
-        <path
-          d="M42 94 C72 122, 98 148, 128 164"
-          stroke="currentColor"
-          strokeWidth="2.6"
-          strokeLinecap="round"
-        />
-        <path
-          d="M156 36 C178 18, 202 8, 228 -4"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-        />
-        {/* Filled burgundy five-petal plum blossoms */}
-        {[
-          { cx: 146, cy: 48, r: 19 },
-          { cx: 68, cy: 132, r: 15 },
-          { cx: 48, cy: 44, r: 13 },
-          { cx: 214, cy: 36, r: 10 },
-          { cx: 102, cy: 76, r: 9 },
-        ].map((b, i) => (
-          <g key={i} transform={`translate(${b.cx} ${b.cy})`} fill="currentColor">
-            <circle cx="0" cy={-b.r * 0.56} r={b.r * 0.44} fillOpacity="0.92" />
-            <circle cx={b.r * 0.53} cy={-b.r * 0.17} r={b.r * 0.44} fillOpacity="0.92" />
-            <circle cx={b.r * 0.33} cy={b.r * 0.45} r={b.r * 0.44} fillOpacity="0.92" />
-            <circle cx={-b.r * 0.33} cy={b.r * 0.45} r={b.r * 0.44} fillOpacity="0.92" />
-            <circle cx={-b.r * 0.53} cy={-b.r * 0.17} r={b.r * 0.44} fillOpacity="0.92" />
-            <circle cx="0" cy="0" r={b.r * 0.24} fill="#F3E9DE" fillOpacity="0.88" />
-            <circle cx="0" cy="0" r={b.r * 0.1} fill="currentColor" />
-          </g>
-        ))}
-        {/* Drifting petals */}
-        <path d="M188 94 C196 86, 208 88, 204 98 C198 104, 186 102, 188 94 Z" fill="currentColor" fillOpacity="0.86" />
-        <path d="M98 176 C106 170, 118 176, 112 188 C104 192, 94 184, 98 176 Z" fill="currentColor" fillOpacity="0.82" />
-        <path d="M244 120 C250 115, 259 118, 255 125 C250 129, 242 126, 244 120 Z" fill="currentColor" fillOpacity="0.72" />
-      </svg>
+      </div>
 
-      {/* Right woodblock-outlined plum branch mirroring the right cat's traditional print aesthetic */}
-      <svg
+      <div
         aria-hidden="true"
-        viewBox="0 0 380 240"
-        className="pointer-events-none absolute top-0 right-0 z-[2] hidden md:block w-[240px] lg:w-[320px] h-auto text-[#792B33]"
-        fill="none"
+        data-testid="footer-sakura-right"
+        className="pointer-events-none select-none absolute -top-2 -right-6 z-[3] hidden md:block w-[240px] lg:w-[310px] xl:w-[350px] -scale-x-100"
+        style={{
+          filter: "drop-shadow(0 12px 22px rgba(121, 43, 51, 0.14))",
+        }}
       >
-        <path
-          d="M392 46 C340 74, 294 98, 232 132 C192 154, 160 176, 130 202"
-          stroke="currentColor"
-          strokeWidth="3.8"
-          strokeLinecap="round"
+        <Image
+          src={footerSakuraCutout}
+          alt=""
+          referrerPolicy="no-referrer"
+          className="block h-auto w-full object-contain"
         />
-        <path
-          d="M312 86 C272 72, 232 64, 188 68"
-          stroke="currentColor"
-          strokeWidth="2.1"
-          strokeLinecap="round"
-        />
-        <path
-          d="M254 120 C272 146, 286 168, 294 194"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinecap="round"
-        />
-        {/* Woodblock-outlined ivory-filled plum blossoms */}
-        {[
-          { cx: 298, cy: 48, r: 19 },
-          { cx: 232, cy: 64, r: 16 },
-          { cx: 288, cy: 112, r: 14 },
-          { cx: 196, cy: 148, r: 12 },
-          { cx: 342, cy: 96, r: 13 },
-        ].map((b, i) => (
-          <g key={i} transform={`translate(${b.cx} ${b.cy})`}>
-            <circle cx="0" cy={-b.r * 0.56} r={b.r * 0.43} fill="#F3E9DE" stroke="currentColor" strokeWidth="1.5" />
-            <circle cx={b.r * 0.53} cy={-b.r * 0.17} r={b.r * 0.43} fill="#F3E9DE" stroke="currentColor" strokeWidth="1.5" />
-            <circle cx={b.r * 0.33} cy={b.r * 0.45} r={b.r * 0.43} fill="#F3E9DE" stroke="currentColor" strokeWidth="1.5" />
-            <circle cx={-b.r * 0.33} cy={b.r * 0.45} r={b.r * 0.43} fill="#F3E9DE" stroke="currentColor" strokeWidth="1.5" />
-            <circle cx={-b.r * 0.53} cy={-b.r * 0.17} r={b.r * 0.43} fill="#F3E9DE" stroke="currentColor" strokeWidth="1.5" />
-            <circle cx="0" cy="0" r={b.r * 0.24} fill="#F3E9DE" stroke="currentColor" strokeWidth="1.1" />
-            <circle cx="0" cy="0" r={b.r * 0.08} fill="currentColor" />
-          </g>
-        ))}
-        {/* Drifting outlined petals */}
-        <path d="M164 102 C171 95, 181 98, 177 107 C171 112, 162 108, 164 102 Z" fill="#F3E9DE" stroke="currentColor" strokeWidth="1.3" />
-        <path d="M116 178 C122 172, 132 175, 128 183 C122 188, 114 184, 116 178 Z" fill="#F3E9DE" stroke="currentColor" strokeWidth="1.3" />
-      </svg>
+      </div>
 
-      {/* ── TOP EDITORIAL HEADER (Calm, restrained — significantly smaller than Hero) ── */}
+      {/* ── TOP EDITORIAL HEADER (With subtle Japanese vermilion seal accent) ── */}
       <div className="page-container relative z-[10] text-center">
-        <div className="inline-flex items-center gap-4 text-[#792B33]/78">
-          <span aria-hidden="true" className="h-px w-8 sm:w-10 bg-[#792B33]/42" />
+        <div className="inline-flex items-center gap-3.5 text-[#792B33]/84">
+          <span aria-hidden="true" className="h-px w-8 sm:w-10 bg-gradient-to-r from-transparent to-[#D94836]/65" />
           <p className="m-0 font-mono text-[11px] uppercase tracking-[0.26em]">
             {CONTACT_CONTENT.chapterNumber} / {CONTACT_CONTENT.chapterLabel}
           </p>
-          <span aria-hidden="true" className="h-px w-8 sm:w-10 bg-[#792B33]/42" />
+          <span
+            aria-hidden="true"
+            className="inline-flex h-5 w-5 items-center justify-center border border-[#C8372D] bg-[#C8372D] font-serif text-[11px] font-semibold leading-none text-[#F3E9DE]"
+            style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+          >
+            縁
+          </span>
+          <span aria-hidden="true" className="h-px w-8 sm:w-10 bg-gradient-to-l from-transparent to-[#D94836]/65" />
         </div>
 
         <h2
@@ -390,22 +326,27 @@ export function ChapterContact({ onOpenResume }: ChapterContactProps) {
         data-testid="footer-touch-stage"
         className="relative z-[5] mt-2 sm:mt-3 w-full h-[215px] sm:h-[290px] md:h-[330px] lg:h-[360px] overflow-hidden select-none"
       >
-        {/* Textured Woodblock Burgundy Sun + Minimal Japanese Mist Clouds behind touch point */}
+        {/* Vibrant Vermilion-to-Gold Japanese Rising Sun + Golden Mist Clouds behind touch point */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute left-1/2 top-[52%] z-[2] -translate-x-1/2 -translate-y-1/2"
         >
           <svg
-            viewBox="0 0 300 300"
-            className="h-[146px] w-[146px] sm:h-[205px] sm:w-[205px] lg:h-[238px] lg:w-[238px]"
+            viewBox="0 0 320 320"
+            className="h-[162px] w-[162px] sm:h-[224px] sm:w-[224px] lg:h-[260px] lg:w-[260px]"
             fill="none"
           >
             <defs>
+              <radialGradient id="footer-sun-halo" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#F5B856" stopOpacity="0.46" />
+                <stop offset="65%" stopColor="#E65D3B" stopOpacity="0.16" />
+                <stop offset="100%" stopColor="#E65D3B" stopOpacity="0" />
+              </radialGradient>
               <linearGradient id="footer-ukiyoe-sun" x1="50%" y1="4%" x2="50%" y2="96%">
-                <stop offset="0%" stopColor="#792B33" stopOpacity="0.88" />
-                <stop offset="48%" stopColor="#792B33" stopOpacity="0.58" />
-                <stop offset="82%" stopColor="#792B33" stopOpacity="0.22" />
-                <stop offset="100%" stopColor="#792B33" stopOpacity="0.04" />
+                <stop offset="0%" stopColor="#D6362B" stopOpacity="0.96" />
+                <stop offset="46%" stopColor="#E96B3A" stopOpacity="0.9" />
+                <stop offset="82%" stopColor="#F4B252" stopOpacity="0.72" />
+                <stop offset="100%" stopColor="#F9D58B" stopOpacity="0.18" />
               </linearGradient>
               <pattern
                 id="footer-sun-grain"
@@ -414,22 +355,26 @@ export function ChapterContact({ onOpenResume }: ChapterContactProps) {
                 patternUnits="userSpaceOnUse"
               >
                 <circle cx="1.5" cy="1.5" r="0.6" fill="#F3E9DE" fillOpacity="0.22" />
-                <circle cx="4.5" cy="4.2" r="0.55" fill="#F3E9DE" fillOpacity="0.18" />
+                <circle cx="4.5" cy="4.2" r="0.55" fill="#792B33" fillOpacity="0.12" />
               </pattern>
             </defs>
-            {/* Main textured burgundy sun disc */}
-            <circle cx="150" cy="150" r="118" fill="url(#footer-ukiyoe-sun)" />
-            <circle cx="150" cy="150" r="118" fill="url(#footer-sun-grain)" />
-            {/* Minimal traditional horizontal mist-cloud streaks */}
+            {/* Soft golden-coral atmospheric halo */}
+            <circle cx="160" cy="160" r="154" fill="url(#footer-sun-halo)" />
+            {/* Main vibrant vermilion-gold sun disc */}
+            <circle cx="160" cy="160" r="118" fill="url(#footer-ukiyoe-sun)" />
+            <circle cx="160" cy="160" r="118" fill="url(#footer-sun-grain)" />
+            {/* Fine gold-leaf orbital ring */}
+            <circle cx="160" cy="160" r="127" stroke="#D4963B" strokeOpacity="0.38" strokeWidth="1.2" strokeDasharray="4 6" />
+            {/* Traditional warm ivory & gold mist-cloud streaks */}
             <path
-              d="M36 122 Q68 117 98 121 Q114 123 128 122 Q100 128 66 126 Z"
+              d="M34 126 Q68 120 102 125 Q118 127 134 126 Q104 133 66 131 Z"
               fill="#F3E9DE"
-              fillOpacity="0.72"
+              fillOpacity="0.82"
             />
             <path
-              d="M172 142 Q208 136 248 140 Q268 142 284 140 Q254 148 206 146 Z"
+              d="M180 148 Q218 141 258 146 Q278 148 294 146 Q264 154 214 152 Z"
               fill="#F3E9DE"
-              fillOpacity="0.76"
+              fillOpacity="0.84"
             />
           </svg>
         </div>
@@ -491,7 +436,7 @@ export function ChapterContact({ onOpenResume }: ChapterContactProps) {
           </div>
         </div>
 
-        {/* ── UNIFIED RIGHT WOODBLOCK SAMURAI CAT FIGURE (Body + Proportionate Arm Glide Together as ONE) ── */}
+        {/* ── UNIFIED RIGHT POLYCHROME UKIYO-E SAMURAI CAT FIGURE (Indigo, Vermilion & Gold Armor) ── */}
         <div
           ref={rightCatUnitRef}
           data-testid="footer-right-cat-unit"
@@ -500,60 +445,46 @@ export function ChapterContact({ onOpenResume }: ChapterContactProps) {
             transformOrigin: "62% 72%",
           }}
         >
-          {/* Right Proportionate Woodblock Paw — deeply tucked into shoulder armor, reaching upward */}
+          {/* Right Colorful Polychrome Ukiyo-e Paw — indigo/crimson/gold armored cuff reaching left */}
           <div
             data-testid="footer-right-paw"
-            className="absolute top-[57%] left-0 z-[1] w-[47%] -translate-y-1/2"
+            className="absolute top-[57%] -left-1 z-[1] w-[47%] -translate-y-1/2"
             style={{
               transformOrigin: "0% 50%",
-              transform: "rotate(13deg)",
+              transform: "rotate(12deg)",
             }}
           >
-            {!missingAssets.woodblockPaw ? (
-              <Image
-                src={woodblockPawUrl}
-                alt=""
-                width={672}
-                height={276}
-                sizes="(max-width: 640px) 25vw, 300px"
-                aria-hidden="true"
-                referrerPolicy="no-referrer"
-                onError={() => markAssetMissing("woodblockPaw")}
-                className="block h-auto w-full"
-              />
-            ) : (
-              <div className="h-12 w-full border border-dashed border-[#792B33]/35 bg-[#792B33]/10" />
-            )}
+            <Image
+              src={footerColorPawCutout}
+              alt=""
+              sizes="(max-width: 640px) 25vw, 300px"
+              aria-hidden="true"
+              referrerPolicy="no-referrer"
+              className="block h-auto w-full drop-shadow-[0_10px_18px_rgba(33,54,84,0.2)]"
+            />
           </div>
 
-          {/* Right Traditional Woodblock Samurai Cat Body — solidly overlaps inner shoulder sleeve */}
+          {/* Right Polychrome Ukiyo-e Samurai Cat Bust — vibrant indigo, turquoise, vermilion & gold */}
           <div
             data-testid="footer-right-body"
-            className="absolute -bottom-[6%] sm:-bottom-[10%] right-[10%] sm:right-[14%] z-[2] w-[54%] sm:w-[52%]"
+            className="absolute -bottom-[7%] sm:-bottom-[11%] right-[10%] sm:right-[14%] z-[2] w-[54%] sm:w-[52%]"
           >
-            {!missingAssets.woodblockBody ? (
-              <Image
-                src={woodblockBodyUrl}
-                alt="Traditional Japanese burgundy woodblock-print samurai cat reaching toward the center"
-                width={840}
-                height={1125}
-                sizes="(max-width: 640px) 28vw, 320px"
-                referrerPolicy="no-referrer"
-                onError={() => markAssetMissing("woodblockBody")}
-                className="block h-auto w-full"
-              />
-            ) : (
-              <div className="aspect-[3/4] w-full border border-dashed border-[#792B33]/35 bg-[#792B33]/10" />
-            )}
+            <Image
+              src={footerColorCatCutout}
+              alt="Colorful Japanese polychrome ukiyo-e samurai cat in indigo and gold armor reaching toward the center"
+              sizes="(max-width: 640px) 28vw, 320px"
+              referrerPolicy="no-referrer"
+              className="block h-auto w-full drop-shadow-[0_14px_26px_rgba(33,54,84,0.22)]"
+            />
           </div>
         </div>
 
-        {/* ── PHASE D (85–100%) POETIC CONTACT MOMENTS AT EXACT CENTER ── */}
+        {/* ── PHASE D (85–100%) COLORFUL POETIC CONTACT MOMENTS AT EXACT CENTER ── */}
         <div
           aria-hidden="true"
           className="pointer-events-none absolute left-1/2 top-[56.5%] z-[12] h-0 w-0"
         >
-          {/* Subtle burgundy sumi-e brushstroke expanding calmly along the touch axis */}
+          {/* Warm gold-vermilion brushstroke expanding along touch axis */}
           <svg
             viewBox="0 0 280 48"
             className="absolute left-0 top-0 h-10 w-[180px] sm:w-[240px] -translate-x-1/2 -translate-y-1/2 overflow-visible"
@@ -562,8 +493,8 @@ export function ChapterContact({ onOpenResume }: ChapterContactProps) {
             <path
               ref={brushstrokeRef}
               d="M14 26 C64 21, 114 28, 140 24 C172 20, 224 27, 266 23"
-              stroke="#792B33"
-              strokeWidth="2.2"
+              stroke="#D94836"
+              strokeWidth="2.4"
               strokeLinecap="round"
               strokeDasharray={BRUSH_PATH_LENGTH}
               strokeDashoffset={BRUSH_PATH_LENGTH}
@@ -571,34 +502,34 @@ export function ChapterContact({ onOpenResume }: ChapterContactProps) {
             />
           </svg>
 
-          {/* Subtle concentric ink-like ripples expanding from touching fingertips */}
+          {/* Concentric vermilion & gold-leaf ripples expanding from touching fingertips */}
           <div
             ref={rippleOuterRef}
-            className="absolute left-0 top-0 h-20 w-20 sm:h-24 sm:w-24 rounded-full border border-[#792B33]/55 will-change-transform"
+            className="absolute left-0 top-0 h-20 w-20 sm:h-24 sm:w-24 rounded-full border border-[#D94836]/60 will-change-transform"
             style={{ opacity: 0, transform: "translate(-50%, -50%) scale(0.28)" }}
           />
           <div
             ref={rippleInnerRef}
-            className="absolute left-0 top-0 h-12 w-12 sm:h-14 sm:w-14 rounded-full border border-[#792B33]/42 will-change-transform"
+            className="absolute left-0 top-0 h-12 w-12 sm:h-14 sm:w-14 rounded-full border border-[#E5A33E]/65 will-change-transform"
             style={{ opacity: 0, transform: "translate(-50%, -50%) scale(0.25)" }}
           />
 
-          {/* Delicate five-petal Japanese plum blossom (ume) revealed above contact point */}
+          {/* Colorful rose-pink & gold Japanese sakura blossom revealed right at contact point */}
           <div
             ref={blossomRef}
             data-testid="footer-contact-blossom"
-            className="absolute left-0 -top-6 sm:-top-7 will-change-transform"
+            className="absolute left-0 -top-4 sm:-top-5 will-change-transform"
             style={{ opacity: 0, transform: "translate(-50%, -50%) scale(0.35)" }}
           >
-            <svg viewBox="0 0 40 40" className="h-7 w-7 sm:h-8 sm:w-8" fill="none">
-              <g transform="translate(20 20)" fill="#792B33">
-                <circle cx="0" cy="-7.6" r="5.1" fillOpacity="0.92" />
-                <circle cx="7.2" cy="-2.3" r="5.1" fillOpacity="0.92" />
-                <circle cx="4.5" cy="6.2" r="5.1" fillOpacity="0.92" />
-                <circle cx="-4.5" cy="6.2" r="5.1" fillOpacity="0.92" />
-                <circle cx="-7.2" cy="-2.3" r="5.1" fillOpacity="0.92" />
-                <circle cx="0" cy="0" r="3.4" fill="#F3E9DE" />
-                <circle cx="0" cy="0" r="1.4" fill="#792B33" />
+            <svg viewBox="0 0 40 40" className="h-8 w-8 sm:h-9 sm:w-9" fill="none">
+              <g transform="translate(20 20)">
+                <circle cx="0" cy="-7.8" r="5.2" fill="#F07B93" stroke="#792B33" strokeWidth="0.9" />
+                <circle cx="7.4" cy="-2.4" r="5.2" fill="#F2899C" stroke="#792B33" strokeWidth="0.9" />
+                <circle cx="4.6" cy="6.4" r="5.2" fill="#EC6F88" stroke="#792B33" strokeWidth="0.9" />
+                <circle cx="-4.6" cy="6.4" r="5.2" fill="#F2899C" stroke="#792B33" strokeWidth="0.9" />
+                <circle cx="-7.4" cy="-2.4" r="5.2" fill="#F07B93" stroke="#792B33" strokeWidth="0.9" />
+                <circle cx="0" cy="0" r="3.6" fill="#F5C056" />
+                <circle cx="0" cy="0" r="1.4" fill="#C8372D" />
               </g>
             </svg>
           </div>
@@ -627,56 +558,38 @@ export function ChapterContact({ onOpenResume }: ChapterContactProps) {
         </svg>
       </div>
 
-      {/* ── LOWER CORNER TRADITIONAL WOODBLOCK MOUNTAIN SILHOUETTES (Desktop/Tablet) ── */}
-      <svg
+      {/* ── LOWER CORNER COLORFUL UKIYO-E INDIGO WAVES, VERMILION TORII & GOLD CLOUDS ── */}
+      <div
         aria-hidden="true"
-        viewBox="0 0 340 110"
-        className="pointer-events-none absolute bottom-11 left-0 z-[3] hidden sm:block w-[220px] lg:w-[300px] h-auto text-[#792B33]"
-        fill="none"
+        data-testid="footer-waves-left"
+        className="pointer-events-none select-none absolute bottom-[62px] lg:bottom-[64px] -left-2 lg:left-2 z-[11] hidden md:block w-[210px] lg:w-[275px] xl:w-[310px] opacity-95"
+        style={{
+          filter: "drop-shadow(0 10px 18px rgba(28, 56, 78, 0.16))",
+        }}
       >
-        <path
-          d="M0 110 L0 74 L48 44 L86 58 L138 14 L194 64 L236 52 L310 110 Z"
-          fill="currentColor"
-          fillOpacity="0.13"
+        <Image
+          src={footerWavesCutout}
+          alt=""
+          referrerPolicy="no-referrer"
+          className="block h-auto w-full object-contain"
         />
-        <path
-          d="M0 74 L48 44 L86 58 L138 14 L194 64 L236 52 L310 110"
-          stroke="currentColor"
-          strokeOpacity="0.34"
-          strokeWidth="1.3"
-        />
-        <path
-          d="M138 14 L126 42 M138 14 L154 48 M138 14 L168 62 M48 44 L62 66"
-          stroke="currentColor"
-          strokeOpacity="0.26"
-          strokeWidth="1"
-        />
-      </svg>
+      </div>
 
-      <svg
+      <div
         aria-hidden="true"
-        viewBox="0 0 340 110"
-        className="pointer-events-none absolute bottom-11 right-0 z-[3] hidden sm:block w-[220px] lg:w-[300px] h-auto text-[#792B33] -scale-x-100"
-        fill="none"
+        data-testid="footer-waves-right"
+        className="pointer-events-none select-none absolute bottom-[62px] lg:bottom-[64px] -right-2 lg:right-2 z-[11] hidden md:block w-[210px] lg:w-[275px] xl:w-[310px] -scale-x-100 opacity-95"
+        style={{
+          filter: "drop-shadow(0 10px 18px rgba(28, 56, 78, 0.16))",
+        }}
       >
-        <path
-          d="M0 110 L0 72 L56 38 L102 60 L152 12 L212 68 L264 56 L326 110 Z"
-          fill="currentColor"
-          fillOpacity="0.13"
+        <Image
+          src={footerWavesCutout}
+          alt=""
+          referrerPolicy="no-referrer"
+          className="block h-auto w-full object-contain"
         />
-        <path
-          d="M0 72 L56 38 L102 60 L152 12 L212 68 L264 56 L326 110"
-          stroke="currentColor"
-          strokeOpacity="0.34"
-          strokeWidth="1.3"
-        />
-        <path
-          d="M152 12 L138 44 M152 12 L166 50 M152 12 L182 68 M56 38 L70 62"
-          stroke="currentColor"
-          strokeOpacity="0.26"
-          strokeWidth="1"
-        />
-      </svg>
+      </div>
 
       {/* ── CONTACT CTA & SOCIAL NAVIGATION ── */}
       <div className="page-container relative z-[10] -mt-3 sm:-mt-5 flex flex-col items-center">

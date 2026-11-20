@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ArrowUpRight, X } from "lucide-react";
 import {
   EXPERIMENTS,
@@ -13,8 +11,9 @@ import {
   ChapterHeading,
   PlaceholderVisual,
 } from "@/components/portfolio/editorial-primitives";
-
-gsap.registerPlugin(ScrollTrigger);
+import { SpotIllustration } from "@/components/portfolio/spot-illustration";
+import mapleCutout from "@/assets/illustrations/maple-cutout.png";
+import camelliaCutout from "@/assets/illustrations/camellia-cutout.png";
 
 /**
  * CHAPTER 03 — THE PLAYGROUND / EXPERIMENTS (Ivory #F3E9DE / Burgundy #792B33)
@@ -23,15 +22,10 @@ gsap.registerPlugin(ScrollTrigger);
  * - Curated asymmetric 6-tile exhibition composition with varied aspect ratios,
  *   deliberate spatial offsets, and subtle resting rotations that straighten on hover.
  * - Clicking any tile opens a clean side detail flyout panel.
- * - Ends with a scroll-scrubbed converging architectural line & geometric masked
- *   Burgundy aperture transition into Chapter 04 (Skills & Technology).
+ * - Framed with a subtle background-free Japanese autumn maple sprig (Kigo Studio aesthetic).
  */
 export function ChapterPlayground() {
   const [selected, setSelected] = useState<PlaygroundExperiment | null>(null);
-  const transitionRef = useRef<HTMLDivElement>(null);
-  const leftLineRef = useRef<HTMLDivElement>(null);
-  const rightLineRef = useRef<HTMLDivElement>(null);
-  const maskBoxRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -44,51 +38,38 @@ export function ChapterPlayground() {
     return () => window.removeEventListener("keydown", onKey);
   }, [selected]);
 
-  // Transition -> Tech Stack: converging lines + masked Ivory -> Burgundy aperture reveal
-  useEffect(() => {
-    const root = transitionRef.current;
-    const leftLine = leftLineRef.current;
-    const rightLine = rightLineRef.current;
-    const maskBox = maskBoxRef.current;
-    if (!root || !leftLine || !rightLine || !maskBox) return;
-
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) {
-      gsap.set(maskBox, { clipPath: "inset(0% 0% 0% 0%)" });
-      return;
-    }
-
-    const ctx = gsap.context(() => {
-      const tl = gsap.timeline({
-        scrollTrigger: {
-          trigger: root,
-          start: "top 85%",
-          end: "bottom 35%",
-          scrub: true,
-        },
-      });
-
-      tl.fromTo(leftLine, { xPercent: -48 }, { xPercent: 0, ease: "none" }, 0)
-        .fromTo(rightLine, { xPercent: 48 }, { xPercent: 0, ease: "none" }, 0)
-        .fromTo(
-          maskBox,
-          { clipPath: "inset(18% 36% 0% 36%)" },
-          { clipPath: "inset(0% 0% 0% 0%)", ease: "power2.inOut" },
-          0.12
-        );
-    }, transitionRef);
-
-    return () => ctx.revert();
-  }, []);
-
   return (
     <section
       id="playground"
       aria-labelledby="playground-heading"
       data-chapter-surface="ivory"
-      className="relative bg-[#F3E9DE] text-[#792B33] pt-10 sm:pt-14 overflow-x-clip"
+      className="relative bg-[#F3E9DE] text-[#792B33] pt-24 sm:pt-28 lg:pt-32 pb-16 sm:pb-20 overflow-x-clip"
     >
-      <div className="page-container pb-12 sm:pb-16">
+      {/* Subtle background-free autumn maple branch entering upper-right margin */}
+      <SpotIllustration
+        src={mapleCutout}
+        alt="Japanese ink-painted autumn maple sprig"
+        surface="ivory"
+        parallaxY={24}
+        baseRotate={-6}
+        rotateDelta={3.2}
+        testId="playground-maple-spot"
+        className="hidden md:block absolute top-24 sm:top-28 right-[3vw] lg:right-[4.5vw] z-[2] w-[132px] lg:w-[168px] opacity-95"
+      />
+
+      {/* Subtle crimson camellia blossom blooming along lower-left Ivory breathing space */}
+      <SpotIllustration
+        src={camelliaCutout}
+        alt="Japanese crimson camellia blossom"
+        surface="ivory"
+        parallaxY={20}
+        baseRotate={-10}
+        rotateDelta={2.6}
+        testId="playground-camellia-spot"
+        className="hidden xl:block absolute bottom-6 left-[1.5vw] z-[2] w-[124px] opacity-95"
+      />
+
+      <div className="page-container relative z-10">
         <ChapterHeading
           id="playground-heading"
           number={PLAYGROUND_CONTENT.chapterNumber}
@@ -97,7 +78,7 @@ export function ChapterPlayground() {
           supportingText={PLAYGROUND_CONTENT.supportingText}
           surface="ivory"
           action={
-            <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#792B33]/72">
+            <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#792B33]/72 md:mr-36 lg:mr-44">
               06 Experiments · Select Any Tile
             </span>
           }
@@ -194,46 +175,6 @@ export function ChapterPlayground() {
               </div>
             );
           })}
-        </div>
-      </div>
-
-      {/* ── TRANSITION TO CHAPTER 04 (TECH STACK): CONVERGING LINES + MASKED BURGUNDY APERTURE ── */}
-      <div
-        ref={transitionRef}
-        aria-hidden="true"
-        className="relative h-[112px] sm:h-[132px] w-full overflow-hidden bg-[#F3E9DE]"
-      >
-        {/* Converging architectural guidelines pulling toward screen center */}
-        <div className="pointer-events-none absolute inset-x-0 top-3.5 z-[2] flex items-center justify-center gap-5 px-6">
-          <div
-            ref={leftLineRef}
-            className="flex flex-1 items-center justify-end gap-3 will-change-transform"
-          >
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#792B33]/70 whitespace-nowrap">
-              Curiosity
-            </span>
-            <span className="h-px w-full max-w-[280px] bg-[#792B33]/45" />
-          </div>
-          <span className="h-2 w-2 shrink-0 rotate-45 border border-[#792B33]" />
-          <div
-            ref={rightLineRef}
-            className="flex flex-1 items-center justify-start gap-3 will-change-transform"
-          >
-            <span className="h-px w-full max-w-[280px] bg-[#792B33]/45" />
-            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#792B33]/70 whitespace-nowrap">
-              Instrument
-            </span>
-          </div>
-        </div>
-
-        {/* Masked geometric Burgundy reveal rising cleanly into Chapter 04 */}
-        <div
-          ref={maskBoxRef}
-          className="absolute inset-x-0 bottom-0 top-9 z-[3] flex items-end justify-center bg-[#792B33] pb-3.5 will-change-[clip-path]"
-        >
-          <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#F3E9DE]/75">
-            Next · The Art of Making Things
-          </span>
         </div>
       </div>
 

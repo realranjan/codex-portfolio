@@ -12,6 +12,8 @@ import {
   ChapterHeading,
   PlaceholderVisual,
 } from "@/components/portfolio/editorial-primitives";
+import { SpotIllustration } from "@/components/portfolio/spot-illustration";
+import mapleCutout from "@/assets/illustrations/maple-cutout.png";
 
 type TabKind = "achievements" | "certifications";
 
@@ -52,9 +54,22 @@ export function ChapterAchievements() {
       id="achievements"
       aria-labelledby="achievements-heading"
       data-chapter-surface="burgundy"
-      className="relative bg-[#792B33] text-[#F3E9DE] pt-8 sm:pt-12 pb-10 sm:pb-14 overflow-x-clip"
+      className="relative bg-[#792B33] text-[#F3E9DE] pt-24 sm:pt-28 lg:pt-32 pb-12 sm:pb-16 overflow-x-clip"
     >
-      <div className="page-container">
+      {/* Quiet mirrored Japanese maple accent along lower-left breathing space */}
+      <SpotIllustration
+        src={mapleCutout}
+        alt="Japanese autumn maple sprig accent"
+        surface="burgundy"
+        flipX
+        parallaxY={18}
+        baseRotate={14}
+        rotateDelta={2.2}
+        testId="achievements-maple-spot"
+        className="hidden xl:block absolute bottom-10 left-[2vw] z-[2] w-[118px] opacity-90"
+      />
+
+      <div className="page-container relative z-10">
         <ChapterHeading
           id="achievements-heading"
           number={ACHIEVEMENTS_CONTENT.chapterNumber}

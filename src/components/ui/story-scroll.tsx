@@ -5,6 +5,7 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import {
+  computeChapterHingeTransform,
   computeContinuousStrokeState,
   computeStoryCardCamera,
 } from "@/lib/story-scroll-camera";
@@ -417,4 +418,121 @@ const FlowArt: React.FC<FlowArtProps> = ({
   );
 };
 
+export interface StoryScrollChapterProps {
+  children: React.ReactNode;
+  /** Corner pivot for the tactile Story-Scroll hinged swing */
+  hinge?: "left" | "right";
+  /** Maximum entrance rotation in degrees (gentle editorial tilt) */
+  maxDeg?: number;
+  /** Surface color exposed behind the swinging sheet corner */
+  backdropColor?: string;
+  /** Optional test ID for automated verification */
+  testId?: string;
+  className?: string;
+}
+
+/**
+ * Portfolio-wide Story Scroll chapter wrapper.
+ * Swings each entering chapter gracefully from its lower corner pivot
+ * (`bottom left` or `bottom right`) into a flat settled plane (`transform: none`),
+ * carrying subtle depth lift & shadow without locking sticky chapters elsewhere.
+ */
+export const StoryScrollChapter: React.FC<StoryScrollChapterProps> = ({
+  children,
+  hinge = "left",
+  maxDeg = 9.5,
+  backdropColor = "#F3E9DE",
+  testId,
+  className,
+}) => {
+  const outerRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const [reducedMotion, setReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReducedMotion(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  useGSAP(
+    () => {
+      const outer = outerRef.current;
+      const inner = innerRef.current;
+      if (!outer || !inner) return;
+
+      if (reducedMotion) {
+        inner.style.transform = "";
+        inner.style.boxShadow = "";
+        outer.dataset.storyHingeProgress = "1.00";
+        return;
+      }
+
+      const applyHinge = (progress: number) => {
+        const st = computeChapterHingeTransform(progress, maxDeg, hinge);
+        outer.dataset.storyHingeProgress = progress.toFixed(2);
+        if (st.isSettled) {
+          inner.style.transform = "";
+          inner.style.boxShadow = "";
+        } else {
+          inner.style.transform = `translate3d(0, ${st.translateYPx}px, 0) rotate(${st.rotationDeg}deg) scale(${st.scale})`;
+          inner.style.boxShadow = `0 -24px 64px rgba(24, 9, 12, ${st.shadowOpacity})`;
+        }
+      };
+
+      // Deterministic initial progress from current viewport position
+      const rect = outer.getBoundingClientRect();
+      const vh = Math.max(1, window.innerHeight);
+      const startY = vh;
+      const endY = vh * 0.24;
+      const initialProgress = Math.min(
+        1,
+        Math.max(0, (startY - rect.top) / Math.max(1, startY - endY))
+      );
+      applyHinge(initialProgress);
+
+      const trigger = ScrollTrigger.create({
+        trigger: outer,
+        start: "top bottom",
+        end: "top 24%",
+        scrub: true,
+        onUpdate: (self) => {
+          applyHinge(self.progress);
+        },
+      });
+
+      return () => {
+        trigger.kill();
+        inner.style.transform = "";
+        inner.style.boxShadow = "";
+      };
+    },
+    { scope: outerRef, dependencies: [hinge, maxDeg, reducedMotion] }
+  );
+
+  return (
+    <div
+      ref={outerRef}
+      data-testid={testId}
+      data-story-hinge={hinge}
+      data-story-hinge-progress="0.00"
+      className={cx("relative w-full overflow-x-clip", className)}
+      style={{ backgroundColor: backdropColor, perspective: "1400px" }}
+    >
+      <div
+        ref={innerRef}
+        className="relative w-full will-change-transform"
+        style={{
+          transformOrigin: hinge === "left" ? "bottom left" : "bottom right",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+};
+
 export default FlowArt;
+

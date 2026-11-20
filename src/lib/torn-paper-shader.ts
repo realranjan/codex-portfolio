@@ -28,6 +28,10 @@ varying vec2 vUv;
 uniform vec2 uResolution;
 uniform float uPhase;
 uniform float uVelocity;
+uniform vec3 uPaperColor;
+uniform vec3 uFiberColor;
+uniform vec3 uShadowColor;
+uniform float uTextureScale;
 
 // Fast deterministic 3D hash in [0, 1]
 float hash31(vec3 p) {
@@ -109,7 +113,7 @@ float fbmFibers(vec3 p) {
 }
 
 void main() {
-  // vUv.y = 1.0 at top edge (touching #3A241D upper sheet), 0.0 at bottom edge
+  // vUv.y = 1.0 at top edge (touching upper sheet), 0.0 at bottom edge
   float aspect = uResolution.x / max(uResolution.y, 1.0);
   float ax = vUv.x * aspect;
 
@@ -149,7 +153,7 @@ void main() {
       microTeeth * 0.022 +
       nanoGrit * 0.013;
 
-  // Signed distance field: > 0 is rough dark #3A241D paper, < 0 is transparent revealing #F3E8DC
+  // Signed distance field: > 0 is upper rough paper, < 0 is transparent revealing lower sheet
   float sdf = (vUv.y - 0.48) + tearOffset;
 
   // Guarantee top 6% is solid paper so there is zero gap at the upper sheet seam
@@ -164,37 +168,32 @@ void main() {
   float aa = max(0.58 / max(uResolution.y, 1.0), 0.0016);
   float paperAlpha = smoothstep(-aa, aa, sdf);
 
-  // ── RAW, ROUGH HANDMADE TEXTURED #792B33 BURGUNDY PAPER SURFACE (ZERO SEAM AT TOP!) ──
-  vec3 baseBurgundy = vec3(0.4745, 0.1686, 0.2000); // exact #792B33
-
-  // Zero-mean organic parchment blotches + raw pulp clumping + crisp high-freq paper grit
+  // ── RAW, ROUGH HANDMADE TEXTURED PAPER SURFACE (ZERO SEAM AT TOP!) ──
   float blotch     = fbmJagged(vec3(ax * 1.25, vUv.y * 1.75, 2.4));
   float pulpClumps = fbmJagged(vec3(ax * 6.5, vUv.y * 8.0, 11.7));
   float fiberGrain = jaggedNoise3(vec3(ax * 54.0, vUv.y * 20.0, 19.3));
   float crispSpeck = jaggedNoise3(vec3(gl_FragCoord.xy * 0.62, 4.1));
   float darkFleck  = smoothstep(0.66, 0.90, jaggedNoise3(vec3(gl_FragCoord.xy * 0.24, 9.5))) - 0.12;
 
-  // Feather ALL texture perturbations smoothly to exact #792B33 toward top edge (vUv.y -> 1.0)
-  // so the join with the upper #792B33 burgundy sheet is 100% invisible (zero horizontal line!)
-  float seamBlend = 1.0 - smoothstep(0.64, 0.97, vUv.y);
-  vec3 paperColor = baseBurgundy
-      + (vec3(0.032, 0.015, 0.016) * blotch
-      +  vec3(0.022, 0.011, 0.012) * pulpClumps
-      +  vec3(0.014, 0.008, 0.008) * fiberGrain
-      +  vec3(0.015, 0.009, 0.009) * crispSpeck
-      -  vec3(0.036, 0.016, 0.018) * darkFleck) * seamBlend;
+  // Feather ALL texture perturbations smoothly to exact uPaperColor toward top edge (vUv.y -> 1.0)
+  float seamBlend = (1.0 - smoothstep(0.64, 0.97, vUv.y)) * uTextureScale;
+  vec3 paperColor = uPaperColor
+      + (vec3(0.030, 0.018, 0.016) * blotch
+      +  vec3(0.020, 0.013, 0.012) * pulpClumps
+      +  vec3(0.013, 0.009, 0.008) * fiberGrain
+      +  vec3(0.014, 0.010, 0.009) * crispSpeck
+      -  vec3(0.032, 0.018, 0.017) * darkFleck) * seamBlend;
 
-  // Raw exposed warm-ivory kozo pulp fibers right along the outermost torn teeth
-  float rimTeeth = smoothstep(0.012, 0.0, sdf) * paperAlpha * seamBlend;
-  paperColor = mix(paperColor, vec3(0.84, 0.76, 0.72), rimTeeth * 0.34);
+  // Raw exposed kozo pulp fibers right along the outermost torn teeth
+  float rimTeeth = smoothstep(0.013, 0.0, sdf) * paperAlpha * (1.0 - topLock);
+  paperColor = mix(paperColor, uFiberColor, rimTeeth * 0.36);
 
-  // Subtle narrow contact shadow just beneath the torn edge (physical separation over Ivory #F3E9DE)
+  // Subtle narrow contact shadow just beneath the torn edge (physical separation over lower sheet)
   float shadowBand = (1.0 - paperAlpha) * smoothstep(-0.048, -0.002, sdf) * (1.0 - topLock);
-  float shadowAlpha = shadowBand * 0.18;
-  vec3 shadowTint = vec3(0.26, 0.09, 0.11); // deep burgundy alpha shadow (no black)
+  float shadowAlpha = shadowBand * 0.20;
 
   float outAlpha = clamp(paperAlpha + shadowAlpha, 0.0, 1.0);
-  vec3 outPremul = paperColor * paperAlpha + shadowTint * shadowAlpha;
+  vec3 outPremul = paperColor * paperAlpha + uShadowColor * shadowAlpha;
 
   gl_FragColor = vec4(outPremul, outAlpha);
 }

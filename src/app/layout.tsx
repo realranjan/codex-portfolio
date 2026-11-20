@@ -81,6 +81,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           Skip to main content
         </a>
         {children}
+        <div
+          className="grain-overlay"
+          aria-hidden="true"
+          data-testid="washi-paper-texture"
+        />
       </body>
     </html>
   );

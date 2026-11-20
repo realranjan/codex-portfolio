@@ -122,3 +122,86 @@ export function computeContinuousStrokeState(
     nodes,
   };
 }
+
+export interface WordRevealState {
+  /** Smoothly interpolated ink opacity [0.2 .. 1.0] */
+  opacity: number;
+  /** Gentle upward settle displacement in px [6 .. 0] */
+  yPx: number;
+  /** True once word has crossed 60% of its illumination window */
+  isLit: boolean;
+}
+
+/**
+ * Pure word-by-word scroll-scrubbed typography reveal math.
+ * Each word transitions smoothly across an overlapping staggered window so
+ * reading feels like ink illuminating line by line without sudden pops.
+ */
+export function computeWordRevealState(
+  rawProgress: number,
+  wordIndex: number,
+  totalWords: number
+): WordRevealState {
+  const progress = clamp01(rawProgress);
+  const count = Math.max(1, Math.floor(totalWords));
+  const idx = Math.min(count - 1, Math.max(0, Math.floor(wordIndex)));
+
+  const span = count === 1 ? 0 : 0.72;
+  const windowWidth = count === 1 ? 1 : 0.28;
+  const start = count === 1 ? 0 : (idx / (count - 1)) * span;
+  const end = start + windowWidth;
+  const local = smoothstep(start, end, progress);
+
+  const opacity = Number((0.2 + 0.8 * local).toFixed(4));
+  const yPx = Number(((1 - local) * 6).toFixed(2)) || 0;
+
+  return {
+    opacity,
+    yPx,
+    isLit: local >= 0.6,
+  };
+}
+
+export interface ChapterHingeTransformState {
+  /** Subtle bottom-corner sheet hinge rotation in degrees (e.g. +11deg or -11deg -> 0deg) */
+  rotationDeg: number;
+  /** Gentle vertical rise in px (34 -> 0) */
+  translateYPx: number;
+  /** Subtle perspective scale-in (0.975 -> 1.0) */
+  scale: number;
+  /** Soft edge cast shadow opacity while hinged (0.28 -> 0) */
+  shadowOpacity: number;
+  /** True when the sheet is fully flat and CSS transform can be cleared to none */
+  isSettled: boolean;
+}
+
+/**
+ * Pure scroll-scrubbed StoryScrollChapter hinged sheet entrance math.
+ * Used across portfolio chapters to give each entering page a tactile
+ * Story-Scroll corner swing without clipping content or locking sticky ancestors.
+ */
+export function computeChapterHingeTransform(
+  rawEnterProgress: number,
+  maxDeg = 11,
+  hinge: "left" | "right" = "left"
+): ChapterHingeTransformState {
+  const t = clamp01(rawEnterProgress);
+  const eased = 1 - Math.pow(1 - t, 2.35);
+  const remaining = 1 - eased;
+  const sign = hinge === "left" ? 1 : -1;
+
+  const isSettled = t >= 0.995;
+  const rotationDeg = isSettled ? 0 : Number((sign * maxDeg * remaining).toFixed(3)) || 0;
+  const translateYPx = isSettled ? 0 : Number((34 * remaining).toFixed(2)) || 0;
+  const scale = isSettled ? 1 : Number((1 - 0.025 * remaining).toFixed(4));
+  const shadowOpacity = isSettled ? 0 : Number((0.26 * remaining).toFixed(3)) || 0;
+
+  return {
+    rotationDeg,
+    translateYPx,
+    scale,
+    shadowOpacity,
+    isSettled,
+  };
+}
+

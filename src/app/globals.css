@@ -74,9 +74,29 @@ textarea:focus-visible {
   top: 16px;
 }
 
-/* Ultra-lightweight paper texture (avoids expensive per-frame SVG feTurbulence compositing) */
+/* Lightweight global handmade Japanese washi paper texture (Kigo-Studio tactile paper tooth, GPU-cached seamless tile) */
 .grain-overlay {
-  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  pointer-events: none;
+  background-image: url("/textures/washi-paper-tile.png");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+  mix-blend-mode: soft-light;
+  opacity: 0.44;
+}
+
+.grain-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("/textures/washi-paper-tile.png");
+  background-repeat: repeat;
+  background-size: 384px 384px;
+  background-position: 96px 64px;
+  mix-blend-mode: multiply;
+  opacity: 0.085;
 }
 
 /* Typography Utilities */

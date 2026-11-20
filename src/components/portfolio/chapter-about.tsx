@@ -1,538 +1,308 @@
 "use client";
 
-import Image, { type StaticImageData } from "next/image";
-import FlowArt, {
-  FlowSection,
-  type FlowArtSectionMeta,
-} from "@/components/ui/story-scroll";
+import { useEffect, useMemo, useRef } from "react";
+import Image from "next/image";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ABOUT_CONTENT } from "@/data/portfolio-content";
+import { computeWordRevealState } from "@/lib/story-scroll-camera";
+import koiCutout from "@/assets/illustrations/koi-cutout.png";
 
-import koiArtwork from "@/assets/images/jp_koi_stream_1795198280022.jpg";
-import craneArtwork from "@/assets/images/jp_crane_pine_1795198278729.jpg";
-import waveArtwork from "@/assets/images/jp_indigo_wave_1795198278504.jpg";
-import lanternArtwork from "@/assets/images/jp_autumn_lantern_1795198278348.jpg";
-import camelliaArtwork from "@/assets/images/jp_camellia_moon_1795198277489.jpg";
+gsap.registerPlugin(ScrollTrigger);
 
-/**
- * Ultra-fine static paper grain overlay (composited once, zero runtime filter cost).
- */
-const WASHI_GRAIN_BG =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.52'/%3E%3C/svg%3E\")";
-
-interface StoryArtworkProps {
-  src: StaticImageData;
-  alt: string;
-  caption: string;
-  imageClassName?: string;
-  frameClassName?: string;
-  edgeFadeColor: string;
-  isLightSurface?: boolean;
+interface RevealSegment {
+  id: string;
+  words: string[];
+  kind: "lead" | "body" | "closing";
 }
 
-function StoryJapaneseArtwork({
-  src,
-  alt,
-  caption,
-  imageClassName = "scale-[1.09] object-cover object-center",
-  frameClassName = "",
-  edgeFadeColor,
-  isLightSurface = false,
-}: StoryArtworkProps) {
-  return (
-    <figure
-      data-flow-parallax="artwork"
-      className={`relative m-0 w-full max-w-[330px] lg:max-w-[375px] xl:max-w-[400px] shrink-0 self-center lg:self-end will-change-transform ${frameClassName}`}
-    >
-      <div
-        className={`relative aspect-[3/4] max-h-[54vh] w-full overflow-hidden border ${
-          isLightSurface
-            ? "border-[#792B33]/25 shadow-[0_24px_54px_rgba(40,20,24,0.16)]"
-            : "border-[#F3E9DE]/18 shadow-[0_28px_64px_rgba(8,5,7,0.44)]"
-        }`}
-      >
-        <Image
-          src={src}
-          alt={alt}
-          fill
-          sizes="(max-width: 1024px) 82vw, 460px"
-          referrerPolicy="no-referrer"
-          className={`select-none ${imageClassName}`}
-        />
-        {/* Subtle atmospheric perimeter vignette so rich pigments integrate smoothly into the sheet */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background: `linear-gradient(180deg, transparent 58%, ${edgeFadeColor} 100%)`,
-          }}
-        />
-      </div>
-      <figcaption
-        className={`mt-2.5 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.2em] ${
-          isLightSurface ? "text-[#792B33]/68" : "text-[#F3E9DE]/58"
-        }`}
-      >
-        <span>{caption}</span>
-        <span aria-hidden="true">日本画</span>
-      </figcaption>
-    </figure>
-  );
-}
-
-const ABOUT_FLOW_META: readonly FlowArtSectionMeta[] = [
-  { index: "01", label: "Who I Am", tone: "light" },
-  { index: "02", label: "Relentless Curiosity", tone: "light" },
-  { index: "03", label: "Build to Understand", tone: "dark" },
-  { index: "04", label: "Ideas Into Systems", tone: "light" },
-  { index: "05", label: "Lost in the Details", tone: "light" },
-] as const;
-
 /**
- * CHAPTER 01 — ABOUT & PHILOSOPHY
+ * CHAPTER 01 — ABOUT & PHILOSOPHY (Single Focused Editorial Page · Burgundy #792B33)
  *
- * Powered by the integrated shadcn `FlowArt` / `FlowSection` story-scroll component:
- * - Signature bottom-left 30deg -> 0deg hinged sheet rotation + pinned stack
- * - Cinematic 3D camera recession on outgoing pinned sheets + multi-plane inner parallax
- * - Continuous Japanese calligraphic vertical ink stroke rail spanning all 5 panels
- * - Rich, subtle, colorful Japanese Nihonga / Rinpa / Ukiyo-e / Shin-hanga editorial illustrations
- * - Starts and concludes on Primary Burgundy (#792B33) so it joins seamlessly with the Hero above
- *   and the Burgundy TornPaperPeel transition into Chapter 02 Projects below.
+ * - Strictly ONE composed chapter (no multi-page bloat).
+ * - Background-free transparent Japanese Koi cutout floating directly on Burgundy
+ *   with zero rectangular frame/card, drifting gently with scroll parallax.
+ * - Scroll-scrubbed word-by-word typography text reveal animation paired with a
+ *   fine vertical ivory ink thread.
  */
 export function ChapterAbout() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const revealBlockRef = useRef<HTMLDivElement>(null);
+  const wordRefs = useRef<Array<HTMLSpanElement | null>>([]);
+  const inkRuleRef = useRef<HTMLDivElement>(null);
+  const koiDriftRef = useRef<HTMLDivElement>(null);
+
+  const segments = useMemo<RevealSegment[]>(() => {
+    return [
+      {
+        id: "lead",
+        kind: "lead",
+        words: ABOUT_CONTENT.mainStatement.split(/\s+/),
+      },
+      ...ABOUT_CONTENT.philosophyParagraphs.map((paragraph, idx) => ({
+        id: `p-${idx}`,
+        kind: (idx === ABOUT_CONTENT.philosophyParagraphs.length - 1
+          ? "closing"
+          : "body") as RevealSegment["kind"],
+        words: paragraph.split(/\s+/),
+      })),
+    ];
+  }, []);
+
+  const totalWords = useMemo(
+    () => segments.reduce((sum, seg) => sum + seg.words.length, 0),
+    [segments]
+  );
+
+  // 1. Scroll-scrubbed word-by-word ink typography reveal
+  useEffect(() => {
+    const section = sectionRef.current;
+    const revealBlock = revealBlockRef.current;
+    if (!section || !revealBlock) return;
+
+    const words = wordRefs.current.filter(
+      (el): el is HTMLSpanElement => el !== null
+    );
+    if (words.length === 0) return;
+
+    const applyProgress = (progress: number) => {
+      revealBlock.dataset.revealProgress = progress.toFixed(2);
+      if (inkRuleRef.current) {
+        inkRuleRef.current.style.transform = `scaleY(${Math.max(0.06, progress).toFixed(3)})`;
+      }
+      for (let i = 0; i < words.length; i++) {
+        const st = computeWordRevealState(progress, i, words.length);
+        const node = words[i];
+        node.style.opacity = String(st.opacity);
+        node.style.transform =
+          st.yPx > 0 ? `translate3d(0, ${st.yPx}px, 0)` : "";
+      }
+    };
+
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) {
+      applyProgress(1);
+      return;
+    }
+
+    // Paint deterministic initial frame based on current viewport position
+    const rect = revealBlock.getBoundingClientRect();
+    const vh = Math.max(1, window.innerHeight);
+    const startPx = vh * 0.84;
+    const endPx = vh * 0.3;
+    const initialProgress = Math.min(
+      1,
+      Math.max(0, (startPx - rect.top) / Math.max(1, startPx - endPx + rect.height * 0.55))
+    );
+    applyProgress(initialProgress);
+
+    const ctx = gsap.context(() => {
+      ScrollTrigger.create({
+        trigger: revealBlock,
+        start: "top 84%",
+        end: "bottom 42%",
+        scrub: true,
+        onUpdate: (self) => {
+          applyProgress(self.progress);
+        },
+      });
+    }, sectionRef);
+
+    return () => ctx.revert();
+  }, [totalWords]);
+
+  // 2. Background-free Koi cutout gentle upward glide & swim rotation
+  useEffect(() => {
+    const section = sectionRef.current;
+    const koi = koiDriftRef.current;
+    if (!section || !koi) return;
+
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) {
+      gsap.set(koi, { y: 0, rotation: 0, scale: 1 });
+      return;
+    }
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        koi,
+        { y: 34, rotation: -4, scale: 0.96 },
+        {
+          y: -38,
+          rotation: 3.5,
+          scale: 1.03,
+          ease: "none",
+          scrollTrigger: {
+            trigger: section,
+            start: "top bottom",
+            end: "bottom top",
+            scrub: true,
+          },
+        }
+      );
+    }, sectionRef);
+
+    return () => ctx.revert();
+  }, []);
+
+  let runningWordIdx = 0;
+
   return (
     <section
+      ref={sectionRef}
       id="about"
       aria-labelledby="about-heading"
       data-chapter-surface="burgundy"
-      className="relative bg-[#792B33] text-[#F3E9DE]"
+      data-testid="about-chapter"
+      className="relative bg-[#792B33] text-[#F3E9DE] pt-24 sm:pt-28 lg:pt-32 pb-12 sm:pb-16 overflow-x-clip"
     >
-      <FlowArt
-        as="div"
-        aria-label="Chapter 01 — About and Philosophy Story Scroll"
-        showSideStroke
-        sectionMeta={ABOUT_FLOW_META}
-      >
-        {/* ── PANEL 01 · WHO I AM (Primary Burgundy #792B33) ─────────────────────── */}
-        <FlowSection
-          aria-label="01 — More Than Meets the Eye"
-          strokeLabel="Who I Am"
-          strokeTone="light"
-          style={{ backgroundColor: "#792B33", color: "#F3E9DE" }}
-        >
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 opacity-[0.048] mix-blend-soft-light"
-            style={{ backgroundImage: WASHI_GRAIN_BG, backgroundRepeat: "repeat" }}
-          />
-
-          <div className="relative z-10 flex items-center justify-between gap-4 font-mono text-[11px] uppercase tracking-[0.22em] text-[#F3E9DE]/78">
-            <span>01 — {ABOUT_CONTENT.chapterLabel}</span>
-            <span className="tabular-nums">01 / 05</span>
-          </div>
-
-          <hr className="relative z-10 my-2 border-none border-t border-[#F3E9DE]/28" />
-
-          <div className="relative z-10 my-auto grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(290px,0.75fr)] lg:gap-12">
-            <div data-flow-parallax="headline" className="will-change-transform">
-              <p
-                className="m-0 mb-4 text-xs font-medium uppercase tracking-[0.24em] text-[#F3E9DE]/75"
-                style={{ fontFamily: "var(--font-manrope), system-ui, sans-serif" }}
-              >
-                {ABOUT_CONTENT.heading}
-              </p>
-
-              <h2
-                id="about-heading"
-                className="m-0 uppercase text-[#F3E9DE] tracking-[-0.02em]"
-                style={{
-                  fontFamily: "var(--font-anton), Impact, sans-serif",
-                  fontSize: "clamp(3.2rem, 8.2vw, 8.4rem)",
-                  lineHeight: 0.9,
-                }}
-              >
-                I&apos;M THE KIND
-                <br />
-                OF PERSON{" "}
-                <em
-                  className="normal-case italic font-medium text-[#F6DFC4]"
-                  style={{
-                    fontFamily: "var(--font-cormorant), Georgia, serif",
-                    fontSize: "1.06em",
-                    letterSpacing: "-0.01em",
-                  }}
-                >
-                  {ABOUT_CONTENT.headlineItalic}
-                </em>
-              </h2>
-
-              <p
-                data-flow-parallax="detail"
-                className="mt-7 max-w-[44ch] text-[clamp(1.05rem,1.65vw,1.45rem)] leading-[1.58] text-[#F3E9DE]/90 will-change-transform"
-                style={{ fontFamily: "var(--font-manrope), system-ui, sans-serif" }}
-              >
-                {ABOUT_CONTENT.philosophyParagraphs[0]}
-              </p>
+      <div className="page-container relative">
+        {/* Chapter Header Bar */}
+        <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[#F3E9DE]/22 pb-4">
+          <div>
+            <div className="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.22em] text-[#F3E9DE]/68 tabular-nums">
+              <span>Chapter {ABOUT_CONTENT.chapterNumber}</span>
+              <span aria-hidden="true">·</span>
+              <span>{ABOUT_CONTENT.chapterLabel}</span>
             </div>
-
-            <StoryJapaneseArtwork
-              src={koiArtwork}
-              alt="Traditional Japanese Nihonga painting of vermilion and gold koi gliding through midnight indigo water with crimson maple leaves"
-              caption="Plate I · Koi & Autumn Stream"
-              imageClassName="scale-[1.15] object-cover object-center"
-              edgeFadeColor="rgba(121, 43, 51, 0.34)"
-            />
+            <h2
+              id="about-heading"
+              className="mt-1.5 m-0 font-normal uppercase leading-[0.9] tracking-[-0.03em] text-[#F3E9DE]"
+              style={{
+                fontFamily: "var(--font-anton), Impact, sans-serif",
+                fontSize: "clamp(38px, 4.8vw, 72px)",
+              }}
+            >
+              {ABOUT_CONTENT.heading}
+            </h2>
           </div>
 
-          <hr className="relative z-10 my-1 border-none border-t border-[#F3E9DE]/24" />
-
-          <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 text-[clamp(0.92rem,1.2vw,1.08rem)] text-[#F3E9DE]/82">
-            <p className="m-0 max-w-[62ch]">{ABOUT_CONTENT.supportingStatement}</p>
-            <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#F3E9DE]/60">
-              Scroll to turn the folio
+          <div className="flex items-baseline gap-3 text-right">
+            <span
+              aria-hidden="true"
+              className="font-serif italic text-xl sm:text-2xl text-[#F3E9DE]/60"
+              style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+            >
+              好奇心
+            </span>
+            <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#F3E9DE]/65">
+              Curiosity In Motion
             </span>
           </div>
-        </FlowSection>
+        </header>
 
-        {/* ── PANEL 02 · UNANSWERED QUESTIONS (Lacquer Sumi Ink #171315) ─────────── */}
-        <FlowSection
-          aria-label="02 — Can't Leave a Question Unanswered"
-          strokeLabel="Relentless Curiosity"
-          strokeTone="light"
-          style={{ backgroundColor: "#171315", color: "#F3E9DE" }}
-        >
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 opacity-[0.045] mix-blend-soft-light"
-            style={{ backgroundImage: WASHI_GRAIN_BG, backgroundRepeat: "repeat" }}
-          />
+        {/* Single-Page Editorial Spread: Scroll Text Reveal (Left) + BG-Free Koi Cutout (Right) */}
+        <div className="mt-7 sm:mt-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-8 items-center">
+          {/* Left Column: Typography Reveal Narrative */}
+          <div className="lg:col-span-7 relative z-10">
+            <p
+              className="m-0 font-serif italic text-2xl sm:text-3xl text-[#F3E9DE]/82"
+              style={{ fontFamily: "var(--font-cormorant), Georgia, serif" }}
+            >
+              {ABOUT_CONTENT.headlineLead}{" "}
+              <span className="text-[#F3E9DE]">{ABOUT_CONTENT.headlineItalic}</span>
+            </p>
 
-          <div className="relative z-10 flex items-center justify-between gap-4 font-mono text-[11px] uppercase tracking-[0.22em] text-[#F3E9DE]/72">
-            <span>02 — Relentless Curiosity</span>
-            <span className="tabular-nums">02 / 05</span>
-          </div>
-
-          <hr className="relative z-10 my-2 border-none border-t border-[#F3E9DE]/22" />
-
-          <div className="relative z-10 my-auto grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(290px,0.75fr)] lg:gap-12">
-            <div data-flow-parallax="headline" className="will-change-transform">
-              <h3
-                className="m-0 uppercase text-[#F3E9DE] tracking-[-0.02em]"
-                style={{
-                  fontFamily: "var(--font-anton), Impact, sans-serif",
-                  fontSize: "clamp(3rem, 7.6vw, 7.6rem)",
-                  lineHeight: 0.9,
-                }}
-              >
-                CAN&apos;T LEAVE A
-                <br />
-                QUESTION
-                <br />
-                <span className="text-[#D47A6A]">UNANSWERED.</span>
-              </h3>
-
-              <hr className="my-7 border-none border-t border-[#F3E9DE]/18" />
-
+            {/* Scroll-scrubbed word-by-word ink reveal block */}
+            <div
+              ref={revealBlockRef}
+              data-testid="about-text-reveal"
+              data-reveal-progress="0.00"
+              className="relative mt-6 pl-5 sm:pl-7 space-y-5"
+            >
+              {/* Vertical ink progress rail tracking reading progress */}
               <div
-                data-flow-parallax="detail"
-                className="grid grid-cols-1 gap-6 sm:grid-cols-3 will-change-transform"
+                aria-hidden="true"
+                className="pointer-events-none absolute bottom-1 left-0 top-1 w-[2px] bg-[#F3E9DE]/16"
               >
-                <div>
-                  <p className="mb-1.5 font-mono text-[11px] uppercase tracking-[0.2em] text-[#E6B87D]">
-                    01 · Inquiry
-                  </p>
-                  <p className="m-0 text-sm leading-relaxed text-[#F3E9DE]/78">
-                    Pulling at loose threads until the underlying mechanism makes complete sense.
-                  </p>
-                </div>
-                <div>
-                  <p className="mb-1.5 font-mono text-[11px] uppercase tracking-[0.2em] text-[#E6B87D]">
-                    02 · Disassembly
-                  </p>
-                  <p className="m-0 text-sm leading-relaxed text-[#F3E9DE]/78">
-                    Taking abstractions apart — from neural inference pipelines to GPU shaders.
-                  </p>
-                </div>
-                <div>
-                  <p className="mb-1.5 font-mono text-[11px] uppercase tracking-[0.2em] text-[#E6B87D]">
-                    03 · Momentum
-                  </p>
-                  <p className="m-0 text-sm leading-relaxed text-[#F3E9DE]/78">
-                    Following an interesting edge case even when it stretches into a long night.
-                  </p>
-                </div>
+                <div
+                  ref={inkRuleRef}
+                  className="h-full w-full origin-top bg-[#F3E9DE]/85 will-change-transform"
+                  style={{ transform: "scaleY(0.06)" }}
+                />
               </div>
+
+              {segments.map((seg) => {
+                const isLead = seg.kind === "lead";
+                const isClosing = seg.kind === "closing";
+
+                return (
+                  <p
+                    key={seg.id}
+                    className={
+                      isLead
+                        ? "m-0 text-2xl sm:text-[30px] lg:text-[34px] leading-[1.24] tracking-[-0.015em] text-[#F3E9DE] font-normal"
+                        : isClosing
+                          ? "m-0 font-serif italic text-xl sm:text-2xl leading-[1.42] text-[#F3E9DE]"
+                          : "m-0 text-base sm:text-lg lg:text-[19px] leading-[1.68] text-[#F3E9DE]/95 max-w-[54ch]"
+                    }
+                    style={
+                      isLead || isClosing
+                        ? { fontFamily: "var(--font-cormorant), Georgia, serif" }
+                        : undefined
+                    }
+                  >
+                    {seg.words.map((word, wIdx) => {
+                      const globalIdx = runningWordIdx++;
+                      return (
+                        <span
+                          key={`${seg.id}-${wIdx}`}
+                          ref={(el) => {
+                            wordRefs.current[globalIdx] = el;
+                          }}
+                          className="inline-block will-change-[opacity,transform]"
+                          style={{ opacity: 0.2 }}
+                        >
+                          {word}
+                          {wIdx < seg.words.length - 1 ? "\u00A0" : ""}
+                        </span>
+                      );
+                    })}
+                  </p>
+                );
+              })}
             </div>
 
-            <StoryJapaneseArtwork
-              src={craneArtwork}
-              alt="Traditional Japanese Rinpa painting of a red-crowned crane beneath emerald pine boughs and antique gold clouds"
-              caption="Plate II · Crane & Black Pine"
-              imageClassName="scale-[1.03] object-cover object-center"
-              edgeFadeColor="rgba(23, 19, 21, 0.36)"
-            />
-          </div>
-
-          <hr className="relative z-10 my-2 border-none border-t border-[#F3E9DE]/18" />
-
-          <p className="relative z-10 m-0 ml-auto max-w-[46ch] text-right text-[clamp(0.98rem,1.45vw,1.25rem)] leading-relaxed text-[#F3E9DE]/82">
-            Not just what a system does — what happens when you push it a little further.
-          </p>
-        </FlowSection>
-
-        {/* ── PANEL 03 · BUILD TO UNDERSTAND (Warm Washi Ivory #F3E9DE) ──────────── */}
-        <FlowSection
-          aria-label="03 — Builds Things to Understand How They Work"
-          strokeLabel="Build to Understand"
-          strokeTone="dark"
-          style={{ backgroundColor: "#F3E9DE", color: "#241A1C" }}
-        >
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 opacity-[0.04] mix-blend-multiply"
-            style={{ backgroundImage: WASHI_GRAIN_BG, backgroundRepeat: "repeat" }}
-          />
-
-          <div className="relative z-10 flex items-center justify-between gap-4 font-mono text-[11px] uppercase tracking-[0.22em] text-[#792B33]/80">
-            <span>03 — Craft Through Building</span>
-            <span className="tabular-nums">03 / 05</span>
-          </div>
-
-          <hr className="relative z-10 my-2 border-none border-t border-[#792B33]/28" />
-
-          <div className="relative z-10 my-auto grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(290px,0.75fr)] lg:gap-12">
-            <div data-flow-parallax="headline" className="will-change-transform">
-              <h3
-                className="m-0 uppercase text-[#792B33] tracking-[-0.02em]"
-                style={{
-                  fontFamily: "var(--font-anton), Impact, sans-serif",
-                  fontSize: "clamp(3rem, 7.6vw, 7.6rem)",
-                  lineHeight: 0.9,
-                }}
-              >
-                BUILDS THINGS
-                <br />
-                TO UNDERSTAND
-                <br />
-                <span className="text-[#1E3A52]">HOW THEY WORK.</span>
-              </h3>
-
-              <p
-                className="mt-6 max-w-[46ch] text-[clamp(1rem,1.5vw,1.3rem)] leading-[1.58] text-[#241A1C]/86"
-                style={{ fontFamily: "var(--font-manrope), system-ui, sans-serif" }}
-              >
-                {ABOUT_CONTENT.philosophyParagraphs[1]}
-              </p>
-
-              <hr className="my-6 border-none border-t border-[#792B33]/22" />
-
-              <div
-                data-flow-parallax="detail"
-                className="grid grid-cols-1 gap-5 sm:grid-cols-3 will-change-transform"
-              >
-                <div>
-                  <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.18em] text-[#792B33]">
-                    01 · AI &amp; Models
-                  </p>
-                  <p className="m-0 text-sm leading-relaxed text-[#241A1C]/78">
-                    Applied machine learning, inference tooling, and multimodal reasoning flows.
-                  </p>
+            {/* Compact 4-Trait Editorial Index */}
+            <div className="mt-9 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 border-t border-[#F3E9DE]/20 pt-6">
+              {ABOUT_CONTENT.storyStatements.map((item) => (
+                <div key={item.index} className="flex items-baseline gap-3">
+                  <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#F3E9DE]/55 tabular-nums shrink-0">
+                    {item.index}
+                  </span>
+                  <span className="text-sm sm:text-[15px] leading-snug text-[#F3E9DE]/88">
+                    {item.text}
+                  </span>
                 </div>
-                <div>
-                  <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.18em] text-[#792B33]">
-                    02 · Full-Stack
-                  </p>
-                  <p className="m-0 text-sm leading-relaxed text-[#241A1C]/78">
-                    Typed architectures, real-time APIs, and responsive interfaces built to endure.
-                  </p>
-                </div>
-                <div>
-                  <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.18em] text-[#792B33]">
-                    03 · Creative Tech
-                  </p>
-                  <p className="m-0 text-sm leading-relaxed text-[#241A1C]/78">
-                    Interactive WebGL worlds, tactile physics, and kinetic editorial choreography.
-                  </p>
-                </div>
-              </div>
+              ))}
             </div>
 
-            <StoryJapaneseArtwork
-              src={waveArtwork}
-              alt="Japanese ukiyo-e woodblock print of Prussian-indigo curling waves beneath a warm ochre moon and cliffside vermilion torii"
-              caption="Plate III · Moonlit Tide"
-              imageClassName="scale-[1.14] object-cover object-center"
-              edgeFadeColor="rgba(243, 233, 222, 0.18)"
-              isLightSurface
-            />
+            <p className="mt-6 m-0 font-mono text-xs tracking-[0.06em] text-[#F3E9DE]/68">
+              {ABOUT_CONTENT.supportingStatement}
+            </p>
           </div>
 
-          <hr className="relative z-10 my-2 border-none border-t border-[#792B33]/22" />
-
-          <div className="relative z-10 flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.18em] text-[#792B33]/72">
-            <span>First principles over black boxes</span>
-            <span>Practice · Research · Execution</span>
-          </div>
-        </FlowSection>
-
-        {/* ── PANEL 04 · IDEAS INTO SYSTEMS (Deep Woodblock Indigo #1B2638) ──────── */}
-        <FlowSection
-          aria-label="04 — Turns Ideas Into Working Systems"
-          strokeLabel="Ideas Into Systems"
-          strokeTone="light"
-          style={{ backgroundColor: "#1B2638", color: "#F3E9DE" }}
-        >
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 opacity-[0.045] mix-blend-soft-light"
-            style={{ backgroundImage: WASHI_GRAIN_BG, backgroundRepeat: "repeat" }}
-          />
-
-          <div className="relative z-10 flex items-center justify-between gap-4 font-mono text-[11px] uppercase tracking-[0.22em] text-[#F3E9DE]/75">
-            <span>04 — From Sketch to Production</span>
-            <span className="tabular-nums">04 / 05</span>
-          </div>
-
-          <hr className="relative z-10 my-2 border-none border-t border-[#F3E9DE]/24" />
-
-          <div className="relative z-10 my-auto grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(290px,0.75fr)] lg:gap-12">
-            <div data-flow-parallax="headline" className="will-change-transform">
-              <h3
-                className="m-0 uppercase text-[#F3E9DE] tracking-[-0.02em]"
-                style={{
-                  fontFamily: "var(--font-anton), Impact, sans-serif",
-                  fontSize: "clamp(3rem, 7.6vw, 7.6rem)",
-                  lineHeight: 0.9,
-                }}
-              >
-                TURNS IDEAS
-                <br />
-                INTO WORKING
-                <br />
-                <span className="text-[#E39A67]">SYSTEMS.</span>
-              </h3>
-
-              <hr className="my-7 border-none border-t border-[#F3E9DE]/20" />
-
-              <div
-                data-flow-parallax="detail"
-                className="grid grid-cols-1 gap-6 sm:grid-cols-3 will-change-transform"
-              >
-                <div>
-                  <p className="mb-1.5 font-mono text-[11px] uppercase tracking-[0.2em] text-[#E8AE74]">
-                    From Scratch
-                  </p>
-                  <p className="m-0 text-sm leading-relaxed text-[#F3E9DE]/80">
-                    Prototyping directly in code so architectural constraints shape the design early.
-                  </p>
-                </div>
-                <div>
-                  <p className="mb-1.5 font-mono text-[11px] uppercase tracking-[0.2em] text-[#E8AE74]">
-                    Question the Obvious
-                  </p>
-                  <p className="m-0 text-sm leading-relaxed text-[#F3E9DE]/80">
-                    Challenging default patterns when a calmer, sharper interaction works better.
-                  </p>
-                </div>
-                <div>
-                  <p className="mb-1.5 font-mono text-[11px] uppercase tracking-[0.2em] text-[#E8AE74]">
-                    Shipped Reality
-                  </p>
-                  <p className="m-0 text-sm leading-relaxed text-[#F3E9DE]/80">
-                    Bridging research ambition with crisp performance, reliability, and polish.
-                  </p>
-                </div>
-              </div>
+          {/* Right Column: Background-Free Transparent Koi Cutout Floating on Burgundy */}
+          <div className="lg:col-span-5 relative flex items-center justify-center lg:justify-end">
+            <div
+              ref={koiDriftRef}
+              data-testid="about-koi-illustration"
+              className="pointer-events-none select-none relative w-[min(320px,78vw)] sm:w-[360px] lg:w-[min(430px,36vw)] will-change-transform"
+              style={{
+                filter: "drop-shadow(0 24px 36px rgba(24, 6, 9, 0.42))",
+              }}
+            >
+              <Image
+                src={koiCutout}
+                alt="Traditional Japanese hand-painted vermilion and gold twin koi gliding freely"
+                priority
+                referrerPolicy="no-referrer"
+                className="h-auto w-full object-contain"
+              />
             </div>
-
-            <StoryJapaneseArtwork
-              src={lanternArtwork}
-              alt="Japanese shin-hanga woodblock print of scarlet autumn maple branches over a softly glowing mossy granite lantern in indigo rain"
-              caption="Plate IV · Autumn Lantern"
-              imageClassName="scale-[1.03] object-cover object-center"
-              edgeFadeColor="rgba(27, 38, 56, 0.32)"
-            />
           </div>
-
-          <hr className="relative z-10 my-2 border-none border-t border-[#F3E9DE]/20" />
-
-          <p className="relative z-10 m-0 max-w-[50ch] text-[clamp(0.98rem,1.4vw,1.2rem)] leading-relaxed text-[#F3E9DE]/82">
-            An idea only reveals its real shape once people can touch it, break it, and use it.
-          </p>
-        </FlowSection>
-
-        {/* ── PANEL 05 · LOST IN THE DETAILS (Closes on Primary Burgundy #792B33) ── */}
-        <FlowSection
-          aria-label="05 — Gets Lost in the Details"
-          strokeLabel="Lost in the Details"
-          strokeTone="light"
-          style={{ backgroundColor: "#792B33", color: "#F3E9DE" }}
-        >
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 opacity-[0.048] mix-blend-soft-light"
-            style={{ backgroundImage: WASHI_GRAIN_BG, backgroundRepeat: "repeat" }}
-          />
-
-          <div className="relative z-10 flex items-center justify-between gap-4 font-mono text-[11px] uppercase tracking-[0.22em] text-[#F3E9DE]/78">
-            <span>05 — The Journey Ahead</span>
-            <span className="tabular-nums">05 / 05</span>
-          </div>
-
-          <hr className="relative z-10 my-2 border-none border-t border-[#F3E9DE]/28" />
-
-          <div className="relative z-10 my-auto grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(290px,0.75fr)] lg:gap-12">
-            <div data-flow-parallax="headline" className="will-change-transform">
-              <h3
-                className="m-0 uppercase text-[#F3E9DE] tracking-[-0.02em]"
-                style={{
-                  fontFamily: "var(--font-anton), Impact, sans-serif",
-                  fontSize: "clamp(3.1rem, 8vw, 8.2rem)",
-                  lineHeight: 0.9,
-                }}
-              >
-                GETS LOST IN
-                <br />
-                THE{" "}
-                <em
-                  className="normal-case italic font-medium text-[#F5D8A9]"
-                  style={{
-                    fontFamily: "var(--font-cormorant), Georgia, serif",
-                    fontSize: "1.08em",
-                    letterSpacing: "-0.01em",
-                  }}
-                >
-                  details.
-                </em>
-              </h3>
-
-              <p
-                data-flow-parallax="detail"
-                className="mt-7 max-w-[46ch] text-[clamp(1.08rem,1.7vw,1.5rem)] leading-[1.58] text-[#F3E9DE]/92 will-change-transform"
-                style={{ fontFamily: "var(--font-manrope), system-ui, sans-serif" }}
-              >
-                {ABOUT_CONTENT.philosophyParagraphs[2]}
-              </p>
-            </div>
-
-            <StoryJapaneseArtwork
-              src={camelliaArtwork}
-              alt="Japanese Nihonga illustration of deep crimson camellia blossoms, dark emerald foliage, temple eaves, and a burnished gold crescent moon"
-              caption="Plate V · Tsubaki & Crescent Moon"
-              imageClassName="scale-[1.03] object-cover object-center"
-              edgeFadeColor="rgba(121, 43, 51, 0.3)"
-            />
-          </div>
-
-          <hr className="relative z-10 my-2 border-none border-t border-[#F3E9DE]/24" />
-
-          <div className="relative z-10 flex flex-wrap items-center justify-between gap-4 font-mono text-[11px] uppercase tracking-[0.2em] text-[#F3E9DE]/72">
-            <span>
-              {ABOUT_CONTENT.chapterNumber} / {ABOUT_CONTENT.chapterLabel}
-            </span>
-            <span>Next · 02 Selected Projects ↓</span>
-          </div>
-        </FlowSection>
-      </FlowArt>
+        </div>
+      </div>
     </section>
   );
 }

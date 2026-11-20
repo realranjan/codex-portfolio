@@ -60,10 +60,52 @@ function createTearProgram(gl: WebGLRenderingContext): WebGLProgram | null {
   return program;
 }
 
+export type TornPaperVariant = "burgundy-to-ivory" | "ivory-to-burgundy";
+
+const VARIANT_PALETTES: Record<
+  TornPaperVariant,
+  {
+    upperHex: string;
+    lowerHex: string;
+    captionClass: string;
+    paperRgb: [number, number, number];
+    fiberRgb: [number, number, number];
+    shadowRgb: [number, number, number];
+    textureScale: number;
+    svgShadowHex: string;
+    svgFiberHex: string;
+  }
+> = {
+  "burgundy-to-ivory": {
+    upperHex: "#792B33",
+    lowerHex: "#F3E9DE",
+    captionClass: "text-[#F3E9DE]/58",
+    paperRgb: [0.4745, 0.1686, 0.2],
+    fiberRgb: [0.86, 0.78, 0.74],
+    shadowRgb: [0.26, 0.09, 0.11],
+    textureScale: 1.0,
+    svgShadowHex: "#792B33",
+    svgFiberHex: "#F3E9DE",
+  },
+  "ivory-to-burgundy": {
+    upperHex: "#F3E9DE",
+    lowerHex: "#792B33",
+    captionClass: "text-[#792B33]/58",
+    paperRgb: [0.9529, 0.9137, 0.8706],
+    fiberRgb: [1.0, 0.985, 0.96],
+    shadowRgb: [0.18, 0.05, 0.07],
+    textureScale: 0.78,
+    svgShadowHex: "#2E0F14",
+    svgFiberHex: "#FFFDF9",
+  },
+};
+
 export interface TornPaperPeelProps {
-  /** Small editorial note printed near the torn lip of the Burgundy sheet */
+  /** Surface peel direction (default: burgundy-to-ivory) */
+  variant?: TornPaperVariant;
+  /** Small editorial note printed near the torn lip of the upper sheet */
   upperCaption?: string;
-  /** Subtle destination hint revealed on the Ivory sheet beneath the tear */
+  /** Subtle destination hint revealed on the lip */
   lowerHint?: string;
   /** Unique test identifier for verification */
   testId?: string;
@@ -72,22 +114,21 @@ export interface TornPaperPeelProps {
 }
 
 /**
- * Reusable Burgundy (#792B33) -> Warm Ivory (#F3E9DE) physical torn-paper peel transition.
- *
- * Used identically between:
- * - Chapter 01 (About / Burgundy) -> Chapter 02 (Selected Projects / Ivory)
- * - Chapter 07 (Achievements / Burgundy) -> Chapter 08 (Contact / Ivory)
+ * Reusable physical torn-paper peel transition supporting both:
+ * - Burgundy (#792B33) -> Warm Ivory (#F3E9DE)
+ * - Warm Ivory (#F3E9DE) -> Burgundy (#792B33)
  *
  * Driven by GSAP ScrollTrigger (`scrub: true`) with physical upward transform occlusion
- * (zero opacity crossfade) and a live scroll-morphing jagged fiber WebGL shader that pauses
- * automatically when offscreen.
+ * and a live scroll-morphing jagged fiber WebGL shader that pauses automatically when offscreen.
  */
 export function TornPaperPeel({
+  variant = "burgundy-to-ivory",
   upperCaption = "Peel upward",
   lowerHint,
   testId = "torn-paper-peel",
   phaseOffset = 0,
 }: TornPaperPeelProps) {
+  const palette = VARIANT_PALETTES[variant];
   const rootRef = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const edgeWrapRef = useRef<HTMLDivElement>(null);
@@ -101,6 +142,7 @@ export function TornPaperPeel({
     const canvas = canvasRef.current;
     if (!rootEl || !edgeEl || !canvas) return;
 
+    const pal = VARIANT_PALETTES[variant];
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const gl = canvas.getContext("webgl", {
       alpha: true,
@@ -135,6 +177,10 @@ export function TornPaperPeel({
     const resLoc = gl.getUniformLocation(program, "uResolution");
     const phaseLoc = gl.getUniformLocation(program, "uPhase");
     const velLoc = gl.getUniformLocation(program, "uVelocity");
+    const paperColorLoc = gl.getUniformLocation(program, "uPaperColor");
+    const fiberColorLoc = gl.getUniformLocation(program, "uFiberColor");
+    const shadowColorLoc = gl.getUniformLocation(program, "uShadowColor");
+    const texScaleLoc = gl.getUniformLocation(program, "uTextureScale");
 
     gl.useProgram(program);
     gl.enableVertexAttribArray(posLoc);
@@ -179,6 +225,10 @@ export function TornPaperPeel({
       gl.uniform2f(resLoc, widthPx, heightPx);
       gl.uniform1f(phaseLoc, phase + phaseOffset);
       gl.uniform1f(velLoc, velocity);
+      gl.uniform3f(paperColorLoc, pal.paperRgb[0], pal.paperRgb[1], pal.paperRgb[2]);
+      gl.uniform3f(fiberColorLoc, pal.fiberRgb[0], pal.fiberRgb[1], pal.fiberRgb[2]);
+      gl.uniform3f(shadowColorLoc, pal.shadowRgb[0], pal.shadowRgb[1], pal.shadowRgb[2]);
+      gl.uniform1f(texScaleLoc, pal.textureScale);
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.drawArrays(gl.TRIANGLES, 0, 6);
     };
@@ -273,7 +323,7 @@ export function TornPaperPeel({
         gl.deleteProgram(program);
       }
     };
-  }, [phaseOffset]);
+  }, [phaseOffset, variant]);
 
   // 2. Compact scroll-scrubbed physical upward peel (zero full-screen blank interstitial void)
   useEffect(() => {
@@ -301,7 +351,7 @@ export function TornPaperPeel({
         },
       });
 
-      // Physical upward lift as the torn edge sweeps cleanly across the Burgundy -> Ivory seam
+      // Physical upward lift as the torn edge sweeps cleanly across the sheet seam
       tl.fromTo(
         sheetEl,
         { yPercent: 0 },
@@ -317,26 +367,33 @@ export function TornPaperPeel({
     <div
       ref={rootRef}
       data-testid={testId}
+      data-peel-variant={variant}
       data-peel-progress="0.00"
-      className="relative h-[168px] sm:h-[208px] lg:h-[236px] w-full overflow-hidden bg-[#F3E9DE]"
+      className="relative h-[168px] sm:h-[208px] lg:h-[236px] w-full overflow-hidden"
+      style={{ backgroundColor: palette.lowerHex }}
       aria-hidden="true"
     >
-      {/* Physical Burgundy (#792B33) upper lip + live scroll-morphing jagged torn-paper edge */}
+      {/* Physical upper sheet lip + live scroll-morphing jagged torn-paper edge */}
       <div
         ref={sheetRef}
         className="pointer-events-none absolute inset-x-0 -top-6 z-[10] will-change-transform"
       >
-        {/* Solid Burgundy anchor connecting seamlessly to the Burgundy chapter above */}
-        <div className="relative h-12 sm:h-14 w-full bg-[#792B33]">
+        {/* Solid upper anchor connecting seamlessly to the chapter above */}
+        <div
+          className="relative h-12 sm:h-14 w-full"
+          style={{ backgroundColor: palette.upperHex }}
+        >
           {upperCaption && (
-            <div className="page-container flex h-full items-end justify-between pb-1.5 text-[10px] font-mono uppercase tracking-[0.2em] text-[#F3E9DE]/58">
+            <div
+              className={`page-container flex h-full items-end justify-between pb-1.5 text-[10px] font-mono uppercase tracking-[0.2em] ${palette.captionClass}`}
+            >
               <span>{upperCaption}</span>
               {lowerHint && <span className="hidden sm:inline">{lowerHint}</span>}
             </div>
           )}
         </div>
 
-        {/* Full-width live scroll-morphing jagged torn edge hanging directly off the Burgundy sheet */}
+        {/* Full-width live scroll-morphing jagged torn edge hanging directly off the upper sheet */}
         <div
           ref={edgeWrapRef}
           className="relative -mt-[2px] h-[145px] sm:h-[180px] lg:h-[208px] w-full overflow-hidden"
@@ -355,15 +412,15 @@ export function TornPaperPeel({
             >
               <path
                 d={FALLBACK_TORN_GEOMETRY.shadowPath}
-                fill="#792B33"
-                fillOpacity="0.16"
+                fill={palette.svgShadowHex}
+                fillOpacity="0.18"
               />
               <path
                 d={FALLBACK_TORN_GEOMETRY.fiberFringePath}
-                fill="#F3E9DE"
-                fillOpacity="0.6"
+                fill={palette.svgFiberHex}
+                fillOpacity="0.65"
               />
-              <path d={FALLBACK_TORN_GEOMETRY.sheetPath} fill="#792B33" />
+              <path d={FALLBACK_TORN_GEOMETRY.sheetPath} fill={palette.upperHex} />
             </svg>
           )}
         </div>
@@ -371,3 +428,4 @@ export function TornPaperPeel({
     </div>
   );
 }
+

@@ -195,56 +195,85 @@ export const HeroCuriosityTypography = forwardRef<
         className="relative m-0 flex h-full w-full items-center justify-center font-normal uppercase text-[#792B33]"
         style={{ fontFamily: "var(--font-anton), Impact, sans-serif" }}
       >
-        {/* Beat 1 Slot: CURIOSITY — Framed in upper sky corridor below navbar and cleanly above the samurai helmet horns */}
+        {/* Beat 1 Slot: CURIOSITY — BIG monumental display type centered behind the cat with deliberate center spacing around the helmet */}
         <div
           ref={curiositySlotRef}
           data-testid="hero-slot-curiosity"
-          className="absolute inset-0 flex items-start justify-center px-4 pt-[82px] sm:pt-[84px] lg:pt-[82px] text-center will-change-[transform,opacity,clip-path]"
+          className="absolute inset-0 flex items-center justify-center px-2 sm:px-6 text-center will-change-[transform,opacity,clip-path]"
         >
           <span
             ref={curiosityTextRef}
             data-testid="hero-line-curiosity"
-            className="font-hero-display block whitespace-nowrap leading-[0.9] tracking-[0.18em] sm:tracking-[0.25em] will-change-[clip-path,transform]"
+            className="font-hero-display grid w-full grid-cols-[1fr_clamp(140px,31vw,455px)_1fr] items-center whitespace-nowrap leading-[0.88] tracking-[0.1em] sm:tracking-[0.13em] lg:tracking-[0.16em] will-change-[clip-path,transform]"
             style={{
               fontFamily: "var(--font-anton), Impact, sans-serif",
-              fontSize: "clamp(40px, 5.9vw, 84px)",
+              fontSize: "clamp(32px, 10.2vw, 166px)",
             }}
           >
-            CURIOSITY
+            <span className="justify-self-end pr-[0.04em]">CURIO</span>
+            <span aria-hidden="true" />
+            <span className="justify-self-start pl-[0.06em]">SITY</span>
           </span>
         </div>
 
-        {/* Beat 2 Slot: KILLED THE CAT. — Elevated above the samurai helmet with generous letter & word spacing */}
+        {/* Beat 2 Slot: KILLED THE CAT. — BIG monumental display type split symmetrically across the 3D samurai cat so every word is fully readable */}
         <div
           ref={killedSlotRef}
           data-testid="hero-slot-killed"
-          className="absolute inset-0 flex items-start justify-center px-4 sm:px-6 pt-[84px] sm:pt-[86px] lg:pt-[84px] text-center opacity-0 invisible will-change-[transform,opacity]"
+          className="absolute inset-0 flex items-center justify-center px-2 sm:px-6 text-center opacity-0 invisible will-change-[transform,opacity]"
         >
           <span
             data-testid="hero-line-killed"
-            className="font-hero-display flex flex-nowrap items-end justify-center gap-x-[0.44em] sm:gap-x-[0.62em] leading-[0.9] tracking-[0.12em] sm:tracking-[0.16em] origin-center"
+            className="font-hero-display grid w-full grid-cols-[1fr_clamp(124px,32.8vw,486px)_1fr] items-center leading-[0.88] tracking-[0.06em] sm:tracking-[0.1em] lg:tracking-[0.12em] origin-center"
             style={{
               fontFamily: "var(--font-anton), Impact, sans-serif",
-              fontSize: "clamp(30px, 4.9vw, 72px)",
+              fontSize: "clamp(22px, 7.6vw, 122px)",
             }}
           >
-            {KILLED_LINE_WORDS.map((word, index) => (
-              <span
-                key={word}
-                className="inline-block overflow-hidden align-bottom pt-[0.04em] pb-[0.06em]"
-              >
+            {/* Left of cat: KILLED */}
+            <span className="justify-self-end inline-flex flex-nowrap items-end">
+              {([0] as const).map((index) => (
                 <span
-                  ref={(el) => {
-                    killedWordRefs.current[index] = el;
-                  }}
-                  data-testid={`hero-word-${index}`}
-                  className="inline-block whitespace-nowrap will-change-transform"
-                  style={{ transform: "translate3d(0, 115%, 0)" }}
+                  key={KILLED_LINE_WORDS[index]}
+                  className="inline-block overflow-hidden align-bottom pt-[0.04em] pb-[0.06em]"
                 >
-                  {word}
+                  <span
+                    ref={(el) => {
+                      killedWordRefs.current[index] = el;
+                    }}
+                    data-testid={`hero-word-${index}`}
+                    className="inline-block whitespace-nowrap will-change-transform"
+                    style={{ transform: "translate3d(0, 115%, 0)" }}
+                  >
+                    {KILLED_LINE_WORDS[index]}
+                  </span>
                 </span>
-              </span>
-            ))}
+              ))}
+            </span>
+
+            {/* Dedicated center space occupied by the 3D samurai cat */}
+            <span aria-hidden="true" />
+
+            {/* Right of cat: THE CAT. */}
+            <span className="justify-self-start inline-flex flex-nowrap items-end gap-x-[0.22em] sm:gap-x-[0.28em] lg:gap-x-[0.34em]">
+              {([1, 2] as const).map((index) => (
+                <span
+                  key={KILLED_LINE_WORDS[index]}
+                  className="inline-block overflow-hidden align-bottom pt-[0.04em] pb-[0.06em]"
+                >
+                  <span
+                    ref={(el) => {
+                      killedWordRefs.current[index] = el;
+                    }}
+                    data-testid={`hero-word-${index}`}
+                    className="inline-block whitespace-nowrap will-change-transform"
+                    style={{ transform: "translate3d(0, 115%, 0)" }}
+                  >
+                    {KILLED_LINE_WORDS[index]}
+                  </span>
+                </span>
+              ))}
+            </span>
           </span>
         </div>
       </h1>
