@@ -9,12 +9,17 @@ import {
 
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
- * PROCEDURAL 3D JAPANESE MOUNTAIN ASSET & MATERIAL BUILDERS
+ * PROCEDURAL 3D JAPANESE ART (UKIYO-E / SUMI-E / WASHI) ASSET & TEXTURE BUILDERS
  * -------------------------------------------------------------------------------
- * Zero external file / 404 dependencies. All textures (stone micro-grain bump,
- * woven straw kasa, engraved stone stele plaques, soft radial contact shadows)
- * are procedurally synthesized onto HTML5 2D canvases with proper SRGBColorSpace
- * and max anisotropy.
+ * Zero external file / 404 dependencies. Every surface carries handcrafted
+ * Japanese art textures synthesized onto HTML5 2D canvases:
+ *   - Washi mulberry-paper fibers & sumi-e dry-brush woodblock terrain texture
+ *   - Ukiyo-e bokashi sky gradient with subtle kasumi ink-mist cloud bands
+ *   - Hand-inked Japanese granite & moss-flecked stepping stone / boulder textures
+ *   - Hokusai-style layered pine-needle fan foliage & scaly kuromatsu bark maps
+ *   - Traditional seigaiha kimono weave, chirimen silk scarf, ajiro rattan pack,
+ *     and hand-inked woven bamboo kasa hat textures
+ *   - Carved michishirube stone stele tablets with vermilion-burgundy hanko seals
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
@@ -46,16 +51,451 @@ export interface PathTraceHandle {
   readonly setProgress: (trailT: number) => void;
 }
 
-// Deterministic pseudo-random helper so every rock, pine, and flagstone layout is 100% stable
+export interface JapaneseArtTextureSet {
+  readonly terrainColor: THREE.CanvasTexture;
+  readonly terrainBump: THREE.CanvasTexture;
+  readonly stoneColor: THREE.CanvasTexture;
+  readonly stoneBump: THREE.CanvasTexture;
+  readonly pineFoliageColor: THREE.CanvasTexture;
+  readonly pineFoliageBump: THREE.CanvasTexture;
+  readonly pineBarkColor: THREE.CanvasTexture;
+  readonly kimonoColor: THREE.CanvasTexture;
+  readonly rattanColor: THREE.CanvasTexture;
+  readonly chirimenColor: THREE.CanvasTexture;
+  readonly strawHatColor: THREE.CanvasTexture;
+  readonly contactShadow: THREE.CanvasTexture;
+  readonly skyColor: THREE.CanvasTexture;
+  readonly mistBandColor: THREE.CanvasTexture;
+  readonly disposeAll: () => void;
+}
+
+// Deterministic pseudo-random helper so every brushstroke, fiber, rock, and pine is 100% stable
 function seededRand(seed: number): number {
   const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453123;
   return x - Math.floor(x);
 }
 
 /**
- * Procedural grayscale stone/earth micro-grain bump texture (linear color space).
+ * Helper: paints delicate handmade Japanese kozo (washi) paper fibers onto any 2D canvas.
  */
-export function createStoneBumpTexture(maxAnisotropy: number): THREE.CanvasTexture {
+function paintWashiFibers(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  count: number,
+  seedOffset: number,
+  darkAlpha: number,
+  lightAlpha: number
+) {
+  ctx.lineCap = "round";
+  for (let i = 0; i < count; i++) {
+    const s = i + seedOffset;
+    const x0 = seededRand(s * 3.1) * w;
+    const y0 = seededRand(s * 5.3) * h;
+    const angle = seededRand(s * 7.7) * Math.PI * 2;
+    const len = 8 + seededRand(s * 11.1) * 28;
+    const bend = (seededRand(s * 13.7) - 0.5) * 10;
+    const x1 = x0 + Math.cos(angle) * len;
+    const y1 = y0 + Math.sin(angle) * len;
+    const cx = (x0 + x1) * 0.5 - Math.sin(angle) * bend;
+    const cy = (y0 + y1) * 0.5 + Math.cos(angle) * bend;
+
+    ctx.strokeStyle =
+      i % 3 === 0
+        ? `rgba(255, 250, 242, ${lightAlpha})`
+        : `rgba(88, 68, 58, ${darkAlpha})`;
+    ctx.lineWidth = 0.6 + seededRand(s * 17.3) * 0.9;
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.quadraticCurveTo(cx, cy, x1, y1);
+    ctx.stroke();
+  }
+}
+
+/**
+ * 1. Washi Paper + Sumi-e Dry-Brush + Woodblock Grain Terrain Textures (Albedo + Bump).
+ * High-value neutral-warm color map so multiplying with terrain vertexColors adds rich
+ * Japanese woodblock contour striations, ink-wash brushwork, and handmade paper grain
+ * without muddying the Burgundy/Ivory palette.
+ */
+function createWashiTerrainTextures(maxAnisotropy: number): {
+  color: THREE.CanvasTexture;
+  bump: THREE.CanvasTexture;
+} {
+  const size = 512;
+
+  // Color map (multiplied over vertexColors)
+  const cCanvas = document.createElement("canvas");
+  cCanvas.width = size;
+  cCanvas.height = size;
+  const cCtx = cCanvas.getContext("2d");
+
+  // Matching grayscale bump map
+  const bCanvas = document.createElement("canvas");
+  bCanvas.width = size;
+  bCanvas.height = size;
+  const bCtx = bCanvas.getContext("2d");
+
+  if (cCtx && bCtx) {
+    cCtx.fillStyle = "#F7F1E8";
+    cCtx.fillRect(0, 0, size, size);
+
+    bCtx.fillStyle = "#808080";
+    bCtx.fillRect(0, 0, size, size);
+
+    // Subtle organic carved woodblock grain (varied wavelengths so zero repeating stripes appear)
+    for (let y = 0; y < size; y += 5) {
+      const waveA = Math.sin((y / size) * Math.PI * 6 + 0.7) * 11;
+      const waveB = Math.cos((y / size) * Math.PI * 14) * 5;
+      const tone = Math.sin(y * 0.13 + 1.1) * 0.5 + 0.5;
+      cCtx.strokeStyle =
+        tone > 0.45
+          ? `rgba(116, 94, 80, ${(0.032 + tone * 0.03).toFixed(3)})`
+          : `rgba(255, 251, 244, 0.075)`;
+      cCtx.lineWidth = 1.5;
+      cCtx.beginPath();
+      cCtx.moveTo(0, y);
+      cCtx.bezierCurveTo(
+        size * 0.33,
+        y + waveA,
+        size * 0.66,
+        y - waveB,
+        size,
+        y
+      );
+      cCtx.stroke();
+
+      const bLum = Math.floor(118 + tone * 24);
+      bCtx.strokeStyle = `rgb(${bLum},${bLum},${bLum})`;
+      bCtx.lineWidth = 1.6;
+      bCtx.beginPath();
+      bCtx.moveTo(0, y);
+      bCtx.bezierCurveTo(
+        size * 0.33,
+        y + waveA,
+        size * 0.66,
+        y - waveB,
+        size,
+        y
+      );
+      bCtx.stroke();
+    }
+
+    // Painterly sumi-e ink-wash blotches (soft organic mountain pigment washes)
+    for (let i = 0; i < 42; i++) {
+      const cx = seededRand(i * 19.3) * size;
+      const cy = seededRand(i * 23.7) * size;
+      const rx = 28 + seededRand(i * 7.1) * 64;
+      const ry = 18 + seededRand(i * 11.3) * 44;
+      const grad = cCtx.createRadialGradient(cx, cy, 4, cx, cy, rx);
+      grad.addColorStop(0, "rgba(86, 70, 62, 0.065)");
+      grad.addColorStop(0.6, "rgba(104, 86, 76, 0.025)");
+      grad.addColorStop(1, "rgba(104, 86, 76, 0)");
+      cCtx.save();
+      cCtx.translate(cx, cy);
+      cCtx.rotate((seededRand(i * 5.9) - 0.5) * Math.PI);
+      cCtx.scale(1, ry / rx);
+      cCtx.fillStyle = grad;
+      cCtx.beginPath();
+      cCtx.arc(0, 0, rx, 0, Math.PI * 2);
+      cCtx.fill();
+      cCtx.restore();
+    }
+
+    // Sumi-e dry-brush mountain contour strokes (varied curved calligraphic sweeps)
+    for (let i = 0; i < 95; i++) {
+      const x = seededRand(i * 4.7) * size;
+      const y = seededRand(i * 6.9) * size;
+      const w = 24 + seededRand(i * 9.3) * 76;
+      const tilt = (seededRand(i * 11.7) - 0.5) * 1.15;
+      const thickness = 2.5 + seededRand(i * 13.1) * 7.5;
+      const alpha = 0.04 + seededRand(i * 15.9) * 0.065;
+
+      cCtx.save();
+      cCtx.translate(x, y);
+      cCtx.rotate(tilt);
+      for (let br = -2; br <= 2; br++) {
+        cCtx.strokeStyle = `rgba(70, 56, 50, ${(alpha * (1 - Math.abs(br) * 0.16)).toFixed(3)})`;
+        cCtx.lineWidth = Math.max(0.8, thickness * 0.28);
+        cCtx.beginPath();
+        cCtx.moveTo(-w * 0.5, br * (thickness * 0.34));
+        cCtx.quadraticCurveTo(
+          0,
+          br * (thickness * 0.34) + (seededRand(i + br * 9) - 0.5) * 9,
+          w * 0.5,
+          br * (thickness * 0.34)
+        );
+        cCtx.stroke();
+      }
+      cCtx.restore();
+
+      bCtx.save();
+      bCtx.translate(x, y);
+      bCtx.rotate(tilt);
+      const bumpVal = i % 2 === 0 ? 152 : 106;
+      bCtx.strokeStyle = `rgba(${bumpVal},${bumpVal},${bumpVal},0.42)`;
+      bCtx.lineWidth = thickness * 0.65;
+      bCtx.beginPath();
+      bCtx.moveTo(-w * 0.5, 0);
+      bCtx.lineTo(w * 0.5, 0);
+      bCtx.stroke();
+      bCtx.restore();
+    }
+
+    // Fine mineral ink speckles & handmade washi mulberry fibers
+    for (let i = 0; i < 1400; i++) {
+      const x = seededRand(i * 2.3 + 50) * size;
+      const y = seededRand(i * 3.7 + 90) * size;
+      const r = 0.6 + seededRand(i * 5.9) * 2.0;
+      const isDark = i % 3 !== 0;
+      cCtx.fillStyle = isDark
+        ? `rgba(78, 60, 52, ${(0.03 + seededRand(i * 8.1) * 0.055).toFixed(3)})`
+        : `rgba(255, 251, 245, 0.08)`;
+      cCtx.beginPath();
+      cCtx.arc(x, y, r, 0, Math.PI * 2);
+      cCtx.fill();
+
+      const bl = isDark ? 104 : 154;
+      bCtx.fillStyle = `rgba(${bl},${bl},${bl},0.35)`;
+      bCtx.beginPath();
+      bCtx.arc(x, y, r * 1.15, 0, Math.PI * 2);
+      bCtx.fill();
+    }
+
+    paintWashiFibers(cCtx, size, size, 280, 300, 0.085, 0.16);
+    paintWashiFibers(bCtx, size, size, 170, 300, 0.14, 0.14);
+  }
+
+  const color = new THREE.CanvasTexture(cCanvas);
+  color.colorSpace = THREE.SRGBColorSpace;
+  color.wrapS = THREE.RepeatWrapping;
+  color.wrapT = THREE.RepeatWrapping;
+  color.repeat.set(11, 11);
+  color.anisotropy = maxAnisotropy;
+
+  const bump = new THREE.CanvasTexture(bCanvas);
+  bump.wrapS = THREE.RepeatWrapping;
+  bump.wrapT = THREE.RepeatWrapping;
+  bump.repeat.set(11, 11);
+  bump.anisotropy = maxAnisotropy;
+
+  return { color, bump };
+}
+
+/**
+ * 2. Hand-Inked Japanese Granite & Moss-Flecked Stone Textures (for flagstones, boulders, steles).
+ */
+function createJapaneseStoneTextures(maxAnisotropy: number): {
+  color: THREE.CanvasTexture;
+  bump: THREE.CanvasTexture;
+} {
+  const size = 256;
+  const cCanvas = document.createElement("canvas");
+  cCanvas.width = size;
+  cCanvas.height = size;
+  const cCtx = cCanvas.getContext("2d");
+
+  const bCanvas = document.createElement("canvas");
+  bCanvas.width = size;
+  bCanvas.height = size;
+  const bCtx = bCanvas.getContext("2d");
+
+  if (cCtx && bCtx) {
+    cCtx.fillStyle = "#F0E8DE";
+    cCtx.fillRect(0, 0, size, size);
+    bCtx.fillStyle = "#808080";
+    bCtx.fillRect(0, 0, size, size);
+
+    // Granite mineral flecks & soft moss dappling
+    for (let i = 0; i < 1600; i++) {
+      const x = seededRand(i * 3.3 + 12) * size;
+      const y = seededRand(i * 5.1 + 29) * size;
+      const r = 0.7 + seededRand(i * 7.9) * 2.8;
+      const roll = seededRand(i * 11.3);
+      if (roll < 0.14) {
+        // Subtle Japanese garden moss fleck
+        cCtx.fillStyle = "rgba(86, 102, 82, 0.16)";
+      } else if (roll < 0.62) {
+        cCtx.fillStyle = "rgba(62, 50, 46, 0.11)";
+      } else {
+        cCtx.fillStyle = "rgba(255, 250, 244, 0.14)";
+      }
+      cCtx.beginPath();
+      cCtx.arc(x, y, r, 0, Math.PI * 2);
+      cCtx.fill();
+
+      const lum = roll < 0.5 ? 96 : 162;
+      bCtx.fillStyle = `rgba(${lum},${lum},${lum},0.42)`;
+      bCtx.beginPath();
+      bCtx.arc(x, y, r, 0, Math.PI * 2);
+      bCtx.fill();
+    }
+
+    // Chiseled woodblock stone hatching & hairline mineral veins
+    for (let j = 0; j < 28; j++) {
+      const y = seededRand(j * 9.1) * size;
+      const x0 = seededRand(j * 4.3) * size * 0.4;
+      const x1 = x0 + 48 + seededRand(j * 6.7) * 140;
+      const dy = (seededRand(j * 12.1) - 0.5) * 18;
+      cCtx.strokeStyle = "rgba(56, 44, 42, 0.18)";
+      cCtx.lineWidth = 1.1;
+      cCtx.beginPath();
+      cCtx.moveTo(x0, y);
+      cCtx.quadraticCurveTo((x0 + x1) * 0.5, y + dy, x1, y + dy * 0.5);
+      cCtx.stroke();
+
+      bCtx.strokeStyle = "rgba(72,72,72,0.55)";
+      bCtx.lineWidth = 1.6;
+      bCtx.beginPath();
+      bCtx.moveTo(x0, y);
+      bCtx.quadraticCurveTo((x0 + x1) * 0.5, y + dy, x1, y + dy * 0.5);
+      bCtx.stroke();
+    }
+  }
+
+  const color = new THREE.CanvasTexture(cCanvas);
+  color.colorSpace = THREE.SRGBColorSpace;
+  color.wrapS = THREE.RepeatWrapping;
+  color.wrapT = THREE.RepeatWrapping;
+  color.repeat.set(2, 2);
+  color.anisotropy = maxAnisotropy;
+
+  const bump = new THREE.CanvasTexture(bCanvas);
+  bump.wrapS = THREE.RepeatWrapping;
+  bump.wrapT = THREE.RepeatWrapping;
+  bump.repeat.set(2, 2);
+  bump.anisotropy = maxAnisotropy;
+
+  return { color, bump };
+}
+
+/**
+ * 3. Traditional Ukiyo-e Pine-Needle Fan Foliage (Matsu) & Scaly Bark Textures.
+ * Paints layered Japanese woodblock pine needle fans radiating in delicate arcs
+ * so pine boughs read as hand-inked print foliage rather than bare polygons.
+ */
+function createUkiyoePineTextures(maxAnisotropy: number): {
+  foliageColor: THREE.CanvasTexture;
+  foliageBump: THREE.CanvasTexture;
+  barkColor: THREE.CanvasTexture;
+} {
+  const size = 512;
+  const fCanvas = document.createElement("canvas");
+  fCanvas.width = size;
+  fCanvas.height = size;
+  const fCtx = fCanvas.getContext("2d");
+
+  const fbCanvas = document.createElement("canvas");
+  fbCanvas.width = size;
+  fbCanvas.height = size;
+  const fbCtx = fbCanvas.getContext("2d");
+
+  if (fCtx && fbCtx) {
+    // Rich ink-pine base (kept slightly bright so instanced color tints cleanly)
+    fCtx.fillStyle = "#B8C7B7";
+    fCtx.fillRect(0, 0, size, size);
+    fbCtx.fillStyle = "#707070";
+    fbCtx.fillRect(0, 0, size, size);
+
+    // Draw 95 stylized Hokusai/ukiyo-e radiating pine-needle fan rosettes
+    for (let i = 0; i < 95; i++) {
+      const cx = seededRand(i * 5.7) * size;
+      const cy = seededRand(i * 8.3) * size;
+      const radius = 22 + seededRand(i * 11.9) * 26;
+      const needles = 11 + Math.floor(seededRand(i * 14.3) * 6);
+      const startAngle = -Math.PI * 0.92 + (seededRand(i * 17.1) - 0.5) * 0.5;
+      const sweep = Math.PI * 0.85;
+
+      // Soft dark ink shadow puddle under each rosette
+      fCtx.fillStyle = "rgba(38, 52, 42, 0.24)";
+      fCtx.beginPath();
+      fCtx.arc(cx, cy + 4, radius * 0.55, 0, Math.PI * 2);
+      fCtx.fill();
+
+      for (let n = 0; n < needles; n++) {
+        const a = startAngle + (n / (needles - 1)) * sweep;
+        const rLen = radius * (0.78 + seededRand(i * 31 + n * 7) * 0.3);
+        const nx = cx + Math.cos(a) * rLen;
+        const ny = cy + Math.sin(a) * rLen;
+
+        // Inked outer needle stroke
+        fCtx.strokeStyle =
+          n % 3 === 0
+            ? "rgba(232, 238, 224, 0.52)"
+            : "rgba(42, 58, 46, 0.58)";
+        fCtx.lineWidth = n % 3 === 0 ? 1.5 : 2.1;
+        fCtx.lineCap = "round";
+        fCtx.beginPath();
+        fCtx.moveTo(cx, cy);
+        fCtx.lineTo(nx, ny);
+        fCtx.stroke();
+
+        fbCtx.strokeStyle = n % 3 === 0 ? "rgba(215,215,215,0.65)" : "rgba(95,95,95,0.5)";
+        fbCtx.lineWidth = 2.0;
+        fbCtx.beginPath();
+        fbCtx.moveTo(cx, cy);
+        fbCtx.lineTo(nx, ny);
+        fbCtx.stroke();
+      }
+    }
+
+    paintWashiFibers(fCtx, size, size, 120, 900, 0.08, 0.1);
+  }
+
+  // Japanese black pine (kuromatsu) inked bark texture
+  const barkSize = 256;
+  const kCanvas = document.createElement("canvas");
+  kCanvas.width = barkSize;
+  kCanvas.height = barkSize;
+  const kCtx = kCanvas.getContext("2d");
+
+  if (kCtx) {
+    kCtx.fillStyle = "#4A3C37";
+    kCtx.fillRect(0, 0, barkSize, barkSize);
+
+    // Scaly bark plates with dark sumi-e ink outlines
+    for (let i = 0; i < 64; i++) {
+      const bx = seededRand(i * 4.1) * barkSize;
+      const by = seededRand(i * 6.7) * barkSize;
+      const bw = 14 + seededRand(i * 8.3) * 20;
+      const bh = 24 + seededRand(i * 10.9) * 38;
+      kCtx.fillStyle = i % 2 === 0 ? "#574741" : "#3E322E";
+      kCtx.strokeStyle = "rgba(26, 20, 19, 0.65)";
+      kCtx.lineWidth = 2;
+      kCtx.beginPath();
+      kCtx.ellipse(bx, by, bw * 0.5, bh * 0.5, 0.08, 0, Math.PI * 2);
+      kCtx.fill();
+      kCtx.stroke();
+    }
+  }
+
+  const foliageColor = new THREE.CanvasTexture(fCanvas);
+  foliageColor.colorSpace = THREE.SRGBColorSpace;
+  foliageColor.wrapS = THREE.RepeatWrapping;
+  foliageColor.wrapT = THREE.RepeatWrapping;
+  foliageColor.repeat.set(2, 2);
+  foliageColor.anisotropy = maxAnisotropy;
+
+  const foliageBump = new THREE.CanvasTexture(fbCanvas);
+  foliageBump.wrapS = THREE.RepeatWrapping;
+  foliageBump.wrapT = THREE.RepeatWrapping;
+  foliageBump.repeat.set(2, 2);
+  foliageBump.anisotropy = maxAnisotropy;
+
+  const barkColor = new THREE.CanvasTexture(kCanvas);
+  barkColor.colorSpace = THREE.SRGBColorSpace;
+  barkColor.wrapS = THREE.RepeatWrapping;
+  barkColor.wrapT = THREE.RepeatWrapping;
+  barkColor.repeat.set(1, 3);
+  barkColor.anisotropy = maxAnisotropy;
+
+  return { foliageColor, foliageBump, barkColor };
+}
+
+/**
+ * 4. Traditional Japanese Seigaiha (Ocean Wave) Indigo-Charcoal Kimono Cloak Texture.
+ */
+function createKimonoWeaveTexture(maxAnisotropy: number): THREE.CanvasTexture {
   const size = 256;
   const canvas = document.createElement("canvas");
   canvas.width = size;
@@ -63,49 +503,105 @@ export function createStoneBumpTexture(maxAnisotropy: number): THREE.CanvasTextu
   const ctx = canvas.getContext("2d");
 
   if (ctx) {
-    ctx.fillStyle = "#808080";
+    // Deep sumi-indigo charcoal cloth
+    ctx.fillStyle = "#2A2428";
     ctx.fillRect(0, 0, size, size);
-    for (let i = 0; i < 2400; i++) {
-      const x = seededRand(i * 3.1) * size;
-      const y = seededRand(i * 5.7) * size;
-      const r = 1 + seededRand(i * 7.3) * 4.5;
-      const lum = Math.floor(96 + seededRand(i * 11.9) * 64);
-      ctx.fillStyle = `rgb(${lum},${lum},${lum})`;
-      ctx.beginPath();
-      ctx.arc(x, y, r, 0, Math.PI * 2);
-      ctx.fill();
+
+    // Subtle woven linen slub
+    for (let y = 0; y < size; y += 2) {
+      ctx.fillStyle = y % 4 === 0 ? "rgba(243,233,222,0.035)" : "rgba(12,10,12,0.06)";
+      ctx.fillRect(0, y, size, 1);
     }
-    // Subtle striated sedimentary mineral lines
-    ctx.strokeStyle = "rgba(65,65,65,0.22)";
-    ctx.lineWidth = 1.2;
-    for (let j = 0; j < 26; j++) {
-      const y = (j / 26) * size;
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.bezierCurveTo(
-        size * 0.33,
-        y + (seededRand(j + 40) - 0.5) * 10,
-        size * 0.66,
-        y + (seededRand(j + 80) - 0.5) * 10,
-        size,
-        y
-      );
-      ctx.stroke();
+
+    // Restrained traditional Seigaiha concentric wave arcs in muted warm ivory-grey
+    const stepX = 32;
+    const stepY = 16;
+    ctx.lineWidth = 1.25;
+    for (let row = -1; row <= size / stepY + 2; row++) {
+      const y = row * stepY;
+      const offsetX = row % 2 === 0 ? 0 : stepX * 0.5;
+      for (let col = -1; col <= size / stepX + 2; col++) {
+        const x = col * stepX + offsetX;
+        // Fill mask behind wave fan so overlapping arcs tile cleanly
+        ctx.fillStyle = "#2A2428";
+        ctx.beginPath();
+        ctx.arc(x, y, 16, Math.PI, 0);
+        ctx.fill();
+
+        for (const r of [15, 11, 7, 3.5]) {
+          ctx.strokeStyle =
+            r === 15 ? "rgba(218, 200, 184, 0.24)" : "rgba(186, 168, 155, 0.14)";
+          ctx.beginPath();
+          ctx.arc(x, y, r, Math.PI, 0);
+          ctx.stroke();
+        }
+      }
     }
   }
 
   const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
   tex.wrapS = THREE.RepeatWrapping;
   tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(14, 14);
+  tex.repeat.set(3, 2);
   tex.anisotropy = maxAnisotropy;
   return tex;
 }
 
 /**
- * Soft radial contact shadow texture for grounding the cat and stone landmarks.
+ * 5. Traditional Japanese Woven Bamboo/Rattan (Ajiro-ami) Backpack Texture.
  */
-export function createContactShadowTexture(): THREE.CanvasTexture {
+function createRattanWeaveTexture(maxAnisotropy: number): THREE.CanvasTexture {
+  const size = 256;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+
+  if (ctx) {
+    ctx.fillStyle = "#9F7E59";
+    ctx.fillRect(0, 0, size, size);
+
+    const cell = 16;
+    for (let y = 0; y < size; y += cell) {
+      for (let x = 0; x < size; x += cell) {
+        const alt = ((x / cell) + (y / cell)) % 2 === 0;
+        ctx.fillStyle = alt ? "#B08E67" : "#8E6E4B";
+        ctx.fillRect(x + 1, y + 1, cell - 2, cell - 2);
+
+        // Bamboo split highlight + dark ink shadow line
+        ctx.strokeStyle = "rgba(56, 38, 24, 0.45)";
+        ctx.lineWidth = 1.4;
+        ctx.strokeRect(x + 0.5, y + 0.5, cell - 1, cell - 1);
+
+        ctx.strokeStyle = "rgba(245, 228, 198, 0.22)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        if (alt) {
+          ctx.moveTo(x + 2, y + cell * 0.5);
+          ctx.lineTo(x + cell - 2, y + cell * 0.5);
+        } else {
+          ctx.moveTo(x + cell * 0.5, y + 2);
+          ctx.lineTo(x + cell * 0.5, y + cell - 2);
+        }
+        ctx.stroke();
+      }
+    }
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2, 2);
+  tex.anisotropy = maxAnisotropy;
+  return tex;
+}
+
+/**
+ * 6. Burgundy (#792B33) Japanese Chirimen Silk Crepe Texture for the scarf & obi sash.
+ */
+function createBurgundyChirimenTexture(maxAnisotropy: number): THREE.CanvasTexture {
   const size = 128;
   const canvas = document.createElement("canvas");
   canvas.width = size;
@@ -113,30 +609,35 @@ export function createContactShadowTexture(): THREE.CanvasTexture {
   const ctx = canvas.getContext("2d");
 
   if (ctx) {
-    const grad = ctx.createRadialGradient(
-      size * 0.5,
-      size * 0.5,
-      size * 0.04,
-      size * 0.5,
-      size * 0.5,
-      size * 0.48
-    );
-    grad.addColorStop(0, "rgba(38, 28, 27, 0.52)");
-    grad.addColorStop(0.55, "rgba(38, 28, 27, 0.22)");
-    grad.addColorStop(1, "rgba(38, 28, 27, 0)");
-    ctx.fillStyle = grad;
+    ctx.fillStyle = "#792B33";
     ctx.fillRect(0, 0, size, size);
+    for (let y = 0; y < size; y += 2) {
+      for (let x = 0; x < size; x += 4) {
+        const v = seededRand(x * 7.1 + y * 13.3);
+        ctx.fillStyle =
+          v > 0.65
+            ? "rgba(243, 233, 222, 0.1)"
+            : v < 0.25
+              ? "rgba(42, 12, 16, 0.16)"
+              : "rgba(155, 62, 70, 0.08)";
+        ctx.fillRect(x, y, 3, 2);
+      }
+    }
   }
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(3, 3);
+  tex.anisotropy = maxAnisotropy;
   return tex;
 }
 
 /**
- * Woven bamboo/straw texture for the traveler cat's traditional Japanese kasa hat.
+ * 7. Hand-Inked Woven Bamboo Straw Kasa Hat Texture (ukiyo-e linework).
  */
-export function createStrawHatTexture(maxAnisotropy: number): THREE.CanvasTexture {
+function createStrawHatTexture(maxAnisotropy: number): THREE.CanvasTexture {
   const size = 256;
   const canvas = document.createElement("canvas");
   canvas.width = size;
@@ -144,18 +645,32 @@ export function createStrawHatTexture(maxAnisotropy: number): THREE.CanvasTextur
   const ctx = canvas.getContext("2d");
 
   if (ctx) {
-    ctx.fillStyle = "#D4B68A";
+    const grad = ctx.createLinearGradient(0, 0, 0, size);
+    grad.addColorStop(0, "#DEC39A");
+    grad.addColorStop(0.55, "#CEAD7E");
+    grad.addColorStop(1, "#BA9668");
+    ctx.fillStyle = grad;
     ctx.fillRect(0, 0, size, size);
 
-    // Concentric woven straw bands
+    // Concentric woven bamboo bands with hand-inked dark woodblock edges
     for (let y = 0; y < size; y += 8) {
-      ctx.fillStyle = y % 16 === 0 ? "rgba(155, 118, 72, 0.26)" : "rgba(242, 224, 192, 0.22)";
+      ctx.fillStyle =
+        y % 16 === 0
+          ? "rgba(130, 92, 52, 0.28)"
+          : "rgba(248, 234, 206, 0.24)";
       ctx.fillRect(0, y, size, 4);
+      ctx.strokeStyle = "rgba(68, 46, 28, 0.32)";
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(size, y);
+      ctx.stroke();
     }
-    // Fine radial stitch lines
-    ctx.strokeStyle = "rgba(116, 86, 52, 0.28)";
-    ctx.lineWidth = 1;
-    for (let x = 0; x < size; x += 12) {
+
+    // Radial bamboo ribs
+    ctx.strokeStyle = "rgba(74, 50, 30, 0.36)";
+    ctx.lineWidth = 1.25;
+    for (let x = 0; x < size; x += 16) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, size);
@@ -173,7 +688,225 @@ export function createStrawHatTexture(maxAnisotropy: number): THREE.CanvasTextur
 }
 
 /**
- * Engraved Japanese stone stele front plaque texture ("01", "02", "03" + Burgundy hanko seal).
+ * 8. Soft radial contact shadow texture for grounding the cat and stone landmarks.
+ */
+function createContactShadowTexture(): THREE.CanvasTexture {
+  const size = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+
+  if (ctx) {
+    const grad = ctx.createRadialGradient(
+      size * 0.5,
+      size * 0.5,
+      size * 0.04,
+      size * 0.5,
+      size * 0.5,
+      size * 0.48
+    );
+    grad.addColorStop(0, "rgba(40, 28, 27, 0.52)");
+    grad.addColorStop(0.55, "rgba(40, 28, 27, 0.22)");
+    grad.addColorStop(1, "rgba(40, 28, 27, 0)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, size, size);
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * 9. Ukiyo-e Bokashi Sky Dome Texture (Washi paper sky with soft woodblock cloud bands
+ * and a muted morning sun disc resting near the far horizon).
+ */
+function createJapaneseSkyTexture(maxAnisotropy: number): THREE.CanvasTexture {
+  const w = 1024;
+  const h = 512;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+
+  if (ctx) {
+    // Traditional ukiyo-e bokashi (hand-wiped woodblock ink gradation) matched to warm ivory #F3E9DE
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
+    skyGrad.addColorStop(0.0, "#F1E4D5"); // Warm sunlit washi zenith
+    skyGrad.addColorStop(0.26, "#F7EEE2"); // Airy open ivory upper sky
+    skyGrad.addColorStop(0.45, "#F2E2D0"); // Delicate warm rose-gold horizon bokashi
+    skyGrad.addColorStop(0.62, "#F6EDE2"); // Seamless blend into #F3E9DE valley fog
+    skyGrad.addColorStop(1.0, "#F6EDE2");
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    // Subtle horizontal woodblock grain across upper sky (Hiroshige print sky feel)
+    for (let y = 12; y < h * 0.56; y += 6) {
+      const fade = 1 - y / (h * 0.56);
+      ctx.strokeStyle = `rgba(160, 126, 98, ${(0.035 * fade).toFixed(3)})`;
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(w, y);
+      ctx.stroke();
+    }
+
+    // Poetic Japanese morning sun disc aligned straight ahead along the -Z valley (u ≈ 0.77 on SphereGeometry)
+    const sunX = w * 0.77;
+    const sunY = h * 0.39;
+    const sunHalo = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, 68);
+    sunHalo.addColorStop(0, "rgba(176, 86, 84, 0.28)");
+    sunHalo.addColorStop(0.45, "rgba(196, 124, 108, 0.12)");
+    sunHalo.addColorStop(1, "rgba(246, 237, 226, 0)");
+    ctx.fillStyle = sunHalo;
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, 68, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Soft muted vermilion-burgundy sun disc
+    ctx.fillStyle = "rgba(154, 62, 68, 0.34)";
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, 21, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Stylized byobu / ukiyo-e kasumi (elongated horizontal gold-ivory cloud ribbons framing the -Z horizon)
+    const clouds = [
+      { x: 660, y: 175, rw: 120, rh: 12, a: 0.55 },
+      { x: 830, y: 204, rw: 145, rh: 13, a: 0.52 },
+      { x: 745, y: 232, rw: 165, rh: 14, a: 0.46 },
+      { x: 580, y: 218, rw: 130, rh: 12, a: 0.44 },
+      { x: 920, y: 184, rw: 110, rh: 11, a: 0.42 },
+      { x: 240, y: 196, rw: 160, rh: 13, a: 0.36 },
+    ];
+    for (const c of clouds) {
+      const grad = ctx.createLinearGradient(c.x - c.rw, c.y, c.x + c.rw, c.y);
+      grad.addColorStop(0, "rgba(255, 251, 245, 0)");
+      grad.addColorStop(0.22, `rgba(255, 252, 246, ${c.a})`);
+      grad.addColorStop(0.78, `rgba(255, 252, 246, ${c.a})`);
+      grad.addColorStop(1, "rgba(255, 251, 245, 0)");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.roundRect(c.x - c.rw, c.y - c.rh * 0.5, c.rw * 2, c.rh, c.rh);
+      ctx.fill();
+
+      // Delicate warm ochre-gold ink underside line
+      ctx.strokeStyle = `rgba(176, 138, 108, ${(c.a * 0.36).toFixed(3)})`;
+      ctx.lineWidth = 1.25;
+      ctx.beginPath();
+      ctx.moveTo(c.x - c.rw * 0.72, c.y + c.rh * 0.48);
+      ctx.lineTo(c.x + c.rw * 0.72, c.y + c.rh * 0.48);
+      ctx.stroke();
+    }
+
+    paintWashiFibers(ctx, w, h, 380, 1400, 0.045, 0.12);
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.anisotropy = maxAnisotropy;
+  return tex;
+}
+
+/**
+ * 10. Soft painted Japanese kasumi mist veil texture for layered valley fog planes.
+ */
+function createKasumiMistTexture(): THREE.CanvasTexture {
+  const w = 512;
+  const h = 128;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+
+  if (ctx) {
+    ctx.clearRect(0, 0, w, h);
+    const puffs = [
+      { cx: 145, cy: 66, rx: 120, ry: 34, a: 0.46 },
+      { cx: 268, cy: 58, rx: 145, ry: 38, a: 0.52 },
+      { cx: 378, cy: 70, rx: 112, ry: 30, a: 0.42 },
+    ];
+    for (const p of puffs) {
+      const grad = ctx.createRadialGradient(p.cx, p.cy, 6, p.cx, p.cy, p.rx);
+      grad.addColorStop(0, `rgba(247, 240, 232, ${p.a})`);
+      grad.addColorStop(0.55, `rgba(243, 233, 222, ${(p.a * 0.5).toFixed(3)})`);
+      grad.addColorStop(1, "rgba(243, 233, 222, 0)");
+      ctx.save();
+      ctx.translate(p.cx, p.cy);
+      ctx.scale(1, p.ry / p.rx);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(0, 0, p.rx, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/**
+ * Builds the entire Japanese Art Procedural Texture Suite in one cohesive call.
+ */
+export function createJapaneseArtTextureSet(
+  maxAnisotropy: number
+): JapaneseArtTextureSet {
+  const terrain = createWashiTerrainTextures(maxAnisotropy);
+  const stone = createJapaneseStoneTextures(maxAnisotropy);
+  const pine = createUkiyoePineTextures(maxAnisotropy);
+  const kimonoColor = createKimonoWeaveTexture(maxAnisotropy);
+  const rattanColor = createRattanWeaveTexture(maxAnisotropy);
+  const chirimenColor = createBurgundyChirimenTexture(maxAnisotropy);
+  const strawHatColor = createStrawHatTexture(maxAnisotropy);
+  const contactShadow = createContactShadowTexture();
+  const skyColor = createJapaneseSkyTexture(maxAnisotropy);
+  const mistBandColor = createKasumiMistTexture();
+
+  const all = [
+    terrain.color,
+    terrain.bump,
+    stone.color,
+    stone.bump,
+    pine.foliageColor,
+    pine.foliageBump,
+    pine.barkColor,
+    kimonoColor,
+    rattanColor,
+    chirimenColor,
+    strawHatColor,
+    contactShadow,
+    skyColor,
+    mistBandColor,
+  ];
+
+  return {
+    terrainColor: terrain.color,
+    terrainBump: terrain.bump,
+    stoneColor: stone.color,
+    stoneBump: stone.bump,
+    pineFoliageColor: pine.foliageColor,
+    pineFoliageBump: pine.foliageBump,
+    pineBarkColor: pine.barkColor,
+    kimonoColor,
+    rattanColor,
+    chirimenColor,
+    strawHatColor,
+    contactShadow,
+    skyColor,
+    mistBandColor,
+    disposeAll() {
+      for (const tex of all) tex.dispose();
+    },
+  };
+}
+
+/**
+ * Engraved Japanese stone stele front plaque texture ("01", "02", "03" + Burgundy hanko seal)
+ * with weathered washi/granite grain and traditional woodblock double-line corner frame.
  */
 function createSteleEngravingTexture(
   numberLabel: string,
@@ -188,43 +921,57 @@ function createSteleEngravingTexture(
   const ctx = canvas.getContext("2d");
 
   if (ctx) {
-    // Crisp recessed ivory-sandstone engraved tablet face
-    ctx.fillStyle = "#E6DACE";
+    ctx.fillStyle = "#EAE0D4";
     ctx.fillRect(0, 0, w, h);
 
-    for (let i = 0; i < 650; i++) {
+    // Granite & washi grain speckles
+    for (let i = 0; i < 780; i++) {
       const x = seededRand(i * 2.7 + numberLabel.charCodeAt(1)) * w;
       const y = seededRand(i * 4.3 + 9) * h;
       const r = 0.8 + seededRand(i * 6.1) * 2.4;
       const alpha = 0.05 + seededRand(i * 8.9) * 0.08;
-      ctx.fillStyle = i % 2 === 0 ? `rgba(58,42,40,${alpha})` : `rgba(250,244,236,${alpha})`;
+      ctx.fillStyle =
+        i % 2 === 0
+          ? `rgba(58,42,40,${alpha})`
+          : `rgba(252,246,238,${alpha})`;
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
       ctx.fill();
     }
+    paintWashiFibers(ctx, w, h, 85, numberLabel.charCodeAt(1) * 19, 0.08, 0.14);
 
-    // Recessed vertical carved border
-    ctx.strokeStyle = "rgba(121, 43, 51, 0.52)";
-    ctx.lineWidth = 5;
-    ctx.strokeRect(24, 26, w - 48, h - 52);
+    // Traditional ukiyo-e double-ruled cartouche frame
+    ctx.strokeStyle = "rgba(121, 43, 51, 0.62)";
+    ctx.lineWidth = 4;
+    ctx.strokeRect(20, 22, w - 40, h - 44);
+    ctx.strokeStyle = "rgba(121, 43, 51, 0.28)";
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(28, 30, w - 56, h - 60);
 
-    // Signature Burgundy hanko seal stamp near top
+    // Signature Burgundy hanko artist seal with stylized internal stroke mark
     ctx.fillStyle = "#792B33";
-    ctx.fillRect(w / 2 - 22, 52, 44, 44);
+    ctx.fillRect(w / 2 - 22, 50, 44, 44);
     ctx.strokeStyle = "#F3E9DE";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(w / 2 - 14, 60, 28, 28);
+    ctx.lineWidth = 2.6;
+    ctx.strokeRect(w / 2 - 15, 57, 30, 30);
+    // Stylized vertical seal calligraphy bar inside hanko
+    ctx.beginPath();
+    ctx.moveTo(w / 2, 62);
+    ctx.lineTo(w / 2, 82);
+    ctx.moveTo(w / 2 - 9, 70);
+    ctx.lineTo(w / 2 + 9, 70);
+    ctx.stroke();
 
-    // Engraved stop numeral
+    // Engraved woodblock numeral
     ctx.fillStyle = "#792B33";
     ctx.font = "700 84px monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(numberLabel, w / 2, 186);
 
-    // Hairline rule
+    // Hairline rule with ink-tapered ends
     ctx.fillStyle = "rgba(121, 43, 51, 0.72)";
-    ctx.fillRect(w / 2 - 48, 242, 96, 4);
+    ctx.fillRect(w / 2 - 48, 242, 96, 3.5);
 
     // Crisp engraved company name
     ctx.fillStyle = "#3B1E21";
@@ -239,12 +986,55 @@ function createSteleEngravingTexture(
 }
 
 /**
- * Builds the continuous 170m x 150m 3D Japanese mountain terrain mesh.
- * The winding stone/earth footpath is carved directly into the heightfield and
- * seamlessly vertex-blended into warm-stone foothills and ink-charcoal mountain ridges.
+ * Builds the atmospheric Japanese ukiyo-e bokashi sky dome + layered 3D valley kasumi mist veils.
+ */
+export function buildJapaneseAtmosphereGroup(
+  textures: JapaneseArtTextureSet
+): THREE.Group {
+  const group = new THREE.Group();
+
+  // 1. Wide painted Japanese washi & bokashi sky dome (fog: false so clouds & sun stay softly visible)
+  const skyGeo = new THREE.SphereGeometry(158, 32, 20);
+  const skyMat = new THREE.MeshBasicMaterial({
+    map: textures.skyColor,
+    side: THREE.BackSide,
+    fog: false,
+    depthWrite: false,
+  });
+  const skyDome = new THREE.Mesh(skyGeo, skyMat);
+  skyDome.position.set(0, -14, -22);
+  group.add(skyDome);
+
+  // 2. Three delicate translucent horizontal kasumi mist ribbons nestled in the distant mountain valley
+  const mistMat = new THREE.MeshBasicMaterial({
+    map: textures.mistBandColor,
+    transparent: true,
+    opacity: 0.48,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+  });
+
+  const mistBands = [
+    { x: -12, y: 4.8, z: -18, w: 34, h: 6.5, yaw: 0.14 },
+    { x: 10, y: 6.2, z: -42, w: 42, h: 7.5, yaw: -0.1 },
+    { x: -4, y: 8.4, z: -76, w: 68, h: 11.5, yaw: 0.04 },
+  ];
+  for (const mb of mistBands) {
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(mb.w, mb.h), mistMat);
+    plane.position.set(mb.x, mb.y, mb.z);
+    plane.rotation.y = mb.yaw;
+    group.add(plane);
+  }
+
+  return group;
+}
+
+/**
+ * Builds the continuous 180m x 176m 3D Japanese mountain terrain mesh with washi
+ * paper grain, sumi-e dry-brush rock strokes, and seamlessly carved footpath.
  */
 export function buildMountainTerrainMesh(
-  bumpMap: THREE.CanvasTexture
+  textures: JapaneseArtTextureSet
 ): THREE.Mesh {
   const width = 180;
   const depth = 176;
@@ -254,20 +1044,19 @@ export function buildMountainTerrainMesh(
   const geo = new THREE.PlaneGeometry(width, depth, segX, segZ);
   geo.rotateX(-Math.PI / 2);
 
-  // Shift terrain center so it spans X: [-90..+90] and Z: [-126..+50]
-  // extending far past the playable trail and distant horizon silhouettes into ivory fog
+  // Spans X: [-90..+90] and Z: [-126..+50] well past the playable trail into distant horizon silhouettes
   geo.translate(0, 0, -38);
 
   const posAttr = geo.attributes.position;
   const colors = new Float32Array(posAttr.count * 3);
 
-  const colPathCore = new THREE.Color("#DFD1C0");
-  const colPathEdge = new THREE.Color("#BAA895");
-  const colFoothill = new THREE.Color("#C9BCAC");
-  const colMossSlope = new THREE.Color("#9BA48F");
-  const colRockMid = new THREE.Color("#6B615C");
-  const colRockPeak = new THREE.Color("#403737");
-  const colDistantMist = new THREE.Color("#E7DCD0");
+  const colPathCore = new THREE.Color("#E2D4C3");
+  const colPathEdge = new THREE.Color("#BDA996");
+  const colFoothill = new THREE.Color("#CCBFAD");
+  const colMossSlope = new THREE.Color("#9AA48C");
+  const colRockMid = new THREE.Color("#6B605B");
+  const colRockPeak = new THREE.Color("#3D3535");
+  const colDistantMist = new THREE.Color("#E8DDD1");
   const tmpColor = new THREE.Color();
 
   for (let i = 0; i < posAttr.count; i++) {
@@ -284,36 +1073,36 @@ export function buildMountainTerrainMesh(
     const y = posAttr.getY(i);
     const z = posAttr.getZ(i);
     const ny = normAttr.getY(i);
-    const slope = 1 - ny; // 0 = flat, higher = steeper rock cliff
+    const slope = 1 - ny;
 
     const trail = getNearestTrailMetrics(x, z);
     const elevAboveTrail = Math.max(0, y - trail.trailY);
 
     // 1. Warm earth foothill ground with subtle organic Japanese moss patches
     const mossFactor = THREE.MathUtils.clamp(
-      (Math.sin(x * 0.14 + z * 0.11) * 0.5 + 0.5) * 0.56,
+      (Math.sin(x * 0.14 + z * 0.11) * 0.5 + 0.5) * 0.58,
       0,
-      0.56
+      0.58
     );
     tmpColor.copy(colFoothill).lerp(colMossSlope, mossFactor);
 
     // 2. Sculpted Japanese sumi-e ink-rock shading driven by elevation & cliff steepness
     const rockBlend = THREE.MathUtils.clamp(
-      slope * 2.35 + elevAboveTrail * 0.11,
+      slope * 2.4 + elevAboveTrail * 0.115,
       0,
       1
     );
-    tmpColor.lerp(colRockMid, rockBlend * 0.84);
+    tmpColor.lerp(colRockMid, rockBlend * 0.85);
 
     const peakDarkBlend = THREE.MathUtils.clamp(
-      (elevAboveTrail - 2.2) * 0.125 + Math.max(0, slope - 0.18) * 1.55,
+      (elevAboveTrail - 2.1) * 0.13 + Math.max(0, slope - 0.17) * 1.55,
       0,
       0.88
     );
     tmpColor.lerp(colRockPeak, peakDarkBlend);
 
     // 3. Soften extreme outer perimeter gently into warm ivory horizon mist
-    const edgeDist = Math.max(Math.abs(x) / 80, Math.abs(z + 28) / 74);
+    const edgeDist = Math.max(Math.abs(x) / 86, Math.abs(z + 38) / 82);
     const edgeFade = THREE.MathUtils.smoothstep(edgeDist, 0.76, 1.0);
     tmpColor.lerp(colDistantMist, edgeFade * 0.85);
 
@@ -334,10 +1123,11 @@ export function buildMountainTerrainMesh(
 
   const mat = new THREE.MeshStandardMaterial({
     vertexColors: true,
-    roughness: 0.93,
-    metalness: 0.02,
-    bumpMap,
-    bumpScale: 0.12,
+    map: textures.terrainColor,
+    bumpMap: textures.terrainBump,
+    bumpScale: 0.24,
+    roughness: 0.94,
+    metalness: 0.01,
     flatShading: false,
   });
 
@@ -348,12 +1138,12 @@ export function buildMountainTerrainMesh(
 }
 
 /**
- * Builds instanced beveled 3D weathered flagstones flush along the winding trail.
+ * Builds instanced beveled 3D weathered flagstones flush along the winding trail
+ * using our hand-inked Japanese granite texture.
  */
 export function buildSteppingStonesInstanced(
-  bumpMap: THREE.CanvasTexture
+  textures: JapaneseArtTextureSet
 ): THREE.InstancedMesh {
-  // Irregular 7-sided hand-hewn stepping stone slab
   const shape = new THREE.Shape();
   shape.moveTo(-0.46, -0.22);
   shape.lineTo(-0.18, -0.34);
@@ -375,10 +1165,11 @@ export function buildSteppingStonesInstanced(
 
   const mat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
-    roughness: 0.86,
-    metalness: 0.03,
-    bumpMap,
-    bumpScale: 0.04,
+    map: textures.stoneColor,
+    bumpMap: textures.stoneBump,
+    bumpScale: 0.075,
+    roughness: 0.88,
+    metalness: 0.02,
   });
 
   const count = 64;
@@ -388,7 +1179,7 @@ export function buildSteppingStonesInstanced(
 
   const dummy = new THREE.Object3D();
   const col = new THREE.Color();
-  const baseTones = ["#B8A897", "#AEA090", "#C1B2A1", "#A59688"];
+  const baseTones = ["#C4B4A2", "#B8A997", "#CCBDA9", "#B0A191"];
 
   for (let i = 0; i < count; i++) {
     const t = 0.025 + (i / (count - 1)) * 0.94;
@@ -420,9 +1211,8 @@ export function buildSteppingStonesInstanced(
 }
 
 /**
- * Builds the subtle Burgundy (#792B33) traveled-path ink ribbon flush above the
- * footpath (`+0.035m` Y offset + polygonOffset so zero Z-fighting), dynamically
- * extending behind the walking traveler cat via `setDrawRange`.
+ * Builds the subtle Burgundy (#792B33) traveled-path sumi ink ribbon flush above the
+ * footpath, dynamically extending behind the walking traveler cat via `setDrawRange`.
  */
 export function buildTraveledPathRibbon(): PathTraceHandle {
   const segments = 160;
@@ -498,50 +1288,51 @@ export function buildTraveledPathRibbon(): PathTraceHandle {
 }
 
 /**
- * Builds a restrained collection of sculptural Japanese mountain pines (multi-part
- * curved bark trunks + asymmetric tiered flat foliage canopies) plus instanced
- * trailside rocks and grass blades grounded flush on the terrain.
+ * Builds stylized Japanese mountain pines textured with ukiyo-e pine-needle fan brushwork
+ * and scaly kuromatsu bark, plus moss-flecked trailside boulders and grass blades.
  */
 export function buildMountainFloraGroup(
-  bumpMap: THREE.CanvasTexture
+  textures: JapaneseArtTextureSet
 ): THREE.Group {
   const floraGroup = new THREE.Group();
 
-  // 1. Multi-part Stylized Japanese Pine Trees (32 restrained pines along ridges & foothills)
+  // 1. Multi-part Stylized Japanese Pine Trees
   const pineTrunkCurve = new THREE.CatmullRomCurve3([
     new THREE.Vector3(0, 0, 0),
     new THREE.Vector3(0.12, 0.85, 0.06),
     new THREE.Vector3(-0.08, 1.75, -0.05),
     new THREE.Vector3(0.06, 2.55, 0.04),
   ]);
-  const trunkGeo = new THREE.TubeGeometry(pineTrunkCurve, 10, 0.11, 6, false);
+  const trunkGeo = new THREE.TubeGeometry(pineTrunkCurve, 10, 0.115, 7, false);
   const branchCurve = new THREE.CatmullRomCurve3([
     new THREE.Vector3(-0.04, 1.55, 0),
     new THREE.Vector3(0.45, 1.78, 0.14),
     new THREE.Vector3(0.88, 1.88, 0.22),
   ]);
-  const branchGeo = new THREE.TubeGeometry(branchCurve, 6, 0.055, 5, false);
+  const branchGeo = new THREE.TubeGeometry(branchCurve, 6, 0.058, 6, false);
 
-  // Faceted irregular Japanese pine needle cluster (natural bonsai-cloud silhouette, not flat UFO discs)
-  const canopyGeo = new THREE.DodecahedronGeometry(0.76, 1);
-  canopyGeo.scale(1.24, 0.56, 1.12);
+  const canopyGeo = new THREE.DodecahedronGeometry(0.78, 1);
+  canopyGeo.scale(1.26, 0.56, 1.14);
 
   const barkMat = new THREE.MeshStandardMaterial({
-    color: 0x3b302d,
+    color: 0xffffff,
+    map: textures.pineBarkColor,
+    bumpMap: textures.stoneBump,
+    bumpScale: 0.08,
     roughness: 0.92,
     metalness: 0.02,
-    bumpMap,
-    bumpScale: 0.05,
   });
 
   const foliageMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
-    roughness: 0.78,
+    map: textures.pineFoliageColor,
+    bumpMap: textures.pineFoliageBump,
+    bumpScale: 0.14,
+    roughness: 0.82,
     metalness: 0.02,
-    flatShading: true,
+    flatShading: false,
   });
 
-  // Curated placements framing ridges & foothills while keeping Scene 01 upper-left sky completely clear
   const pineSpots: ReadonlyArray<{ x: number; z: number; scale: number; yaw: number }> = [
     { x: 8.6, z: 18.5, scale: 0.96, yaw: 2.1 },
     { x: 11.4, z: 9.8, scale: 1.12, yaw: 3.4 },
@@ -584,7 +1375,8 @@ export function buildMountainFloraGroup(
 
   const dummy = new THREE.Object3D();
   const tint = new THREE.Color();
-  const pineGreens = ["#344238", "#3F4F42", "#2D3A31", "#475647"];
+  // Slightly brighter instance tints because pineFoliageColor carries dark inked needle fans
+  const pineGreens = ["#45594B", "#526756", "#3C4E42", "#5C6E5B"];
 
   for (let i = 0; i < count; i++) {
     const spot = pineSpots[i];
@@ -598,7 +1390,6 @@ export function buildMountainFloraGroup(
     trunkInst.setMatrixAt(i, dummy.matrix);
     branchInst.setMatrixAt(i, dummy.matrix);
 
-    // 4 overlapping irregular tiered Japanese pine bough clouds per tree
     const tiers = [
       { ox: 0.06, oy: 2.58, oz: 0.04, sx: 0.96, sy: 0.94, sz: 0.92, tilt: 0.06 },
       { ox: 0.84, oy: 1.96, oz: 0.22, sx: 0.84, sy: 0.78, sz: 0.8, tilt: -0.09 },
@@ -640,14 +1431,15 @@ export function buildMountainFloraGroup(
 
   floraGroup.add(trunkInst, branchInst, canopyInst);
 
-  // 2. Instanced Weathered Trailside Rocks (48 sculpted rocks grounding the path edges)
+  // 2. Instanced Weathered Trailside Rocks with Hand-Inked Granite & Moss Texture
   const rockGeo = new THREE.DodecahedronGeometry(0.45, 0);
   const rockMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
+    map: textures.stoneColor,
+    bumpMap: textures.stoneBump,
+    bumpScale: 0.1,
     roughness: 0.9,
     metalness: 0.02,
-    bumpMap,
-    bumpScale: 0.06,
     flatShading: true,
   });
   const rockCount = 42;
@@ -655,12 +1447,11 @@ export function buildMountainFloraGroup(
   rockInst.castShadow = true;
   rockInst.receiveShadow = true;
 
-  const rockTones = ["#7E726B", "#6A5F5A", "#8F8279", "#5C524E"];
+  const rockTones = ["#8C7F76", "#786C65", "#9C8E84", "#695E59"];
   for (let i = 0; i < rockCount; i++) {
     const t = 0.04 + (i / (rockCount - 1)) * 0.92;
     const s = sampleTrail3D(t);
     const side = i % 2 === 0 ? 1 : -1;
-    // Keep rocks nestled cleanly on the path shoulder & base slopes (never floating high on cliffs)
     const dist = 2.0 + seededRand(i * 6.3) * 2.1;
     const rx = s.position.x + s.right.x * side * dist;
     const rz = s.position.z + s.right.z * side * dist;
@@ -688,17 +1479,17 @@ export function buildMountainFloraGroup(
   rockInst.computeBoundingSphere();
   floraGroup.add(rockInst);
 
-  // 3. Restrained Trailside Mountain Grass Tufts (84 grounded blades hugging trail edges)
+  // 3. Restrained Trailside Mountain Grass Tufts
   const grassGeo = new THREE.ConeGeometry(0.06, 0.46, 4);
   grassGeo.translate(0, 0.23, 0);
   const grassMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
-    roughness: 0.85,
+    roughness: 0.86,
     metalness: 0.0,
   });
   const grassCount = 84;
   const grassInst = new THREE.InstancedMesh(grassGeo, grassMat, grassCount);
-  const grassTones = ["#6C7564", "#7C816E", "#5A6556", "#8B8A74"];
+  const grassTones = ["#64705E", "#757D68", "#546051", "#85856F"];
 
   for (let i = 0; i < grassCount; i++) {
     const clusterIdx = Math.floor(i / 3);
@@ -733,15 +1524,12 @@ export function buildMountainFloraGroup(
 }
 
 /**
- * Builds the articulated 12-part procedural 3D Japanese Traveler Cat.
- * Distinct from the armored Hero samurai cat: wears a matte charcoal travel
- * cloak, Burgundy (#792B33) fluttering scarf, woven straw kasa hat, rattan
- * backpack with bedroll, and carries a seasoned wood walking staff.
- * Pivoted cleanly at bottom-center (y = 0) flush on the trail!
+ * Builds the articulated 12-part procedural 3D Japanese Traveler Cat dressed in
+ * textured seigaiha kimono cloth, chirimen silk burgundy scarf, ajiro woven rattan
+ * backpack, and hand-inked bamboo kasa hat.
  */
 export function buildTravelerCat3D(
-  strawTex: THREE.CanvasTexture,
-  shadowTex: THREE.CanvasTexture
+  textures: JapaneseArtTextureSet
 ): TravelerCatRig {
   const root = new THREE.Group();
 
@@ -749,7 +1537,7 @@ export function buildTravelerCat3D(
   const shadowMesh = new THREE.Mesh(
     new THREE.CircleGeometry(0.54, 24),
     new THREE.MeshBasicMaterial({
-      map: shadowTex,
+      map: textures.contactShadow,
       transparent: true,
       depthWrite: false,
       opacity: 0.52,
@@ -759,37 +1547,47 @@ export function buildTravelerCat3D(
   shadowMesh.position.y = 0.02;
   root.add(shadowMesh);
 
-  // Materials with deliberate roughness contrast (>= 0.25 across adjacent parts)
+  // Materials with traditional Japanese textile maps & deliberate roughness contrast
   const cloakMat = new THREE.MeshStandardMaterial({
-    color: 0x2c2627,
+    color: 0xffffff,
+    map: textures.kimonoColor,
     roughness: 0.9,
     metalness: 0.03,
   });
   const ivoryFurMat = new THREE.MeshStandardMaterial({
     color: 0xf1e6d8,
-    roughness: 0.78,
+    roughness: 0.8,
     metalness: 0.02,
   });
   const burgundyMat = new THREE.MeshStandardMaterial({
-    color: 0x792b33,
+    color: 0xffffff,
+    map: textures.chirimenColor,
     roughness: 0.62,
     metalness: 0.06,
   });
   const strawMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
-    map: strawTex,
-    roughness: 0.72,
+    map: textures.strawHatColor,
+    roughness: 0.74,
     metalness: 0.02,
     side: THREE.DoubleSide,
   });
   const packMat = new THREE.MeshStandardMaterial({
-    color: 0x9b7a58,
+    color: 0xffffff,
+    map: textures.rattanColor,
     roughness: 0.86,
-    metalness: 0.03,
+    metalness: 0.02,
+  });
+  const packFlapMat = new THREE.MeshStandardMaterial({
+    color: 0xdcc4a6,
+    map: textures.rattanColor,
+    roughness: 0.88,
+    metalness: 0.02,
   });
   const woodStaffMat = new THREE.MeshStandardMaterial({
-    color: 0x5d4332,
-    roughness: 0.76,
+    color: 0xffffff,
+    map: textures.pineBarkColor,
+    roughness: 0.78,
     metalness: 0.04,
   });
   const brassMat = new THREE.MeshStandardMaterial({
@@ -832,12 +1630,11 @@ export function buildTravelerCat3D(
   const rightLeg = buildLeg(0.11);
   root.add(leftLeg, rightLeg);
 
-  // Upper body group (subtle walk bob & lean)
   const bodyGroup = new THREE.Group();
   bodyGroup.position.y = 0.34;
   root.add(bodyGroup);
 
-  // 1. Sculpted Japanese travel cloak / haori (LatheGeometry ordered BOTTOM -> TOP for outward normals!)
+  // 1. Sculpted Japanese travel cloak / haori (ordered BOTTOM -> TOP for outward normals)
   const cloakProfile = [
     new THREE.Vector2(0.01, 0.0),
     new THREE.Vector2(0.29, 0.0),
@@ -854,7 +1651,7 @@ export function buildTravelerCat3D(
   cloakMesh.receiveShadow = true;
   bodyGroup.add(cloakMesh);
 
-  // Subtle Burgundy obi / waist sash tying the travel coat
+  // Burgundy chirimen silk obi sash
   const obiMesh = new THREE.Mesh(
     new THREE.TorusGeometry(0.235, 0.032, 8, 20),
     burgundyMat
@@ -863,7 +1660,7 @@ export function buildTravelerCat3D(
   obiMesh.position.y = 0.29;
   bodyGroup.add(obiMesh);
 
-  // 2. Woven rattan traveler backpack + rolled ivory sleeping mat on back (-Z is behind!)
+  // 2. Woven rattan traveler backpack + rolled ivory sleeping mat
   const packGroup = new THREE.Group();
   packGroup.position.set(0, 0.36, -0.24);
 
@@ -876,7 +1673,7 @@ export function buildTravelerCat3D(
 
   const packFlap = new THREE.Mesh(
     new THREE.BoxGeometry(0.33, 0.09, 0.2),
-    new THREE.MeshStandardMaterial({ color: 0x7e6043, roughness: 0.88 })
+    packFlapMat
   );
   packFlap.position.set(0, 0.15, 0);
   packGroup.add(packFlap);
@@ -890,7 +1687,6 @@ export function buildTravelerCat3D(
   bedroll.castShadow = true;
   packGroup.add(bedroll);
 
-  // Burgundy cord bindings around bedroll
   for (const bx of [-0.1, 0.1]) {
     const tie = new THREE.Mesh(
       new THREE.TorusGeometry(0.071, 0.012, 6, 12),
@@ -902,7 +1698,7 @@ export function buildTravelerCat3D(
   }
   bodyGroup.add(packGroup);
 
-  // 3. Flowing Burgundy (#792B33) traveler scarf collar + articulated trailing tail
+  // 3. Flowing Burgundy (#792B33) chirimen silk scarf collar + trailing tail
   const scarfCollar = new THREE.Mesh(
     new THREE.TorusGeometry(0.175, 0.052, 10, 20),
     burgundyMat
@@ -927,7 +1723,7 @@ export function buildTravelerCat3D(
   scarfTail.add(scarfTailMesh);
   bodyGroup.add(scarfTail);
 
-  // 4. Curved articulated feline tail peeking cleanly from beneath the rear cloak
+  // 4. Curved articulated feline tail
   const catTail = new THREE.Group();
   catTail.position.set(0, 0.14, -0.24);
   const tailCurve = new THREE.CatmullRomCurve3([
@@ -944,7 +1740,7 @@ export function buildTravelerCat3D(
   catTail.add(catTailMesh);
   bodyGroup.add(catTail);
 
-  // 5. Articulated Arms + Seasoned Wood Walking Staff with Brass Ferrule
+  // 5. Articulated Arms + Seasoned Wood Walking Staff
   const leftArm = new THREE.Group();
   leftArm.position.set(-0.22, 0.52, 0.02);
   const leftSleeve = new THREE.Mesh(
@@ -974,7 +1770,6 @@ export function buildTravelerCat3D(
   rightHand.position.set(0.06, -0.22, 0.12);
   rightArm.add(rightHand);
 
-  // Walking staff gripped cleanly in right paw
   const staff = new THREE.Mesh(
     new THREE.CylinderGeometry(0.02, 0.017, 1.38, 8),
     woodStaffMat
@@ -992,7 +1787,7 @@ export function buildTravelerCat3D(
   rightArm.add(staffFerrule);
   bodyGroup.add(rightArm);
 
-  // 6. Sculpted Cat Head + Triangular Cat Ears + Woven Japanese Straw Kasa Hat
+  // 6. Sculpted Cat Head + Ears + Hand-Inked Woven Straw Kasa Hat
   const headGroup = new THREE.Group();
   headGroup.position.set(0, 0.78, 0.02);
   bodyGroup.add(headGroup);
@@ -1005,7 +1800,6 @@ export function buildTravelerCat3D(
   headSphere.castShadow = true;
   headGroup.add(headSphere);
 
-  // Pointed cat ears with burgundy inner-ear accents
   for (const side of [-1, 1]) {
     const ear = new THREE.Mesh(
       new THREE.ConeGeometry(0.062, 0.145, 4),
@@ -1024,7 +1818,6 @@ export function buildTravelerCat3D(
     innerEar.rotation.copy(ear.rotation);
     headGroup.add(innerEar);
 
-    // Subtle dark ink eyes facing forward (+Z)
     const eye = new THREE.Mesh(
       new THREE.SphereGeometry(0.021, 8, 8),
       darkInkMat
@@ -1033,7 +1826,6 @@ export function buildTravelerCat3D(
     headGroup.add(eye);
   }
 
-  // Tiny nose accent
   const nose = new THREE.Mesh(
     new THREE.ConeGeometry(0.018, 0.02, 3),
     burgundyMat
@@ -1042,7 +1834,6 @@ export function buildTravelerCat3D(
   nose.position.set(0, -0.022, 0.182);
   headGroup.add(nose);
 
-  // Wide conical Japanese straw traveling hat (kasa) — ordered BOTTOM -> TOP for clean outward normals
   const kasaProfile = [
     new THREE.Vector2(0.16, 0.07),
     new THREE.Vector2(0.45, -0.01),
@@ -1056,12 +1847,11 @@ export function buildTravelerCat3D(
     strawMat
   );
   kasaHat.position.set(0, 0.14, -0.01);
-  kasaHat.rotation.x = -0.09; // tilted gently back so cat silhouette & ears peek cleanly
+  kasaHat.rotation.x = -0.09;
   kasaHat.castShadow = true;
   kasaHat.receiveShadow = true;
   headGroup.add(kasaHat);
 
-  // Small Burgundy crown knot crowning the straw kasa
   const hatKnot = new THREE.Mesh(
     new THREE.SphereGeometry(0.038, 10, 8),
     burgundyMat
@@ -1085,14 +1875,13 @@ export function buildTravelerCat3D(
 
 /**
  * Builds a composite 6-part carved 3D Japanese stone trail marker (michishirube)
- * with engraved CanvasTexture plaque, burgundy seal trim, mossy base plinth,
- * grounded pebbles, contact shadow, and generous invisible raycast hitbox.
+ * with weathered granite texture, woodblock engraved plaque, burgundy hanko seal,
+ * mossy plinth, grounded pebbles, and invisible raycast hitbox.
  */
 export function buildMilestoneLandmark3D(
   milestone: JourneyMilestone,
   placement: Landmark3DPlacement,
-  bumpMap: THREE.CanvasTexture,
-  shadowTex: THREE.CanvasTexture,
+  textures: JapaneseArtTextureSet,
   maxAnisotropy: number
 ): Landmark3DHandle {
   const group = new THREE.Group();
@@ -1103,7 +1892,7 @@ export function buildMilestoneLandmark3D(
   const shadow = new THREE.Mesh(
     new THREE.CircleGeometry(0.95, 22),
     new THREE.MeshBasicMaterial({
-      map: shadowTex,
+      map: textures.contactShadow,
       transparent: true,
       depthWrite: false,
       opacity: 0.48,
@@ -1113,13 +1902,14 @@ export function buildMilestoneLandmark3D(
   shadow.position.y = 0.025;
   group.add(shadow);
 
-  // 2. Sculpted weathered stone base plinth
+  // 2. Sculpted weathered granite plinth
   const plinthMat = new THREE.MeshStandardMaterial({
-    color: 0x9e8f83,
+    color: 0xa99a8e,
+    map: textures.stoneColor,
+    bumpMap: textures.stoneBump,
+    bumpScale: 0.08,
     roughness: 0.92,
-    metalness: 0.03,
-    bumpMap,
-    bumpScale: 0.06,
+    metalness: 0.02,
   });
   const plinth = new THREE.Mesh(
     new THREE.CylinderGeometry(0.54, 0.68, 0.28, 7),
@@ -1130,7 +1920,7 @@ export function buildMilestoneLandmark3D(
   plinth.receiveShadow = true;
   group.add(plinth);
 
-  // 3. Carved tapered granite stele body (ExtrudeGeometry with beveled arched top)
+  // 3. Carved tapered granite stele body
   const steleShape = new THREE.Shape();
   steleShape.moveTo(-0.38, 0);
   steleShape.lineTo(0.38, 0);
@@ -1149,20 +1939,21 @@ export function buildMilestoneLandmark3D(
   steleGeo.translate(0, 0.26, -0.16);
 
   const steleMaterial = new THREE.MeshStandardMaterial({
-    color: 0xb4a496,
+    color: 0xc2b3a4,
+    map: textures.stoneColor,
+    bumpMap: textures.stoneBump,
+    bumpScale: 0.065,
     emissive: new THREE.Color(0x000000),
     emissiveIntensity: 0,
-    roughness: 0.84,
-    metalness: 0.04,
-    bumpMap,
-    bumpScale: 0.055,
+    roughness: 0.86,
+    metalness: 0.03,
   });
   const steleMesh = new THREE.Mesh(steleGeo, steleMaterial);
   steleMesh.castShadow = true;
   steleMesh.receiveShadow = true;
   group.add(steleMesh);
 
-  // 4. Engraved front stone tablet plaque (high-anisotropy CanvasTexture)
+  // 4. Engraved woodblock stone tablet plaques (front + back)
   const plaqueTex = createSteleEngravingTexture(
     milestone.number,
     milestone.companyName,
@@ -1171,8 +1962,10 @@ export function buildMilestoneLandmark3D(
   const plaqueMat = new THREE.MeshStandardMaterial({
     color: 0xffffff,
     map: plaqueTex,
-    roughness: 0.72,
-    metalness: 0.03,
+    bumpMap: textures.stoneBump,
+    bumpScale: 0.025,
+    roughness: 0.78,
+    metalness: 0.02,
     polygonOffset: true,
     polygonOffsetFactor: -1,
     polygonOffsetUnits: -1,
@@ -1181,13 +1974,12 @@ export function buildMilestoneLandmark3D(
   frontPlaque.position.set(0, 1.12, 0.215);
   group.add(frontPlaque);
 
-  // Duplicate plaque cleanly on back face so it reads nicely even during Scene 06 pullback
   const backPlaque = new THREE.Mesh(new THREE.PlaneGeometry(0.56, 1.18), plaqueMat);
   backPlaque.rotation.y = Math.PI;
   backPlaque.position.set(0, 1.12, -0.215);
   group.add(backPlaque);
 
-  // 5. Burgundy (#792B33) carved stone crown collar accent (lights up subtly when active)
+  // 5. Burgundy (#792B33) carved lacquer base collar
   const sealMaterial = new THREE.MeshStandardMaterial({
     color: 0x792b33,
     emissive: new THREE.Color(0x792b33),
@@ -1226,7 +2018,6 @@ export function buildMilestoneLandmark3D(
   hitbox.userData.milestoneId = milestone.id;
   group.add(hitbox);
 
-  // World anchor for projected accessible label button cleanly above the stone stele
   const anchorWorld = new THREE.Vector3(
     placement.position.x,
     placement.position.y + 2.38,

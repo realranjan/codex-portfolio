@@ -17,15 +17,14 @@ import {
   stepTraveler3DWalk,
 } from "@/lib/mountain-3d-world";
 import {
+  buildJapaneseAtmosphereGroup,
   buildMilestoneLandmark3D,
   buildMountainFloraGroup,
   buildMountainTerrainMesh,
   buildSteppingStonesInstanced,
   buildTraveledPathRibbon,
   buildTravelerCat3D,
-  createContactShadowTexture,
-  createStoneBumpTexture,
-  createStrawHatTexture,
+  createJapaneseArtTextureSet,
   type Landmark3DHandle,
 } from "@/components/portfolio/journey/mountain-3d-builders";
 
@@ -218,14 +217,14 @@ export const Journey3DCanvas = forwardRef<
     roomEnv.dispose();
     pmrem.dispose();
 
-    // 3. Perspective Follow Camera
-    const camera = new THREE.PerspectiveCamera(42, initialW / initialH, 0.25, 195);
+    // 3. Perspective Follow Camera (far=260 cleanly encompasses the 158m Japanese sky dome)
+    const camera = new THREE.PerspectiveCamera(42, initialW / initialH, 0.25, 260);
 
     // 4. Three-point Natural Daylight Mountain Rig
-    const hemiLight = new THREE.HemisphereLight(0xf6f0e8, 0x9b8876, 0.82);
+    const hemiLight = new THREE.HemisphereLight(0xf6f0e8, 0x9b8876, 0.84);
     scene.add(hemiLight);
 
-    const sunLight = new THREE.DirectionalLight(0xfff2dd, 1.9);
+    const sunLight = new THREE.DirectionalLight(0xfff2dd, 1.92);
     sunLight.position.set(22, 34, 38);
     if (!isSoftwareGl) {
       sunLight.castShadow = true;
@@ -243,42 +242,37 @@ export const Journey3DCanvas = forwardRef<
     scene.add(sunLight);
     scene.add(sunLight.target);
 
-    // Subtle warm back-rim light separating the dark travel cloak against mountain ridges
+    // Subtle warm back-rim light separating the seigaiha travel cloak against mountain ridges
     const rimLight = new THREE.DirectionalLight(0xffe7cf, 0.48);
     rimLight.position.set(-22, 18, -42);
     scene.add(rimLight);
 
-    // 5. Procedural Textures & Complete 3D Japanese Mountain Environment
-    const stoneBumpTex = createStoneBumpTexture(maxAnisotropy);
-    const contactShadowTex = createContactShadowTexture();
-    const strawHatTex = createStrawHatTexture(maxAnisotropy);
+    // 5. Procedural Japanese Art Texture Suite & Complete 3D Mountain World
+    const artTextures = createJapaneseArtTextureSet(maxAnisotropy);
 
-    const terrainMesh = buildMountainTerrainMesh(stoneBumpTex);
+    const atmosphereGroup = buildJapaneseAtmosphereGroup(artTextures);
+    scene.add(atmosphereGroup);
+
+    const terrainMesh = buildMountainTerrainMesh(artTextures);
     scene.add(terrainMesh);
 
-    const steppingStones = buildSteppingStonesInstanced(stoneBumpTex);
+    const steppingStones = buildSteppingStonesInstanced(artTextures);
     scene.add(steppingStones);
 
     const traveledPath = buildTraveledPathRibbon();
     scene.add(traveledPath.mesh);
 
-    const floraGroup = buildMountainFloraGroup(stoneBumpTex);
+    const floraGroup = buildMountainFloraGroup(artTextures);
     scene.add(floraGroup);
 
-    const travelerCat = buildTravelerCat3D(strawHatTex, contactShadowTex);
+    const travelerCat = buildTravelerCat3D(artTextures);
     scene.add(travelerCat.group);
 
     // Three grounded carved 3D stone landmarks (iMerit, Haegl Tech, RYVO)
     const placements = computeLandmark3DPlacements(milestonesRef.current);
     const landmarkHandles: Landmark3DHandle[] = placements.map((pl, idx) => {
       const m = milestonesRef.current[idx];
-      const handle = buildMilestoneLandmark3D(
-        m,
-        pl,
-        stoneBumpTex,
-        contactShadowTex,
-        maxAnisotropy
-      );
+      const handle = buildMilestoneLandmark3D(m, pl, artTextures, maxAnisotropy);
       scene.add(handle.group);
       return handle;
     });
@@ -784,14 +778,13 @@ export const Journey3DCanvas = forwardRef<
             const std = mat as THREE.MeshStandardMaterial;
             std.map?.dispose();
             std.bumpMap?.dispose();
+            std.roughnessMap?.dispose();
             mat.dispose();
           }
         }
       });
 
-      stoneBumpTex.dispose();
-      contactShadowTex.dispose();
-      strawHatTex.dispose();
+      artTextures.disposeAll();
       envRT.dispose();
       renderer.dispose();
       if (renderer.domElement.parentNode === mountEl) {
@@ -809,6 +802,26 @@ export const Journey3DCanvas = forwardRef<
     >
       {/* Dedicated WebGL canvas mount — untouched by React state updates */}
       <div ref={canvasMountRef} className="absolute inset-0 h-full w-full" />
+
+      {/* Whisper-light handmade Japanese washi paper fiber texture unifying the 3D print */}
+      <svg
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-10 h-full w-full opacity-[0.14] mix-blend-multiply"
+      >
+        <filter id="japanese-washi-grain">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.72"
+            numOctaves="3"
+            stitchTiles="stitch"
+          />
+          <feColorMatrix
+            type="matrix"
+            values="0.32 0 0 0 0.56  0 0.28 0 0 0.50  0 0 0.24 0 0.44  0 0 0 0.65 0"
+          />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#japanese-washi-grain)" />
+      </svg>
 
       {/* Projected accessible HTML landmark buttons anchored directly above each 3D stone stele.
           Click-only (no hover open) so keyboard, touch, and screen-reader users can inspect any stone. */}
