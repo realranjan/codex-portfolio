@@ -567,6 +567,34 @@ export interface ExperienceMediaSlide {
   imageUrl: string | null;
 }
 
+export type ExhibitCompositionVariant =
+  | "narrative-left"
+  | "plate-left"
+  | "asymmetric-wide";
+
+/**
+ * Data-driven company exhibit record for Chapter 05 (The Journey).
+ * Adding another company to `EXPERIENCE_RECORDS` automatically extends the
+ * spatial camera stage, scroll plateaus, curved route, and milestone index.
+ */
+export interface ExperienceRecord {
+  id: string;
+  company: string;
+  role: string;
+  dates: string;
+  description: string;
+  achievements: readonly string[];
+  techStack: readonly string[];
+  logo: string | null;
+  screenshot: string | null;
+  externalLink: string | null;
+  /** Optional supplementary gallery frames shown inside the expanded exhibit detail view */
+  gallery?: readonly ExperienceMediaSlide[];
+  /** Subtle asymmetric exhibit composition variation */
+  compositionVariant?: ExhibitCompositionVariant;
+}
+
+/** Legacy view shape kept synced for ResumeModal without altering other components */
 export interface ExperienceStop {
   id: string;
   number: string;
@@ -586,117 +614,146 @@ export interface ExperienceStop {
 
 export const EXPERIENCE_CONTENT = {
   chapterNumber: "05",
-  chapterLabel: "Experience & Journey",
+  chapterLabel: "The Journey",
   heading: "EVERY PATH LEAVES A MARK.",
-  supportingText: "Different places. Different challenges. Something learned at every stop.",
+  supportingText:
+    "Different places. Different challenges. Something learned at every stop.",
 } as const;
 
-export const EXPERIENCE_STOPS: readonly ExperienceStop[] = [
+export const EXPERIENCE_RECORDS: readonly ExperienceRecord[] = [
   {
-    id: "company-01",
-    number: "01",
-    companyName: "Company 01",
-    roleTitle: "Role Placeholder",
-    dates: "Start Date — End Date",
-    location: "Location Placeholder",
-    logoUrl: null,
-    companyUrl: null,
-    overview:
-      "Short overview placeholder for Company 01. Replace with the team context, product focus, and what drew you to this stop.",
-    responsibilities: [
-      "Primary responsibility placeholder 01 — core engineering or product contribution.",
-      "Primary responsibility placeholder 02 — collaboration, architecture, or delivery scope.",
-    ],
+    id: "imerit",
+    company: "iMerit",
+    role: "Role Title · Placeholder",
+    dates: "Start Date — End Date (Placeholder)",
+    description:
+      "Concise work summary placeholder for iMerit. Replace with your team context, domain focus, and core engineering contributions once finalized.",
     achievements: [
-      "Milestone placeholder 01 — replace with verified outcome once ready.",
-      "Milestone placeholder 02 — replace with concrete learning or shipped deliverable.",
+      "Primary technical challenge or milestone placeholder for iMerit — replace with a verified outcome, architecture decision, or problem solved.",
+      "Secondary achievement placeholder for iMerit — add verified scope, collaboration impact, or shipped deliverable when ready.",
     ],
-    technologies: ["Stack Tag 01", "Stack Tag 02", "Stack Tag 03"],
-    media: [
-      { id: "c1-m1", label: "ARTIFACT 01 · COMING SOON", caption: "Project visual or team snapshot placeholder.", imageUrl: null },
-      { id: "c1-m2", label: "ARTIFACT 02 · COMING SOON", caption: "Architecture or release highlight placeholder.", imageUrl: null },
+    techStack: [
+      "Tech Placeholder 01",
+      "Tech Placeholder 02",
+      "Tech Placeholder 03",
+      "Tech Placeholder 04",
     ],
-    waypoint: { id: "company-01", stop: 0, x: 115, y: 465 },
+    logo: null,
+    screenshot: null,
+    externalLink: null,
+    compositionVariant: "narrative-left",
+    gallery: [
+      {
+        id: "imerit-frame-01",
+        label: "EXHIBIT VISUAL 01 · PLACEHOLDER",
+        caption: "Project screenshot or system diagram slot for iMerit.",
+        imageUrl: null,
+      },
+      {
+        id: "imerit-frame-02",
+        label: "EXHIBIT VISUAL 02 · PLACEHOLDER",
+        caption: "Additional artifact or workflow preview slot for iMerit.",
+        imageUrl: null,
+      },
+    ],
   },
   {
-    id: "company-02",
-    number: "02",
-    companyName: "Company 02",
-    roleTitle: "Role Placeholder",
-    dates: "Start Date — End Date",
-    location: "Location Placeholder",
-    logoUrl: null,
-    companyUrl: null,
-    overview:
-      "Short overview placeholder for Company 02. Replace with domain challenges and the problems you explored during this chapter.",
-    responsibilities: [
-      "Primary responsibility placeholder 01 — systems design or interface ownership.",
-      "Primary responsibility placeholder 02 — cross-functional delivery or tooling.",
-    ],
+    id: "haegl-tech",
+    company: "Haegl Tech",
+    role: "Role Title · Placeholder",
+    dates: "Start Date — End Date (Placeholder)",
+    description:
+      "Concise work summary placeholder for Haegl Tech. Replace with the product systems, engineering problems, and responsibilities you owned here.",
     achievements: [
-      "Milestone placeholder 01 — replace with verified project outcome.",
-      "Milestone placeholder 02 — replace with notable craft highlight.",
+      "Primary technical challenge or milestone placeholder for Haegl Tech — replace with a verified engineering highlight or key lesson learned.",
+      "Secondary achievement placeholder for Haegl Tech — add verified deliverables, workflow improvements, or technical ownership notes.",
     ],
-    technologies: ["Stack Tag 01", "Stack Tag 02", "Stack Tag 03"],
-    media: [
-      { id: "c2-m1", label: "ARTIFACT 01 · COMING SOON", caption: "Product screen or workflow placeholder.", imageUrl: null },
-      { id: "c2-m2", label: "ARTIFACT 02 · COMING SOON", caption: "Engineering note or visual placeholder.", imageUrl: null },
+    techStack: [
+      "Tech Placeholder 01",
+      "Tech Placeholder 02",
+      "Tech Placeholder 03",
+      "Tech Placeholder 04",
     ],
-    waypoint: { id: "company-02", stop: 1 / 3, x: 435, y: 185 },
+    logo: null,
+    screenshot: null,
+    externalLink: null,
+    compositionVariant: "plate-left",
+    gallery: [
+      {
+        id: "haegl-frame-01",
+        label: "EXHIBIT VISUAL 01 · PLACEHOLDER",
+        caption: "Project screenshot or interface artifact slot for Haegl Tech.",
+        imageUrl: null,
+      },
+      {
+        id: "haegl-frame-02",
+        label: "EXHIBIT VISUAL 02 · PLACEHOLDER",
+        caption: "Secondary architecture or feature study slot for Haegl Tech.",
+        imageUrl: null,
+      },
+    ],
   },
   {
-    id: "company-03",
-    number: "03",
-    companyName: "Company 03",
-    roleTitle: "Role Placeholder",
-    dates: "Start Date — End Date",
-    location: "Location Placeholder",
-    logoUrl: null,
-    companyUrl: null,
-    overview:
-      "Short overview placeholder for Company 03. Replace with technical focus, scale, and key engineering decisions.",
-    responsibilities: [
-      "Primary responsibility placeholder 01 — end-to-end feature or platform engineering.",
-      "Primary responsibility placeholder 02 — mentoring, code quality, or technical strategy.",
-    ],
+    id: "ryvo",
+    company: "RYVO",
+    role: "Role Title · Placeholder",
+    dates: "Start Date — End Date (Placeholder)",
+    description:
+      "Concise work summary placeholder for RYVO. Replace with what you built, how the product evolved, and the technical direction you contributed.",
     achievements: [
-      "Milestone placeholder 01 — replace with verified milestone.",
-      "Milestone placeholder 02 — replace with notable system improvement.",
+      "Primary technical challenge or milestone placeholder for RYVO — replace with a verified highlight, technical breakthrough, or product launch note.",
+      "Secondary achievement placeholder for RYVO — add verified impact, craft details, or lessons carried forward.",
     ],
-    technologies: ["Stack Tag 01", "Stack Tag 02", "Stack Tag 03"],
-    media: [
-      { id: "c3-m1", label: "ARTIFACT 01 · COMING SOON", caption: "System overview placeholder.", imageUrl: null },
-      { id: "c3-m2", label: "ARTIFACT 02 · COMING SOON", caption: "Shipped interface placeholder.", imageUrl: null },
+    techStack: [
+      "Tech Placeholder 01",
+      "Tech Placeholder 02",
+      "Tech Placeholder 03",
+      "Tech Placeholder 04",
     ],
-    waypoint: { id: "company-03", stop: 2 / 3, x: 775, y: 425 },
-  },
-  {
-    id: "company-04",
-    number: "04",
-    companyName: "Company 04",
-    roleTitle: "Role Placeholder",
-    dates: "Start Date — Present",
-    location: "Location Placeholder",
-    logoUrl: null,
-    companyUrl: null,
-    overview:
-      "Short overview placeholder for Company 04. Replace with current or most recent role context and direction.",
-    responsibilities: [
-      "Primary responsibility placeholder 01 — leading architecture or experimental initiatives.",
-      "Primary responsibility placeholder 02 — shipping high-craft production software.",
+    logo: null,
+    screenshot: null,
+    externalLink: null,
+    compositionVariant: "asymmetric-wide",
+    gallery: [
+      {
+        id: "ryvo-frame-01",
+        label: "EXHIBIT VISUAL 01 · PLACEHOLDER",
+        caption: "Project screenshot or shipped visual slot for RYVO.",
+        imageUrl: null,
+      },
+      {
+        id: "ryvo-frame-02",
+        label: "EXHIBIT VISUAL 02 · PLACEHOLDER",
+        caption: "Additional build notes or visual artifact slot for RYVO.",
+        imageUrl: null,
+      },
     ],
-    achievements: [
-      "Milestone placeholder 01 — replace with verified current milestone.",
-      "Milestone placeholder 02 — replace with key technical breakthrough.",
-    ],
-    technologies: ["Stack Tag 01", "Stack Tag 02", "Stack Tag 03"],
-    media: [
-      { id: "c4-m1", label: "ARTIFACT 01 · COMING SOON", caption: "Current chapter visual placeholder.", imageUrl: null },
-      { id: "c4-m2", label: "ARTIFACT 02 · COMING SOON", caption: "Recent work preview placeholder.", imageUrl: null },
-    ],
-    waypoint: { id: "company-04", stop: 1, x: 1085, y: 155 },
   },
 ];
+
+export const EXPERIENCE_STOPS: readonly ExperienceStop[] = EXPERIENCE_RECORDS.map(
+  (record, idx, all) => ({
+    id: record.id,
+    number: String(idx + 1).padStart(2, "0"),
+    companyName: record.company,
+    roleTitle: record.role,
+    dates: record.dates,
+    location: "Location · Placeholder",
+    logoUrl: record.logo,
+    companyUrl: record.externalLink,
+    overview: record.description,
+    responsibilities: [record.description],
+    achievements: record.achievements,
+    technologies: record.techStack,
+    media: record.gallery ?? [],
+    waypoint: {
+      id: record.id,
+      stop: all.length > 1 ? idx / (all.length - 1) : 0,
+      x: 160 + idx * 440,
+      y: idx % 2 === 0 ? 380 : 210,
+    },
+  })
+);
 
 /* ── CHAPTER 06 · EDUCATION ──────────────────────────────────────────────────── */
 

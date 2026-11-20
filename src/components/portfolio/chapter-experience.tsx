@@ -1,180 +1,261 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type TouchEvent,
+} from "react";
 import gsap from "gsap";
-
-const useIsomorphicLayoutEffect =
-  typeof window !== "undefined" ? useLayoutEffect : useEffect;
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   EXPERIENCE_CONTENT,
-  EXPERIENCE_STOPS,
-  type ExperienceStop,
+  EXPERIENCE_RECORDS,
+  type ExperienceRecord,
 } from "@/data/portfolio-content";
-import { buildCurvedFlightSvgPath } from "@/lib/journey-path";
-import { computeExperienceCameraState } from "@/lib/camera-system";
-import { wrapIndex } from "@/lib/carousel";
 import {
-  CameraProgressRule,
+  buildJourneyRouteGeometry,
+  computeJourneyCameraState,
+  getJourneyMilestoneAnchorProgress,
+  type JourneyViewportTier,
+} from "@/lib/journey-camera";
+import {
   useIsDesktop,
   usePrefersReducedMotion,
 } from "@/components/portfolio/camera-primitives";
-import {
-  ChapterHeading,
-  PlaceholderVisual,
-} from "@/components/portfolio/editorial-primitives";
+import { ChapterHeading } from "@/components/portfolio/editorial-primitives";
+import { ExperienceExhibitPanel } from "@/components/portfolio/experience-exhibit-panel";
+import { ExperienceExhibitModal } from "@/components/portfolio/experience-exhibit-modal";
 
 gsap.registerPlugin(ScrollTrigger);
 
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
+const INITIAL_ROUTE = buildJourneyRouteGeometry(
+  EXPERIENCE_RECORDS.length,
+  0,
+  0,
+  0.14
+);
+
 /**
- * CHAPTER 05 — EXPERIENCE & JOURNEY (Ivory #F3E9DE / Burgundy #792B33)
+ * CHAPTER 05 — THE JOURNEY / EXPERIENCE (Warm Ivory #F3E9DE / Burgundy #792B33)
  *
- * Camera-follows-the-journey curved SVG route:
- * - Desktop (>= 1024px, normal motion): Scroll drives a lightweight SVG airplane along
- *   a smooth curved Catmull-Rom path across 4 editable company milestones. The visible
- *   route composition pans modestly sideways and gently diagonally to follow the airplane,
- *   while the minimal cartographic grid layer glides on a slower background parallax plane.
- * - At each milestone, waypoint dwell settles both airplane and camera while the stable
- *   HTML company details panel stays stationary and crisp to read.
- * - Direct milestone navigation (01..04 tabs, Prev/Next, or clicking any SVG node) works
- *   cleanly in both directions.
- * - Reduced Motion: Accessible static vertical timeline with all 4 milestones readable.
- * - Mobile (< 1024px): Simplified touch-friendly route strip without scroll traps.
+ * Art-directed spatial exhibition driven by a single scrubbed GSAP ScrollTrigger camera:
+ * - Desktop (>= 1024px): Full CSS 3D perspective spatial corridor where a shared
+ *   camera world glides horizontally between company exhibits (iMerit, Haegl Tech,
+ *   RYVO). Each milestone settles into a zero-drift reading plateau; during travel
+ *   the passed exhibit shifts toward the foreground left edge (partially cropped)
+ *   while the next exhibit emerges forward from behind it. A thin curved Burgundy
+ *   path extends milestone-to-milestone and straightens into a clean horizontal
+ *   line in Stage F before handing off to Chapter 06 (Education).
+ * - Tablet (768px..1023px): Reduced depth, smaller camera travel, wider readable region.
+ * - Mobile (< 768px): Natural vertical scrolling with a swipeable & step-based gallery.
+ * - Reduced Motion: Static accessible exhibition displaying all milestones cleanly.
  */
 export function ChapterExperience() {
   const sectionRef = useRef<HTMLElement>(null);
-  const desktopStageRef = useRef<HTMLDivElement>(null);
-  const bgGridGroupRef = useRef<SVGGElement>(null);
-  const routeCameraGroupRef = useRef<SVGGElement>(null);
-  const planeGroupRef = useRef<SVGGElement>(null);
-  const trailPathRef = useRef<SVGPathElement>(null);
-  const progressBarRef = useRef<HTMLDivElement>(null);
+  const pinnedStageRef = useRef<HTMLDivElement>(null);
+  const headlineMaskRef = useRef<HTMLSpanElement>(null);
+  const cameraViewportRef = useRef<HTMLDivElement>(null);
+  const cameraWorldRef = useRef<HTMLDivElement>(null);
+  const exhibitRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const routeBasePathRef = useRef<SVGPathElement>(null);
+  const routeActivePathRef = useRef<SVGPathElement>(null);
+  const routeNodeRefs = useRef<Array<SVGGElement | null>>([]);
   const triggerRef = useRef<ScrollTrigger | null>(null);
+  const touchStartXRef = useRef<number | null>(null);
 
   const [activeIndex, setActiveIndex] = useState(0);
-  const [mediaSlideByStop, setMediaSlideByStop] = useState<Record<string, number>>({});
-  const [reachedSet, setReachedSet] = useState<string[]>([EXPERIENCE_STOPS[0].id]);
+  const [selectedRecord, setSelectedRecord] = useState<{
+    record: ExperienceRecord;
+    index: number;
+  } | null>(null);
+
   const reducedMotion = usePrefersReducedMotion();
   const isDesktop = useIsDesktop(1024);
-  const showPinnedDesktop = isDesktop && !reducedMotion;
+  const isTabletOrUp = useIsDesktop(768);
+  const showPinnedStage = isTabletOrUp && !reducedMotion;
+  const viewportTier: JourneyViewportTier = isDesktop ? "desktop" : "tablet";
 
-  const waypoints = useMemo(
-    () => EXPERIENCE_STOPS.map((stop) => stop.waypoint),
-    []
-  );
-  const routePathD = useMemo(() => buildCurvedFlightSvgPath(waypoints, 84), [waypoints]);
+  const count = EXPERIENCE_RECORDS.length;
 
-  const applyCameraSample = useCallback(
-    (progress: number) => {
-      const camera = computeExperienceCameraState(waypoints, progress);
-      const { flight } = camera;
+  const applyCameraProgress = useCallback(
+    (rawProgress: number, tier: JourneyViewportTier) => {
+      const state = computeJourneyCameraState(rawProgress, count, tier);
+      const route = buildJourneyRouteGeometry(
+        count,
+        state.pathFlattenProgress,
+        state.activeIndex,
+        state.pathDrawProgress
+      );
 
-      if (desktopStageRef.current) {
-        desktopStageRef.current.dataset.cameraPanX = camera.cameraPanX.toFixed(1);
-        desktopStageRef.current.dataset.cameraPanY = camera.cameraPanY.toFixed(1);
-        desktopStageRef.current.dataset.activeStop = String(flight.activeIndex + 1);
+      const stage = pinnedStageRef.current;
+      if (stage) {
+        stage.dataset.stagePhase = state.phase;
+        stage.dataset.activeMilestone = String(state.activeIndex + 1);
+        stage.dataset.cameraX = String(state.cameraTranslateXPx);
+        stage.dataset.pathFlatten = state.pathFlattenProgress.toFixed(2);
       }
 
-      // Slower background architectural coordinate grid parallax (zero scenery clutter)
-      if (bgGridGroupRef.current) {
-        bgGridGroupRef.current.setAttribute(
-          "transform",
-          `translate(${camera.bgParallaxX.toFixed(1)}, ${camera.bgParallaxY.toFixed(1)})`
-        );
+      // Stage A: Clean upward text mask reveal for EVERY PATH LEAVES A MARK.
+      if (headlineMaskRef.current) {
+        const yPct = (1 - state.headlineReveal) * 100;
+        headlineMaskRef.current.style.transform = `translate3d(0, ${yPct.toFixed(2)}%, 0)`;
+        headlineMaskRef.current.style.opacity = (
+          0.18 +
+          0.82 * state.headlineReveal
+        ).toFixed(3);
       }
 
-      // Route composition pans sideways and gently diagonally to follow the airplane
-      if (routeCameraGroupRef.current) {
-        routeCameraGroupRef.current.setAttribute(
-          "transform",
-          `translate(${camera.cameraPanX.toFixed(1)}, ${camera.cameraPanY.toFixed(1)})`
-        );
+      // Perspective depth tuned per viewport tier
+      if (cameraViewportRef.current) {
+        cameraViewportRef.current.style.perspective = `${state.perspectivePx}px`;
       }
 
-      if (planeGroupRef.current) {
-        planeGroupRef.current.setAttribute(
-          "transform",
-          `translate(${flight.x.toFixed(1)}, ${flight.y.toFixed(1)}) rotate(${flight.angleDeg.toFixed(1)})`
-        );
+      // Move the SINGLE shared camera world container horizontally + gentle Z pullback
+      if (cameraWorldRef.current) {
+        cameraWorldRef.current.style.transform = `translate3d(${state.cameraTranslateXPx}px, ${state.cameraTranslateYPx}px, ${state.cameraTranslateZPx}px) scale(${state.cameraScale})`;
       }
 
-      if (trailPathRef.current) {
-        const len = trailPathRef.current.getTotalLength();
-        trailPathRef.current.style.strokeDasharray = `${len}`;
-        trailPathRef.current.style.strokeDashoffset = `${(len * (1 - flight.easedProgress)).toFixed(1)}`;
+      // Position each company exhibit inside the shared spatial room
+      for (const pose of state.exhibits) {
+        const el = exhibitRefs.current[pose.index];
+        if (!el) continue;
+
+        const xTotal = pose.worldXPx + pose.localOffsetXPx;
+        el.style.transform = `translate3d(${xTotal.toFixed(2)}px, ${pose.localYPx.toFixed(2)}px, ${pose.localZPx.toFixed(2)}px) rotateY(${pose.rotateYDeg}deg) scale(${pose.scale})`;
+        // Keep adjacent exhibits solid archival board (prevents curved wall line bleeding through); fade only distant exhibits
+        const outerOpacity =
+          Math.abs(pose.relativeOffset) <= 1.25 ? 1 : pose.opacity;
+        el.style.opacity = outerOpacity.toFixed(4);
+        el.style.zIndex = String(pose.zIndex);
       }
 
-      if (progressBarRef.current) {
-        progressBarRef.current.style.transform = `scaleX(${flight.rawProgress.toFixed(4)})`;
+      // Update thin curved Burgundy path + Stage F straightening into a clean horizontal line
+      if (routeBasePathRef.current) {
+        routeBasePathRef.current.setAttribute("d", route.pathD);
+      }
+      if (routeActivePathRef.current) {
+        routeActivePathRef.current.setAttribute("d", route.pathD);
+        const totalLength = routeActivePathRef.current.getTotalLength();
+        routeActivePathRef.current.style.strokeDasharray = `${totalLength}`;
+        routeActivePathRef.current.style.strokeDashoffset = `${(
+          totalLength *
+          (1 - state.pathDrawProgress)
+        ).toFixed(2)}`;
+      }
+      for (const node of route.nodes) {
+        const g = routeNodeRefs.current[node.index];
+        if (!g) continue;
+        g.setAttribute("transform", `translate(${node.x}, ${node.y})`);
+        g.setAttribute("data-reached", node.isReached ? "true" : "false");
+        g.setAttribute("data-active", node.isActive ? "true" : "false");
       }
 
-      setActiveIndex((prev) => (prev === flight.activeIndex ? prev : flight.activeIndex));
-      setReachedSet((prev) =>
-        prev.length === flight.reachedIds.length ? prev : flight.reachedIds
+      setActiveIndex((prev) =>
+        prev === state.activeIndex ? prev : state.activeIndex
       );
     },
-    [waypoints]
+    [count]
   );
 
+  // Mount scrubbed GSAP ScrollTrigger on Desktop & Tablet (with clean resize recalculation)
   useIsomorphicLayoutEffect(() => {
-    const stageEl = desktopStageRef.current;
-    if (!stageEl || !showPinnedDesktop) return;
+    const stageEl = pinnedStageRef.current;
+    if (!stageEl || !showPinnedStage) return;
 
-    applyCameraSample(0);
+    // Seed resting initial composition at Milestone 01 before first scroll update
+    applyCameraProgress(getJourneyMilestoneAnchorProgress(0, count), viewportTier);
+
+    const scrollSpan =
+      viewportTier === "desktop"
+        ? `+=${Math.round(70 * count)}%`
+        : `+=${Math.round(60 * count)}%`;
 
     const ctx = gsap.context(() => {
       const st = ScrollTrigger.create({
         trigger: stageEl,
         start: "top top",
-        end: "+=165%",
+        end: scrollSpan,
         pin: true,
         scrub: true,
         anticipatePin: 1,
         invalidateOnRefresh: true,
         onUpdate: (self) => {
-          applyCameraSample(self.progress);
+          applyCameraProgress(self.progress, viewportTier);
         },
       });
       triggerRef.current = st;
+      // Sync immediately if page loaded scrolled past/into the trigger
+      if (st.progress > 0) {
+        applyCameraProgress(st.progress, viewportTier);
+      } else {
+        // Show headline cleanly if visitor is approaching Stage A
+        applyCameraProgress(0.09, viewportTier);
+      }
     }, sectionRef);
 
+    let resizeFrame = 0;
+    const onResize = () => {
+      window.cancelAnimationFrame(resizeFrame);
+      resizeFrame = window.requestAnimationFrame(() => {
+        ScrollTrigger.refresh();
+      });
+    };
+    window.addEventListener("resize", onResize);
+
     return () => {
+      window.cancelAnimationFrame(resizeFrame);
+      window.removeEventListener("resize", onResize);
       triggerRef.current = null;
       ctx.revert();
     };
-  }, [applyCameraSample, showPinnedDesktop]);
+  }, [applyCameraProgress, count, showPinnedStage, viewportTier]);
 
-  const handleSelectStop = useCallback(
-    (idx: number) => {
-      const targetIdx = wrapIndex(idx, EXPERIENCE_STOPS.length);
-      const targetStop = EXPERIENCE_STOPS[targetIdx];
-      if (!targetStop) return;
-
+  const navigateToMilestone = useCallback(
+    (targetIdx: number) => {
+      const clampedIdx = Math.max(0, Math.min(count - 1, targetIdx));
+      const anchorProgress = getJourneyMilestoneAnchorProgress(clampedIdx, count);
       const st = triggerRef.current;
-      if (st && window.matchMedia("(min-width: 1024px)").matches && !reducedMotion) {
-        const targetScroll = st.start + (st.end - st.start) * targetStop.waypoint.stop;
-        window.scrollTo({ top: targetScroll, behavior: "smooth" });
+
+      if (st && showPinnedStage) {
+        const targetScrollY = st.start + (st.end - st.start) * anchorProgress;
+        window.scrollTo({ top: targetScrollY, behavior: "smooth" });
+        applyCameraProgress(anchorProgress, viewportTier);
       }
-      applyCameraSample(targetStop.waypoint.stop);
-      setActiveIndex(targetIdx);
+      setActiveIndex(clampedIdx);
     },
-    [applyCameraSample, reducedMotion]
+    [applyCameraProgress, count, showPinnedStage, viewportTier]
   );
 
-  const activeStop: ExperienceStop = EXPERIENCE_STOPS[activeIndex] ?? EXPERIENCE_STOPS[0];
-  const currentMediaIdx = mediaSlideByStop[activeStop.id] ?? 0;
-  const activeMedia = activeStop.media[currentMediaIdx] ?? activeStop.media[0];
-
-  const stepStopMedia = (stop: ExperienceStop, delta: number) => {
-    setMediaSlideByStop((prev) => {
-      const cur = prev[stop.id] ?? 0;
-      return {
-        ...prev,
-        [stop.id]: wrapIndex(cur + delta, stop.media.length),
-      };
-    });
+  // Mobile swipe gesture handlers (touch-friendly gallery without horizontal page scroll)
+  const handleMobileTouchStart = (e: TouchEvent<HTMLDivElement>) => {
+    touchStartXRef.current = e.touches[0]?.clientX ?? null;
   };
+
+  const handleMobileTouchEnd = (e: TouchEvent<HTMLDivElement>) => {
+    if (touchStartXRef.current === null) return;
+    const endX = e.changedTouches[0]?.clientX ?? touchStartXRef.current;
+    const deltaX = endX - touchStartXRef.current;
+    touchStartXRef.current = null;
+
+    if (Math.abs(deltaX) >= 42) {
+      if (deltaX < 0 && activeIndex < count - 1) {
+        setActiveIndex((prev) => Math.min(count - 1, prev + 1));
+      } else if (deltaX > 0 && activeIndex > 0) {
+        setActiveIndex((prev) => Math.max(0, prev - 1));
+      }
+    }
+  };
+
+  const formattedCurrent = String(activeIndex + 1).padStart(2, "0");
+  const formattedTotal = String(count).padStart(2, "0");
+  const mobileActiveRecord = EXPERIENCE_RECORDS[activeIndex] ?? EXPERIENCE_RECORDS[0];
 
   return (
     <section
@@ -184,364 +265,246 @@ export function ChapterExperience() {
       data-chapter-surface="ivory"
       className="relative bg-[#F3E9DE] text-[#792B33] overflow-x-clip"
     >
-      <div className={showPinnedDesktop ? "block" : "hidden"}>
+      {/* ── DESKTOP & TABLET: PINNED SPATIAL EXHIBITION CAMERA STAGE ──
+          Host wrapper stays permanently mounted so GSAP's .pin-spacer never
+          conflicts with React reconciliation across viewport resizes. */}
+      <div className={showPinnedStage ? "block" : "hidden"}>
         <div
-          ref={desktopStageRef}
-          data-testid={showPinnedDesktop ? "experience-airplane-stage" : undefined}
-          data-camera-pan-x="0"
-          data-camera-pan-y="0"
-          data-active-stop="1"
+          ref={pinnedStageRef}
+          data-testid={showPinnedStage ? "experience-camera-stage" : undefined}
+          data-stage-phase="enter"
+          data-active-milestone="1"
+          data-camera-x="0"
+          data-path-flatten="0"
           className={
-            showPinnedDesktop
-              ? "flex h-[100svh] min-h-[680px] w-full flex-col justify-between bg-[#F3E9DE] pt-[76px] pb-4"
+            showPinnedStage
+              ? "relative flex h-[100svh] min-h-[680px] w-full flex-col justify-between bg-[#F3E9DE] pt-[74px] pb-5"
               : ""
           }
         >
-          {showPinnedDesktop && (
+          {showPinnedStage && (
             <>
-          {/* Compact Integrated Editorial Header + Direct Milestone Navigator */}
-          <div className="page-container space-y-3 border-b border-[#792B33]/18 pb-3">
-            <div className="flex items-end justify-between gap-6">
-              <div className="min-w-0">
-                <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.2em] text-[#792B33]/68 tabular-nums">
-                  <span>Chapter {EXPERIENCE_CONTENT.chapterNumber}</span>
-                  <span aria-hidden="true">·</span>
-                  <span>{EXPERIENCE_CONTENT.chapterLabel}</span>
-                </div>
-                <div className="mt-1 flex items-baseline gap-5">
-                  <h2
-                    id="experience-heading"
-                    className="m-0 font-normal uppercase leading-[0.9] tracking-[-0.03em] text-[#792B33]"
-                    style={{
-                      fontFamily: "var(--font-anton), Impact, sans-serif",
-                      fontSize: "clamp(32px, 3.4vw, 48px)",
-                    }}
-                  >
-                    {EXPERIENCE_CONTENT.heading}
-                  </h2>
-                  <p className="m-0 hidden xl:block text-sm text-[#792B33]/72 max-w-[42ch] truncate">
-                    {EXPERIENCE_CONTENT.supportingText}
-                  </p>
-                </div>
-              </div>
+              {/* Editorial Header with Stage A Masked Headline + Compact Index */}
+              <div className="page-container z-20 shrink-0 border-b border-[#792B33]/18 pb-3.5">
+                <div className="flex flex-wrap items-end justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.2em] text-[#792B33]/68 tabular-nums">
+                      <span>Chapter {EXPERIENCE_CONTENT.chapterNumber}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{EXPERIENCE_CONTENT.chapterLabel}</span>
+                    </div>
 
-              <div className="flex items-center gap-3 shrink-0">
-                <CameraProgressRule
-                  barRef={progressBarRef}
-                  surface="ivory"
-                  className="w-28 xl:w-36"
-                />
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handleSelectStop(activeIndex - 1)}
-                    aria-label="Previous company stop"
-                    className="inline-flex h-9 w-9 items-center justify-center border border-[#792B33]/28 text-[#792B33] hover:bg-[#792B33] hover:text-[#F3E9DE] cursor-pointer"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleSelectStop(activeIndex + 1)}
-                    aria-label="Next company stop"
-                    className="inline-flex h-9 w-9 items-center justify-center border border-[#792B33]/28 text-[#792B33] hover:bg-[#792B33] hover:text-[#F3E9DE] cursor-pointer"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2" role="tablist" aria-label="Experience milestones">
-              {EXPERIENCE_STOPS.map((stop, idx) => {
-                const isCurrent = idx === activeIndex;
-                return (
-                  <button
-                    key={stop.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={isCurrent}
-                    onClick={() => handleSelectStop(idx)}
-                    className={`inline-flex h-8 items-center gap-2 px-3 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors cursor-pointer ${
-                      isCurrent
-                        ? "bg-[#792B33] text-[#F3E9DE]"
-                        : "border border-[#792B33]/25 text-[#792B33] hover:border-[#792B33]"
-                    }`}
-                  >
-                    <span className="tabular-nums">{stop.number}</span>
-                    <span className="hidden xl:inline">{stop.companyName}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Center split: Camera-Tracked Curved SVG Route (7 cols) + Stationary HTML Details Panel (5 cols) */}
-          <div className="page-container my-auto grid grid-cols-12 gap-6 items-center py-2">
-            {/* Left: Camera Viewport tracking the airplane sideways & slightly diagonally */}
-            <div className="col-span-7 relative overflow-hidden border border-[#792B33]/20 bg-[#F3E9DE] p-4">
-              <svg
-                viewBox="0 0 1200 600"
-                className="block h-auto w-full overflow-hidden"
-                role="img"
-                aria-label={`Flight route currently at ${activeStop.companyName}`}
-              >
-                {/* Layer 1: Slower background architectural cartographic grid (subtle parallax, zero scenery) */}
-                <g
-                  ref={bgGridGroupRef}
-                  stroke="#792B33"
-                  strokeOpacity="0.09"
-                  strokeWidth="1"
-                >
-                  <line x1="-180" y1="120" x2="1380" y2="120" />
-                  <line x1="-180" y1="240" x2="1380" y2="240" />
-                  <line x1="-180" y1="360" x2="1380" y2="360" />
-                  <line x1="-180" y1="480" x2="1380" y2="480" />
-                  <line x1="120" y1="-80" x2="120" y2="680" />
-                  <line x1="360" y1="-80" x2="360" y2="680" />
-                  <line x1="600" y1="-80" x2="600" y2="680" />
-                  <line x1="840" y1="-80" x2="840" y2="680" />
-                  <line x1="1080" y1="-80" x2="1080" y2="680" />
-                  {/* Subtle crosshairs at coordinate intersections */}
-                  <g strokeOpacity="0.18">
-                    <path d="M 355 240 L 365 240 M 360 235 L 360 245" />
-                    <path d="M 595 360 L 605 360 M 600 355 L 600 365" />
-                    <path d="M 835 240 L 845 240 M 840 235 L 840 245" />
-                  </g>
-                </g>
-
-                {/* Layer 2: Camera-tracked curved route, waypoints, and airplane */}
-                <g ref={routeCameraGroupRef} data-testid="experience-camera-route-group">
-                  {/* Base dashed route line */}
-                  <path
-                    d={routePathD}
-                    fill="none"
-                    stroke="#792B33"
-                    strokeOpacity="0.28"
-                    strokeWidth="2"
-                    strokeDasharray="7 8"
-                  />
-
-                  {/* Active travelled Burgundy flight trail */}
-                  <path
-                    ref={trailPathRef}
-                    d={routePathD}
-                    fill="none"
-                    stroke="#792B33"
-                    strokeWidth="2.6"
-                    strokeLinecap="round"
-                  />
-
-                  {/* Numbered Waypoints + Company Labels */}
-                  {EXPERIENCE_STOPS.map((stop, idx) => {
-                    const isActive = idx === activeIndex;
-                    const isReached = reachedSet.includes(stop.id);
-                    const labelAbove = idx % 2 === 1;
-                    const labelY = labelAbove ? stop.waypoint.y - 38 : stop.waypoint.y + 44;
-
-                    const labelAnchor =
-                      idx === 0
-                        ? "start"
-                        : idx === EXPERIENCE_STOPS.length - 1
-                          ? "end"
-                          : "middle";
-                    const labelX =
-                      idx === 0
-                        ? stop.waypoint.x - 16
-                        : idx === EXPERIENCE_STOPS.length - 1
-                          ? stop.waypoint.x + 16
-                          : stop.waypoint.x;
-
-                    return (
-                      <g
-                        key={stop.id}
-                        className="cursor-pointer"
-                        onClick={() => handleSelectStop(idx)}
+                    <div className="mt-1 flex flex-wrap items-baseline gap-x-6 gap-y-1">
+                      <h2
+                        id="experience-heading"
+                        className="m-0 overflow-hidden font-normal uppercase leading-[0.9] tracking-[-0.03em] text-[#792B33]"
+                        style={{
+                          fontFamily: "var(--font-anton), Impact, sans-serif",
+                          fontSize: isDesktop
+                            ? "clamp(34px, 3.6vw, 52px)"
+                            : "clamp(28px, 4.2vw, 40px)",
+                        }}
                       >
-                        <circle
-                          cx={stop.waypoint.x}
-                          cy={stop.waypoint.y}
-                          r={isActive ? 14 : 8}
-                          fill={isActive ? "#792B33" : "#F3E9DE"}
-                          stroke="#792B33"
-                          strokeWidth={isActive ? 2.5 : 1.75}
-                          opacity={isReached || isActive ? 1 : 0.55}
-                        />
-                        {isActive && (
-                          <circle
-                            cx={stop.waypoint.x}
-                            cy={stop.waypoint.y}
-                            r="24"
-                            fill="none"
-                            stroke="#792B33"
-                            strokeOpacity="0.32"
-                            strokeWidth="1.2"
-                          />
-                        )}
-                        <text
-                          x={labelX}
-                          y={labelY}
-                          textAnchor={labelAnchor}
-                          fill="#792B33"
-                          fillOpacity={isActive ? 1 : 0.58}
-                          style={{
-                            fontFamily: "var(--font-anton), Impact, sans-serif",
-                            fontSize: isActive ? "24px" : "18px",
-                            letterSpacing: "0.02em",
-                          }}
+                        <span
+                          ref={headlineMaskRef}
+                          className="block will-change-transform"
                         >
-                          {stop.number} · {stop.companyName.toUpperCase()}
-                        </text>
-                      </g>
-                    );
-                  })}
+                          {EXPERIENCE_CONTENT.heading}
+                        </span>
+                      </h2>
 
-                  {/* Lightweight SVG Airplane oriented cleanly along route tangent */}
-                  <g
-                    ref={planeGroupRef}
-                    data-testid="experience-airplane-glyph"
-                    transform={`translate(${waypoints[0].x}, ${waypoints[0].y}) rotate(-32)`}
-                  >
-                    <path
-                      d="M 24 0 L 4 -4 L -10 -20 L -16 -20 L -8 -4 L -20 -3 L -25 -10 L -29 -10 L -26 0 L -29 10 L -25 10 L -20 3 L -8 4 L -16 20 L -10 20 L 4 4 Z"
-                      fill="#792B33"
-                      stroke="#F3E9DE"
-                      strokeWidth="1.5"
-                    />
-                  </g>
-                </g>
-              </svg>
+                      <p
+                        className="m-0 font-serif italic text-[#792B33]/78"
+                        style={{
+                          fontFamily: "var(--font-cormorant), Georgia, serif",
+                          fontSize: isDesktop ? "20px" : "17px",
+                        }}
+                      >
+                        {EXPERIENCE_CONTENT.supportingText}
+                      </p>
+                    </div>
+                  </div>
 
-              <div className="mt-2 flex items-center justify-between px-2 font-mono text-[11px] uppercase tracking-[0.16em] text-[#792B33]/64 tabular-nums">
-                <span>
-                  Milestone · {activeStop.number} / 0{EXPERIENCE_STOPS.length}
-                </span>
-                <span>Camera tracks route forward &amp; reverse</span>
-              </div>
-            </div>
-
-            {/* Right: Stationary, Stable HTML Company Details Panel */}
-            <article
-              data-testid="experience-active-panel"
-              className="col-span-5 border border-[#792B33]/32 bg-[#F3E9DE] p-5 space-y-3.5"
-            >
-              <div className="flex items-start justify-between gap-4 border-b border-[#792B33]/18 pb-4">
-                <div className="min-w-0">
-                  <p className="m-0 font-mono text-[11px] uppercase tracking-[0.18em] text-[#792B33]/68 tabular-nums">
-                    Stop {activeStop.number} · {activeStop.dates}
-                  </p>
-                  <h3
-                    className="mt-1.5 m-0 font-normal uppercase leading-[0.94] tracking-[-0.02em] text-[#792B33]"
-                    style={{
-                      fontFamily: "var(--font-anton), Impact, sans-serif",
-                      fontSize: "clamp(30px, 2.5vw, 42px)",
-                    }}
-                  >
-                    {activeStop.companyName}
-                  </h3>
-                  <p className="mt-1 m-0 text-sm font-medium text-[#792B33]/85">
-                    {activeStop.roleTitle} · {activeStop.location}
-                  </p>
-                </div>
-
-                <div className="flex h-14 w-24 shrink-0 items-center justify-center border border-[#792B33]/28 bg-[#792B33]/[0.05] px-2 text-center font-mono text-[9px] uppercase tracking-[0.14em] text-[#792B33]/75">
-                  COMPANY LOGO
-                </div>
-              </div>
-
-              <p className="m-0 text-sm leading-relaxed text-[#792B33]/85">
-                {activeStop.overview}
-              </p>
-
-              <div className="grid grid-cols-1 gap-3 border-t border-[#792B33]/16 pt-3 text-xs leading-relaxed text-[#792B33]/82">
-                <div>
-                  <span className="block font-mono text-[10px] uppercase tracking-[0.18em] text-[#792B33]/62 mb-1">
-                    Responsibilities
-                  </span>
-                  <ul className="m-0 list-none space-y-1 p-0">
-                    {activeStop.responsibilities.map((item, i) => (
-                      <li key={i}>— {item}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <span className="block font-mono text-[10px] uppercase tracking-[0.18em] text-[#792B33]/62 mb-1">
-                    Achievements
-                  </span>
-                  <ul className="m-0 list-none space-y-1 p-0">
-                    {activeStop.achievements.map((item, i) => (
-                      <li key={i}>— {item}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              {activeMedia && (
-                <div className="border-t border-[#792B33]/16 pt-4 space-y-2">
-                  <div className="flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.16em] text-[#792B33]/65">
-                    <span>
-                      Stop Media · 0{currentMediaIdx + 1} / 0{activeStop.media.length}
+                  {/* Small Milestone Index (01 / 03) + Prev/Next Controls */}
+                  <div className="flex items-center gap-4 shrink-0">
+                    <span
+                      data-testid="journey-index"
+                      className="font-mono text-xs uppercase tracking-[0.18em] text-[#792B33] tabular-nums"
+                    >
+                      {formattedCurrent} / {formattedTotal}
                     </span>
-                    <div className="flex items-center gap-1">
+
+                    <div className="flex items-center gap-1.5">
                       <button
                         type="button"
-                        onClick={() => stepStopMedia(activeStop, -1)}
-                        aria-label={`Previous media for ${activeStop.companyName}`}
-                        className="inline-flex h-7 w-7 items-center justify-center border border-[#792B33]/25 text-[#792B33] hover:bg-[#792B33] hover:text-[#F3E9DE] cursor-pointer"
+                        onClick={() => navigateToMilestone(activeIndex - 1)}
+                        disabled={activeIndex === 0}
+                        aria-label="Previous milestone"
+                        className="inline-flex h-9 w-9 items-center justify-center border border-[#792B33]/30 text-[#792B33] transition-colors hover:bg-[#792B33] hover:text-[#F3E9DE] disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-[#792B33] cursor-pointer disabled:cursor-not-allowed"
                       >
-                        <ChevronLeft size={13} />
+                        <ChevronLeft size={16} aria-hidden="true" />
                       </button>
                       <button
                         type="button"
-                        onClick={() => stepStopMedia(activeStop, 1)}
-                        aria-label={`Next media for ${activeStop.companyName}`}
-                        className="inline-flex h-7 w-7 items-center justify-center border border-[#792B33]/25 text-[#792B33] hover:bg-[#792B33] hover:text-[#F3E9DE] cursor-pointer"
+                        onClick={() => navigateToMilestone(activeIndex + 1)}
+                        disabled={activeIndex === count - 1}
+                        aria-label="Next milestone"
+                        className="inline-flex h-9 w-9 items-center justify-center border border-[#792B33]/30 text-[#792B33] transition-colors hover:bg-[#792B33] hover:text-[#F3E9DE] disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-[#792B33] cursor-pointer disabled:cursor-not-allowed"
                       >
-                        <ChevronRight size={13} />
+                        <ChevronRight size={16} aria-hidden="true" />
                       </button>
                     </div>
                   </div>
-                  <PlaceholderVisual
-                    surface="ivory"
-                    label={activeMedia.label}
-                    sublabel={activeStop.companyName}
-                    aspectClass="aspect-[16/7]"
-                    imageUrl={activeMedia.imageUrl}
-                  />
                 </div>
-              )}
-
-              <div className="flex items-center justify-between gap-3 border-t border-[#792B33]/16 pt-3">
-                <span className="font-mono text-[11px] text-[#792B33]/68 truncate">
-                  {activeStop.technologies.join(" · ")}
-                </span>
-                {activeStop.companyUrl ? (
-                  <a
-                    href={activeStop.companyUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.14em] text-[#792B33] no-underline hover:underline shrink-0"
-                  >
-                    <span>Site</span>
-                    <ArrowUpRight size={12} />
-                  </a>
-                ) : (
-                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#792B33]/52 shrink-0">
-                    URL: Unconfigured
-                  </span>
-                )}
               </div>
-            </article>
-          </div>
+
+              {/* Shared Spatial Camera Viewport — Exhibits + Curved Burgundy Journey Path */}
+              <div
+                ref={cameraViewportRef}
+                data-testid="journey-spatial-viewport"
+                className="relative flex flex-1 items-center justify-center overflow-hidden"
+                style={{
+                  perspective: isDesktop ? "1850px" : "1350px",
+                  perspectiveOrigin: "50% 50%",
+                }}
+              >
+                {/* Thin Curved Burgundy Path Behind Exhibits (morphs cleanly to horizontal line in Stage F) */}
+                <svg
+                  viewBox="0 0 1400 260"
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
+                  data-testid="journey-curved-path-svg"
+                  className="pointer-events-none absolute inset-x-0 top-1/2 h-[220px] w-full -translate-y-1/2"
+                >
+                  {/* Quiet full-length architectural trace */}
+                  <path
+                    ref={routeBasePathRef}
+                    d={INITIAL_ROUTE.pathD}
+                    fill="none"
+                    stroke="#792B33"
+                    strokeOpacity="0.16"
+                    strokeWidth="1.25"
+                  />
+                  {/* Scrubbed active Burgundy ink path */}
+                  <path
+                    ref={routeActivePathRef}
+                    d={INITIAL_ROUTE.pathD}
+                    fill="none"
+                    stroke="#792B33"
+                    strokeOpacity="0.72"
+                    strokeWidth="1.8"
+                    strokeLinecap="round"
+                  />
+                  {/* Restrained milestone markers along the path */}
+                  {INITIAL_ROUTE.nodes.map((node) => {
+                    const isNodeActive = node.index === activeIndex;
+                    return (
+                      <g
+                        key={node.index}
+                        ref={(el) => {
+                          routeNodeRefs.current[node.index] = el;
+                        }}
+                        transform={`translate(${node.x}, ${node.y})`}
+                      >
+                        <circle
+                          r={isNodeActive ? 6 : 4}
+                          fill={isNodeActive ? "#792B33" : "#F3E9DE"}
+                          stroke="#792B33"
+                          strokeWidth="1.5"
+                        />
+                        {isNodeActive && (
+                          <circle
+                            r="13"
+                            fill="none"
+                            stroke="#792B33"
+                            strokeOpacity="0.3"
+                            strokeWidth="1"
+                          />
+                        )}
+                      </g>
+                    );
+                  })}
+                </svg>
+
+                {/* Single Moving Shared Camera World Container */}
+                <div
+                  ref={cameraWorldRef}
+                  data-testid="journey-camera-world"
+                  className="relative flex h-full w-full items-center justify-center will-change-transform"
+                  style={{ transformStyle: "preserve-3d" }}
+                >
+                  {EXPERIENCE_RECORDS.map((record, idx) => (
+                    <div
+                      key={record.id}
+                      ref={(el) => {
+                        exhibitRefs.current[idx] = el;
+                      }}
+                      className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 will-change-transform ${
+                        isDesktop
+                          ? "w-[min(66vw,820px)]"
+                          : "w-[min(82vw,680px)]"
+                      }`}
+                      style={{
+                        transformStyle: "preserve-3d",
+                        backfaceVisibility: "hidden",
+                      }}
+                    >
+                      <ExperienceExhibitPanel
+                        record={record}
+                        index={idx}
+                        total={count}
+                        isActive={idx === activeIndex}
+                        compact={!isDesktop}
+                        onFocus={() => navigateToMilestone(idx)}
+                        onInspect={() =>
+                          setSelectedRecord({ record, index: idx })
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Direct Milestone Selector Footer Bar */}
+              <div className="page-container z-20 shrink-0 border-t border-[#792B33]/18 pt-3">
+                <div
+                  role="tablist"
+                  aria-label="Company milestones"
+                  className="flex flex-wrap items-center gap-2"
+                >
+                  {EXPERIENCE_RECORDS.map((record, idx) => {
+                    const isCurrent = idx === activeIndex;
+                    const num = String(idx + 1).padStart(2, "0");
+                    return (
+                      <button
+                        key={record.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={isCurrent}
+                        onClick={() => navigateToMilestone(idx)}
+                        className={`inline-flex h-9 items-center gap-2.5 px-3.5 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors cursor-pointer whitespace-nowrap ${
+                          isCurrent
+                            ? "bg-[#792B33] text-[#F3E9DE]"
+                            : "border border-[#792B33]/26 text-[#792B33] hover:border-[#792B33]"
+                        }`}
+                      >
+                        <span className="tabular-nums">{num}</span>
+                        <span>{record.company}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </>
           )}
         </div>
       </div>
 
-      {!showPinnedDesktop && (reducedMotion ? (
+      {/* ── REDUCED MOTION: STATIC ACCESSIBLE EXHIBITION LAYOUT ── */}
+      {!showPinnedStage && reducedMotion && (
         <div
-          data-testid="experience-accessible-timeline"
-          className="page-container pt-10 pb-12 space-y-8"
+          data-testid="experience-reduced-motion-layout"
+          className="page-container pt-12 pb-14 space-y-10"
         >
           <ChapterHeading
             id="experience-heading"
@@ -551,56 +514,35 @@ export function ChapterExperience() {
             supportingText={EXPERIENCE_CONTENT.supportingText}
             surface="ivory"
             action={
-              <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#792B33]/72">
-                Accessible Timeline
+              <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#792B33]/70 tabular-nums">
+                01 — {formattedTotal}
               </span>
             }
           />
-          <ol className="m-0 list-none border-l border-[#792B33]/30 pl-6 sm:pl-8 space-y-8 p-0">
-            {EXPERIENCE_STOPS.map((stop) => (
-              <li key={stop.id} className="relative">
-                <span
-                  aria-hidden="true"
-                  className="absolute -left-[31px] sm:-left-[39px] top-1.5 h-3 w-3 rounded-full bg-[#792B33]"
-                />
-                <article className="border border-[#792B33]/26 bg-[#F3E9DE] p-5 space-y-3.5">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#792B33]/68 tabular-nums">
-                      Stop {stop.number} · {stop.dates}
-                    </span>
-                    <span className="font-mono text-xs text-[#792B33]/65">
-                      {stop.location}
-                    </span>
-                  </div>
-                  <h3
-                    className="m-0 text-3xl uppercase leading-none text-[#792B33]"
-                    style={{ fontFamily: "var(--font-anton), Impact, sans-serif" }}
-                  >
-                    {stop.companyName}
-                  </h3>
-                  <p className="m-0 text-sm font-medium text-[#792B33]/85">
-                    {stop.roleTitle}
-                  </p>
-                  <p className="m-0 text-sm leading-relaxed text-[#792B33]/85 max-w-[65ch]">
-                    {stop.overview}
-                  </p>
-                  <ul className="m-0 list-none space-y-1.5 border-t border-[#792B33]/16 pt-3 p-0 text-sm text-[#792B33]/84">
-                    {stop.responsibilities.map((r, i) => (
-                      <li key={i}>— {r}</li>
-                    ))}
-                  </ul>
-                  <p className="m-0 font-mono text-xs text-[#792B33]/68">
-                    {stop.technologies.join(" · ")}
-                  </p>
-                </article>
-              </li>
+
+          <div className="h-px w-full bg-[#792B33]/25" aria-hidden="true" />
+
+          <div className="space-y-8">
+            {EXPERIENCE_RECORDS.map((record, idx) => (
+              <ExperienceExhibitPanel
+                key={record.id}
+                record={record}
+                index={idx}
+                total={count}
+                isActive={true}
+                compact={!isDesktop}
+                onInspect={() => setSelectedRecord({ record, index: idx })}
+              />
             ))}
-          </ol>
+          </div>
         </div>
-      ) : (
+      )}
+
+      {/* ── MOBILE (< 768px): SWIPEABLE / STEP-BASED EXPERIENCE GALLERY ── */}
+      {!showPinnedStage && !reducedMotion && (
         <div
-          data-testid="experience-mobile-journey"
-          className="page-container pt-10 pb-10 space-y-5"
+          data-testid="experience-mobile-gallery"
+          className="page-container pt-10 pb-12 space-y-6"
         >
           <ChapterHeading
             id="experience-heading"
@@ -610,102 +552,141 @@ export function ChapterExperience() {
             supportingText={EXPERIENCE_CONTENT.supportingText}
             surface="ivory"
           />
-          <div className="border border-[#792B33]/22 p-4 space-y-3">
-            <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.16em] text-[#792B33]/72">
-              <span>
-                Flight Stop {activeStop.number} / 0{EXPERIENCE_STOPS.length}
-              </span>
-              <span>{activeStop.companyName}</span>
-            </div>
-            <div className="relative h-6 flex items-center">
-              <div className="h-px w-full border-t border-dashed border-[#792B33]/40" />
-              <div
-                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-all duration-300"
-                style={{
-                  left: `${(activeIndex / Math.max(1, EXPERIENCE_STOPS.length - 1)) * 90 + 5}%`,
-                }}
-                aria-hidden="true"
+
+          {/* Compact Mobile Route Strip + Milestone Index */}
+          <div className="space-y-3 border-b border-[#792B33]/18 pb-4">
+            <div className="flex items-center justify-between gap-3">
+              <span
+                data-testid="journey-index-mobile"
+                className="font-mono text-xs uppercase tracking-[0.18em] text-[#792B33] tabular-nums"
               >
-                <svg width="24" height="24" viewBox="-30 -24 60 48">
-                  <path
-                    d="M 24 0 L 4 -4 L -10 -20 L -16 -20 L -8 -4 L -20 -3 L -25 -10 L -29 -10 L -26 0 L -29 10 L -25 10 L -20 3 L -8 4 L -16 20 L -10 20 L 4 4 Z"
-                    fill="#792B33"
-                  />
-                </svg>
+                {formattedCurrent} / {formattedTotal} · {mobileActiveRecord.company}
+              </span>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setActiveIndex((prev) => Math.max(0, prev - 1))
+                  }
+                  disabled={activeIndex === 0}
+                  aria-label="Previous milestone"
+                  className="inline-flex h-11 w-11 items-center justify-center border border-[#792B33]/30 text-[#792B33] disabled:opacity-35 cursor-pointer"
+                >
+                  <ChevronLeft size={16} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setActiveIndex((prev) => Math.min(count - 1, prev + 1))
+                  }
+                  disabled={activeIndex === count - 1}
+                  aria-label="Next milestone"
+                  className="inline-flex h-11 w-11 items-center justify-center border border-[#792B33]/30 text-[#792B33] disabled:opacity-35 cursor-pointer"
+                >
+                  <ChevronRight size={16} aria-hidden="true" />
+                </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-4 gap-1.5" role="tablist" aria-label="Select experience stop">
-              {EXPERIENCE_STOPS.map((stop, idx) => (
-                <button
-                  key={stop.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={idx === activeIndex}
-                  onClick={() => handleSelectStop(idx)}
-                  className={`min-h-[44px] font-mono text-xs tabular-nums ${
-                    idx === activeIndex
-                      ? "bg-[#792B33] text-[#F3E9DE]"
-                      : "border border-[#792B33]/28 text-[#792B33]"
-                  }`}
-                >
-                  {stop.number}
-                </button>
-              ))}
+            {/* Subtle horizontal Burgundy route trace */}
+            <div
+              className="relative h-1 w-full bg-[#792B33]/15"
+              aria-hidden="true"
+            >
+              <div
+                className="h-full bg-[#792B33] transition-all duration-300"
+                style={{
+                  width: `${((activeIndex + 1) / Math.max(1, count)) * 100}%`,
+                }}
+              />
+            </div>
+
+            {/* Direct milestone selector buttons */}
+            <div
+              role="tablist"
+              aria-label="Company milestones"
+              className="grid gap-2"
+              style={{
+                gridTemplateColumns: `repeat(${count}, minmax(0, 1fr))`,
+              }}
+            >
+              {EXPERIENCE_RECORDS.map((record, idx) => {
+                const isCurrent = idx === activeIndex;
+                return (
+                  <button
+                    key={record.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isCurrent}
+                    onClick={() => setActiveIndex(idx)}
+                    className={`min-h-[44px] px-2 font-mono text-[11px] uppercase tracking-[0.1em] transition-colors cursor-pointer truncate ${
+                      isCurrent
+                        ? "bg-[#792B33] text-[#F3E9DE]"
+                        : "border border-[#792B33]/26 text-[#792B33]"
+                    }`}
+                  >
+                    {record.company}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <article className="border border-[#792B33]/30 p-5 space-y-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="m-0 font-mono text-[11px] uppercase tracking-[0.16em] text-[#792B33]/68">
-                  {activeStop.dates} · {activeStop.location}
-                </p>
-                <h3
-                  className="mt-1 m-0 text-3xl uppercase leading-none text-[#792B33]"
-                  style={{ fontFamily: "var(--font-anton), Impact, sans-serif" }}
-                >
-                  {activeStop.companyName}
-                </h3>
-                <p className="mt-1 m-0 text-sm font-medium text-[#792B33]/85">
-                  {activeStop.roleTitle}
-                </p>
-              </div>
-              <div className="flex h-12 w-20 shrink-0 items-center justify-center border border-[#792B33]/28 font-mono text-[9px] uppercase text-[#792B33]/72 text-center">
-                COMPANY LOGO
-              </div>
-            </div>
-
-            <p className="m-0 text-sm leading-relaxed text-[#792B33]/85">
-              {activeStop.overview}
-            </p>
-
-            <ul className="m-0 list-none space-y-1.5 border-t border-[#792B33]/16 pt-3 p-0 text-sm text-[#792B33]/84">
-              {activeStop.responsibilities.map((r, i) => (
-                <li key={i}>— {r}</li>
-              ))}
-            </ul>
-
-            <p className="m-0 font-mono text-xs text-[#792B33]/68">
-              {activeStop.technologies.join(" · ")}
-            </p>
-          </article>
+          {/* Swipeable active exhibit */}
+          <div
+            onTouchStart={handleMobileTouchStart}
+            onTouchEnd={handleMobileTouchEnd}
+            className="touch-pan-y"
+          >
+            <ExperienceExhibitPanel
+              record={mobileActiveRecord}
+              index={activeIndex}
+              total={count}
+              isActive={true}
+              compact={true}
+              onInspect={() =>
+                setSelectedRecord({
+                  record: mobileActiveRecord,
+                  index: activeIndex,
+                })
+              }
+            />
+          </div>
         </div>
-      ))}
+      )}
 
-      {/* ── TRANSITION TO CHAPTER 06 (EDUCATION): ROUTE STRAIGHTENS INTO TYPOGRAPHIC LINE ── */}
-      <div aria-hidden="true" className="relative w-full">
-        <div className="flex flex-col items-center bg-[#F3E9DE] pt-3">
-          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#792B33]/65">
-            Route Settling · Roots
-          </span>
-          <div className="mt-2 h-8 w-px bg-[#792B33]/60" />
+      {/* ── STAGE F TRANSITION TO CHAPTER 06 (EDUCATION): CLEAN HORIZONTAL BURGUNDY LINE ── */}
+      <div
+        aria-hidden="true"
+        data-testid="experience-to-education-transition"
+        className="relative w-full"
+      >
+        <div className="bg-[#F3E9DE] pt-6">
+          <div className="page-container">
+            <div className="h-[1.5px] w-full bg-[#792B33]/75" />
+          </div>
+          <div className="flex justify-center">
+            <div className="h-9 w-[1.5px] bg-[#792B33]/75" />
+          </div>
         </div>
-        <div className="flex flex-col items-center bg-[#792B33] pb-2">
-          <div className="h-7 w-px bg-[#F3E9DE]/55" />
-          <span className="mt-1.5 h-1.5 w-1.5 rotate-45 border border-[#F3E9DE]" />
+        <div className="flex justify-center bg-[#792B33] pb-1">
+          <div className="h-8 w-[1.5px] bg-[#F3E9DE]/60" />
         </div>
       </div>
+
+      {/* Expanded Exhibit Detail View Overlay */}
+      <ExperienceExhibitModal
+        key={selectedRecord?.record.id ?? "closed"}
+        record={selectedRecord?.record ?? null}
+        indexNumber={
+          selectedRecord
+            ? String(selectedRecord.index + 1).padStart(2, "0")
+            : "01"
+        }
+        totalCount={count}
+        onClose={() => setSelectedRecord(null)}
+      />
     </section>
   );
 }
