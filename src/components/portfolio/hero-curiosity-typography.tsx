@@ -195,37 +195,37 @@ export const HeroCuriosityTypography = forwardRef<
         className="relative m-0 flex h-full w-full items-center justify-center font-normal uppercase text-[#792B33]"
         style={{ fontFamily: "var(--font-anton), Impact, sans-serif" }}
       >
-        {/* Beat 1 Slot: CURIOSITY — Massive single-line behind the cat at scroll 0 */}
+        {/* Beat 1 Slot: CURIOSITY — Framed in upper sky corridor below navbar and cleanly above the samurai helmet horns */}
         <div
           ref={curiositySlotRef}
           data-testid="hero-slot-curiosity"
-          className="absolute inset-0 flex items-center justify-center px-2 text-center will-change-[transform,opacity,clip-path]"
+          className="absolute inset-0 flex items-start justify-center px-4 pt-[82px] sm:pt-[84px] lg:pt-[82px] text-center will-change-[transform,opacity,clip-path]"
         >
           <span
             ref={curiosityTextRef}
             data-testid="hero-line-curiosity"
-            className="font-hero-display block -translate-y-[4%] whitespace-nowrap leading-[0.85] tracking-[0.045em] will-change-[clip-path,transform]"
+            className="font-hero-display block whitespace-nowrap leading-[0.9] tracking-[0.18em] sm:tracking-[0.25em] will-change-[clip-path,transform]"
             style={{
               fontFamily: "var(--font-anton), Impact, sans-serif",
-              fontSize: "clamp(86px, 21.8vw, 312px)",
+              fontSize: "clamp(40px, 5.9vw, 84px)",
             }}
           >
             CURIOSITY
           </span>
         </div>
 
-        {/* Beat 2 Slot: KILLED THE CAT. — Hidden at scroll 0, rises word-by-word once CURIOSITY exits */}
+        {/* Beat 2 Slot: KILLED THE CAT. — Elevated above the samurai helmet with generous letter & word spacing */}
         <div
           ref={killedSlotRef}
           data-testid="hero-slot-killed"
-          className="absolute inset-0 flex items-center justify-center px-2 sm:px-4 text-center opacity-0 invisible will-change-[transform,opacity]"
+          className="absolute inset-0 flex items-start justify-center px-4 sm:px-6 pt-[84px] sm:pt-[86px] lg:pt-[84px] text-center opacity-0 invisible will-change-[transform,opacity]"
         >
           <span
             data-testid="hero-line-killed"
-            className="font-hero-display flex -translate-y-[5%] scale-[0.82] sm:scale-100 flex-nowrap items-end justify-center gap-x-[0.22em] leading-[0.85] tracking-[-0.035em] origin-center"
+            className="font-hero-display flex flex-nowrap items-end justify-center gap-x-[0.44em] sm:gap-x-[0.62em] leading-[0.9] tracking-[0.12em] sm:tracking-[0.16em] origin-center"
             style={{
               fontFamily: "var(--font-anton), Impact, sans-serif",
-              fontSize: "clamp(76px, 11.5vw, 200px)",
+              fontSize: "clamp(30px, 4.9vw, 72px)",
             }}
           >
             {KILLED_LINE_WORDS.map((word, index) => (
@@ -260,9 +260,9 @@ interface HeroPunchlineBrushRevealProps {
 }
 
 /**
- * Beat 3 Punchline ("Not this one.") in Cormorant Garamond Bold Italic (#AA3440), positioned cleanly
- * below/in front of the 3D cat (z-[20]). Hidden until Beat 2 exits, then unveiled left-to-right by
- * a scroll-scrubbed multi-bristle crimson SVG brushstroke before gliding out with parallax.
+ * Beat 3 Punchline ("Not this one.") in Cormorant Garamond Bold Italic (#792B33), anchored
+ * cleanly down in the lower mist clearing (z-[25]) with a soft borderless ivory halo so the
+ * viewer can focus unmistakably on the punchline below the 3D samurai cat.
  */
 export function HeroPunchlineBrushReveal({
   punchlineSlotRef,
@@ -274,16 +274,27 @@ export function HeroPunchlineBrushReveal({
     <div
       ref={punchlineSlotRef}
       data-testid="hero-punchline-wrap"
-      className="relative inline-flex flex-col items-center px-5 pb-2 pt-0.5 select-none opacity-0 invisible will-change-[transform,opacity]"
+      className="relative inline-flex flex-col items-center px-10 pb-2.5 pt-2 select-none opacity-0 invisible will-change-[transform,opacity]"
     >
+      {/* Borderless soft washi-ivory atmospheric clearing so punchline stands out cleanly at bottom */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -inset-x-10 -inset-y-4 z-[0]"
+        style={{
+          background:
+            "radial-gradient(ellipse 68% 72% at 50% 52%, rgba(244, 234, 223, 0.94) 0%, rgba(244, 234, 223, 0.72) 48%, rgba(244, 234, 223, 0) 100%)",
+        }}
+      />
+
       {/* Real HTML Punchline Text */}
       <p
         ref={punchlineTextRef}
         data-testid="hero-subline"
-        className="relative z-[2] m-0 font-serif font-bold italic text-[#AA3440] text-center tracking-[0.012em] leading-[1.1] whitespace-nowrap will-change-[clip-path]"
+        className="relative z-[2] m-0 font-serif font-bold italic text-[#792B33] text-center tracking-[0.02em] leading-[1.06] whitespace-nowrap will-change-[clip-path]"
         style={{
           fontFamily: "var(--font-cormorant), Georgia, serif",
-          fontSize: "clamp(28px, 3vw, 44px)",
+          fontSize: "clamp(36px, 4.3vw, 56px)",
+          textShadow: "0 2px 22px rgba(244, 234, 223, 0.96)",
           clipPath: "inset(-14% 100% -24% 0%)",
         }}
       >
@@ -295,7 +306,7 @@ export function HeroPunchlineBrushReveal({
         ref={brushWashRef}
         aria-hidden="true"
         data-testid="hero-brush-wash"
-        className="pointer-events-none absolute -inset-x-3 -inset-y-1 z-[3] flex items-center opacity-0 will-change-[clip-path,opacity]"
+        className="pointer-events-none absolute inset-x-4 inset-y-1 z-[3] flex items-center opacity-0 will-change-[clip-path,opacity]"
         style={{ clipPath: "inset(0% 100% 0% 0%)" }}
       >
         <svg

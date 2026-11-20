@@ -95,7 +95,8 @@ export default function Home() {
       if (isPastHero && wasPastHero) return;
       wasPastHero = isPastHero;
 
-      const rawHero = Math.min(1, Math.max(0, y / cachedHeroHeight));
+      const pinnedDistance = Math.max(1, cachedHeroHeight - window.innerHeight);
+      const rawHero = Math.min(1, Math.max(0, y / pinnedDistance));
       const story = computeHeroStoryScrollState(rawHero);
 
       spatialProgressRef.current = story.carouselStageProgress * 0.35;
@@ -221,8 +222,8 @@ export default function Home() {
               decorRef={heroForegroundDecorRef}
             />
 
-            <div className="pointer-events-none absolute inset-0 z-[20] flex flex-col justify-end pb-7 sm:pb-9">
-              <div className="page-container pointer-events-none relative flex min-h-[76px] items-center justify-center">
+            <div className="pointer-events-none absolute inset-0 z-[25] flex flex-col justify-end pb-8 sm:pb-11">
+              <div className="page-container pointer-events-none relative flex min-h-[84px] items-center justify-center">
                 <HeroPunchlineBrushReveal
                   punchlineSlotRef={heroPunchlineSlotRef}
                   punchlineTextRef={heroSublineRef}
@@ -252,7 +253,7 @@ export default function Home() {
           <div
             ref={heroBandRef}
             aria-hidden="true"
-            className="h-[220svh] md:h-[250svh] pointer-events-none"
+            className="h-[270svh] md:h-[300svh] pointer-events-none"
           />
         </div>
 

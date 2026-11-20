@@ -290,7 +290,7 @@ export function computeHeroStoryScrollState(
   // Beat 1: CURIOSITY (holds 0.00 -> 0.08, exits 0.08 -> 0.18)
   const curiosityExit = smoothstep(0.08, 0.18, p);
   const curiosityOpacity = p >= 0.18 ? 0 : 1 - curiosityExit;
-  const curiosityY = -72 * curiosityExit;
+  const curiosityY = -42 * curiosityExit;
   const curiosityClipTopPct = 100 * smoothstep(0.09, 0.18, p);
   const curiosityVisible = curiosityOpacity > 0.005;
 
@@ -318,23 +318,23 @@ export function computeHeroStoryScrollState(
   const killedOutMask = 1 - smoothstep(0.415, 0.435, p);
   const killedOpacity = p < 0.2 || p >= 0.435 ? 0 : killedInMask * killedOutMask;
   const killedSpanT = clamp01((p - 0.2) / 0.235);
-  const killedY = 26 - 58 * killedSpanT;
+  const killedY = 10 - 16 * killedSpanT;
   const killedVisible = killedOpacity > 0.005;
 
-  // Beat 3: "Not this one." + Crimson SVG Brushstroke (sweeps 0.45 -> 0.54, holds 0.54 -> 0.58, exits 0.58 -> 0.65)
+  // Beat 3: "Not this one." + Crimson SVG Brushstroke (sweeps 0.45 -> 0.54, holds steady 0.54 -> 0.72, exits 0.72 -> 0.80)
   const punchlineReveal = smoothstep(0.45, 0.54, p);
   const washHead = smoothstep(0.45, 0.505, p);
   const washTail = smoothstep(0.495, 0.548, p);
-  const punchlineExit = smoothstep(0.58, 0.65, p);
+  const punchlineExit = smoothstep(0.72, 0.8, p);
   const punchlineOpacity =
-    p < 0.45 || p >= 0.65 ? 0 : smoothstep(0.45, 0.465, p) * (1 - punchlineExit);
-  const punchlineY = 12 * (1 - punchlineReveal) - 56 * punchlineExit;
+    p < 0.45 || p >= 0.8 ? 0 : smoothstep(0.45, 0.465, p) * (1 - punchlineExit);
+  const punchlineY = 8 * (1 - punchlineReveal) - 26 * punchlineExit;
   const punchlineVisible = punchlineOpacity > 0.005;
 
   // Initial scroll cue gently clears once the user begins scrolling
   const scrollCueOpacity = 1 - smoothstep(0.015, 0.09, p);
 
-  // Multi-plane parallax across the story + accelerated sweep into the next section (#projects)
+  // Multi-plane parallax across the story + accelerated sweep into the next section
   const storyDrift = smoothstep(0, 0.6, p);
   const exitSweep = smoothstep(0.56, 0.96, p);
   const backdropParallaxY = -22 * storyDrift - 110 * exitSweep;
@@ -342,7 +342,7 @@ export function computeHeroStoryScrollState(
   const sunScale = 1 - 0.03 * storyDrift - 0.13 * exitSweep;
   const foregroundParallaxY = -16 * storyDrift - 74 * exitSweep;
 
-  const decorOpacity = 1 - smoothstep(0.6, 0.86, p);
+  const decorOpacity = 1 - smoothstep(0.68, 0.9, p);
   const mistOpacity = 0.42 + 0.58 * decorOpacity;
 
   // Forward the final 44% of the hero runway cleanly into the 3D close-up -> O-ring -> #projects carousel
@@ -353,7 +353,7 @@ export function computeHeroStoryScrollState(
     activeBeat = "curiosity";
   } else if (p < 0.44) {
     activeBeat = "killed";
-  } else if (p < 0.65) {
+  } else if (p < 0.8) {
     activeBeat = "punchline";
   }
 
