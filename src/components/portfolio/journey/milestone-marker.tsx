@@ -4,18 +4,12 @@ import type { JourneyMilestone } from "@/data/experience-journey";
 
 export interface MilestoneMarkerProps {
   milestone: JourneyMilestone;
-  /** True when the traveler is currently settled near this milestone */
+  /** True when the traveler is currently settled at/near this checkpoint */
   isActiveStop: boolean;
-  /** True when hovered or focused */
-  isHovered: boolean;
-  /** True when clicked/pinned open */
-  isPinned: boolean;
+  /** True when this checkpoint's details are currently displayed (by arrival or click) */
+  isDisplayed: boolean;
   /** Ridge occlusion reveal factor [0..1] */
   revealStrength: number;
-  onPointerEnter: (id: string) => void;
-  onPointerLeave: (id: string) => void;
-  onFocus: (id: string) => void;
-  onBlur: (id: string) => void;
   onClick: (milestone: JourneyMilestone) => void;
 }
 
@@ -23,23 +17,17 @@ export interface MilestoneMarkerProps {
  * Physically grounded carved Japanese stone trail marker (michishirube) embedded
  * naturally beside the winding mountain path.
  *
- * - Native accessible <button> with clear label and keyboard focus ring
- * - Subtle burgundy engraving highlight and fine directional hairline cue on hover/pin
- * - No floating cards, glowing beacons, or oversized logos in the sky
+ * - Click-only interactive <button> (never pops open on hover)
+ * - Highlights smoothly when the traveler arrives at this checkpoint or when clicked
+ * - Grounded into the hillside with pebbles, shadow, and crisp warm-ivory label contrast
  */
 export function MilestoneMarker({
   milestone,
   isActiveStop,
-  isHovered,
-  isPinned,
+  isDisplayed,
   revealStrength,
-  onPointerEnter,
-  onPointerLeave,
-  onFocus,
-  onBlur,
   onClick,
 }: MilestoneMarkerProps) {
-  const isHighlighted = isHovered || isPinned;
   const isInteractable = revealStrength > 0.2;
 
   return (
@@ -47,8 +35,8 @@ export function MilestoneMarker({
       style={{
         left: `${milestone.milestonePosition.x}px`,
         top: `${milestone.milestonePosition.y}px`,
-        opacity: Math.max(0.15, revealStrength),
-        transform: `translate(-50%, -88%) translateY(${((1 - revealStrength) * 18).toFixed(1)}px)`,
+        opacity: Math.max(0.18, revealStrength),
+        transform: `translate(-50%, -88%) translateY(${((1 - revealStrength) * 14).toFixed(1)}px)`,
       }}
       className="absolute will-change-transform transition-opacity duration-300"
     >
@@ -56,15 +44,11 @@ export function MilestoneMarker({
         type="button"
         data-testid={`milestone-marker-${milestone.id}`}
         data-active-stop={isActiveStop ? "true" : "false"}
-        data-pinned={isPinned ? "true" : "false"}
+        data-displayed={isDisplayed ? "true" : "false"}
         aria-label={`Inspect milestone ${milestone.number}: ${milestone.companyName}`}
-        aria-expanded={isHighlighted}
-        aria-pressed={isPinned}
+        aria-expanded={isDisplayed}
+        aria-pressed={isDisplayed}
         disabled={!isInteractable}
-        onPointerEnter={() => onPointerEnter(milestone.id)}
-        onPointerLeave={() => onPointerLeave(milestone.id)}
-        onFocus={() => onFocus(milestone.id)}
-        onBlur={() => onBlur(milestone.id)}
         onClick={(e) => {
           e.stopPropagation();
           onClick(milestone);
@@ -80,7 +64,7 @@ export function MilestoneMarker({
               "0 0 12px rgba(243,233,222,0.98), 0 0 5px rgba(243,233,222,0.96), 0 1px 2px rgba(243,233,222,0.95)",
           }}
           className={`mb-2 whitespace-nowrap font-mono text-[11px] uppercase tracking-[0.2em] transition-all duration-200 ${
-            isHighlighted
+            isDisplayed
               ? "text-[#792B33] font-semibold -translate-y-0.5"
               : isActiveStop
                 ? "text-[#581E25] font-medium"
@@ -90,37 +74,39 @@ export function MilestoneMarker({
           {milestone.number} · {milestone.companyName}
         </span>
 
-        {/* Thin directional hairline cue linking stone marker toward the side typography */}
+        {/* Thin directional hairline cue linking stone marker toward the active side typography */}
         <span
           aria-hidden="true"
-          className={`pointer-events-none absolute top-[54px] h-px transition-all duration-200 ${
-            milestone.sideEdge === "right" ? "left-full ml-2 origin-left" : "right-full mr-2 origin-right"
+          className={`pointer-events-none absolute top-[52px] h-px transition-all duration-300 ${
+            milestone.sideEdge === "right"
+              ? "left-full ml-2 origin-left"
+              : "right-full mr-2 origin-right"
           } ${
-            isHighlighted
-              ? "w-20 bg-[#792B33]/75 opacity-100 scale-x-100"
-              : "w-10 bg-[#792B33]/35 opacity-0 scale-x-50"
+            isDisplayed
+              ? "w-16 bg-[#792B33]/70 opacity-100 scale-x-100"
+              : "w-8 bg-[#792B33]/30 opacity-0 scale-x-50"
           }`}
         />
 
         {/* Carved Japanese Stone Trail Pillar (michishirube) */}
         <svg
-          width="66"
-          height="98"
+          width="62"
+          height="92"
           viewBox="0 0 66 98"
           className={`block overflow-visible transition-transform duration-200 ${
-            isHighlighted ? "-translate-y-1 scale-[1.04]" : "group-hover:-translate-y-0.5"
+            isDisplayed ? "-translate-y-1 scale-[1.04]" : "group-hover:-translate-y-0.5"
           }`}
           aria-hidden="true"
         >
           {/* Ground contact shadow & embedded trailside pebbles */}
-          <ellipse cx="33" cy="91" rx="26" ry="6" fill="#2A1F1E" fillOpacity="0.22" />
-          <ellipse cx="14" cy="89" rx="7" ry="3.2" fill="#8C7E75" stroke="#3D312F" strokeWidth="1" />
-          <ellipse cx="52" cy="90" rx="5.5" ry="2.6" fill="#9E8F85" stroke="#3D312F" strokeWidth="1" />
+          <ellipse cx="33" cy="91" rx="25" ry="5.5" fill="#2A1F1E" fillOpacity="0.2" />
+          <ellipse cx="14" cy="89" rx="6.5" ry="3" fill="#9A8B7E" stroke="#3D312F" strokeWidth="1" />
+          <ellipse cx="52" cy="90" rx="5.2" ry="2.5" fill="#A9998C" stroke="#3D312F" strokeWidth="1" />
 
           {/* Sculpted weathered stone base plinth */}
           <path
             d="M 15 89 L 18 76 L 48 76 L 51 89 Z"
-            fill="#A6978C"
+            fill="#AC9D90"
             stroke="#3B2F2D"
             strokeWidth="1.5"
             strokeLinejoin="round"
@@ -129,9 +115,9 @@ export function MilestoneMarker({
           {/* Standing carved stone stele */}
           <path
             d="M 21 77 L 23 19 C 23 13, 28 9, 33 8 C 39 9, 43 13, 44 19 L 45 77 Z"
-            fill={isHighlighted ? "#EFE2D3" : "#CFC2B6"}
-            stroke={isHighlighted ? "#792B33" : "#3B2F2D"}
-            strokeWidth={isHighlighted ? "2" : "1.6"}
+            fill={isDisplayed ? "#EFE2D3" : "#D4C7B9"}
+            stroke={isDisplayed ? "#792B33" : "#3B2F2D"}
+            strokeWidth={isDisplayed ? "2" : "1.6"}
             strokeLinejoin="round"
           />
 
@@ -139,15 +125,15 @@ export function MilestoneMarker({
           <path
             d="M 22.5 76 L 24 20 C 24 15, 28 11.5, 31 10.5 L 30 76 Z"
             fill="#6D5E57"
-            fillOpacity={isHighlighted ? "0.14" : "0.24"}
+            fillOpacity={isDisplayed ? "0.14" : "0.22"}
           />
 
-          {/* Fine weathered ink cracks & lichen strokes */}
+          {/* Fine weathered ink cracks */}
           <path
             d="M 25 60 L 29 57 L 31 59 M 40 31 L 43 34"
             fill="none"
             stroke="#3B2F2D"
-            strokeOpacity="0.34"
+            strokeOpacity="0.32"
             strokeWidth="1"
             strokeLinecap="round"
           />
@@ -160,15 +146,15 @@ export function MilestoneMarker({
             height="36"
             rx="1.5"
             fill="none"
-            stroke={isHighlighted ? "#792B33" : "#4A3B38"}
-            strokeOpacity={isHighlighted ? "0.7" : "0.35"}
+            stroke={isDisplayed ? "#792B33" : "#4A3B38"}
+            strokeOpacity={isDisplayed ? "0.7" : "0.35"}
             strokeWidth="1"
           />
           <text
             x="33"
             y="45"
             textAnchor="middle"
-            fill={isHighlighted ? "#792B33" : "#322524"}
+            fill={isDisplayed ? "#792B33" : "#322524"}
             style={{
               fontFamily: "var(--font-ibm-plex-mono), monospace",
               fontSize: "11px",
@@ -179,7 +165,7 @@ export function MilestoneMarker({
             {milestone.number}
           </text>
 
-          {/* Small red/burgundy hanko seal square accent at top of stone when active or hovered */}
+          {/* Small burgundy hanko seal square accent at top of stone */}
           <rect
             x="30.2"
             y="14"
@@ -187,7 +173,7 @@ export function MilestoneMarker({
             height="5.6"
             rx="0.8"
             fill="#792B33"
-            fillOpacity={isHighlighted ? 1 : isActiveStop ? 0.85 : 0.32}
+            fillOpacity={isDisplayed ? 1 : isActiveStop ? 0.82 : 0.32}
           />
 
           {/* Subtle trail grass blades hugging stone foot */}
@@ -195,7 +181,7 @@ export function MilestoneMarker({
             d="M 12 91 Q 9 82 6 78 M 15 91 Q 15 84 14 80 M 51 91 Q 54 83 58 80"
             fill="none"
             stroke="#3A2D2B"
-            strokeOpacity="0.52"
+            strokeOpacity="0.48"
             strokeWidth="1.3"
             strokeLinecap="round"
           />

@@ -55,18 +55,19 @@ export const JOURNEY_ARTWORK = {
 
 /**
  * Control points defining the winding Japanese mountain footpath across the
- * 3000 x 900 panoramic world. Waypoint indices 2, 4, and 6 align closely with
- * the three stone milestone markers along the trail.
+ * 3000 x 900 panoramic world. Kept gracefully grounded along the lower foothills
+ * so smaller, crisp mountain peaks rise cleanly behind the trail and generous
+ * ivory sky remains open above.
  */
 export const MOUNTAIN_TRAIL_POINTS: readonly MountainPoint[] = [
-  { x: 210, y: 690 }, // Scene 01: Trailhead quiet arrival
-  { x: 510, y: 650 }, // Gentle ascent along lower rocks
-  { x: 850, y: 580 }, // Stop 01 — iMerit
-  { x: 1250, y: 642 }, // Scene 03: Mountain bend dipping behind rocky ridge
-  { x: 1685, y: 525 }, // Stop 02 — Haegl Tech (revealed around ridge bend)
-  { x: 2075, y: 568 }, // High rocky pass transition
-  { x: 2450, y: 472 }, // Stop 03 — RYVO (open upper mountain overlook)
-  { x: 2790, y: 446 }, // Scene 06: Trail continues into misty ridge pullback
+  { x: 210, y: 694 }, // Scene 01: Trailhead quiet arrival
+  { x: 520, y: 668 }, // Gentle earth contour along lower foothills
+  { x: 855, y: 634 }, // Stop 01 — iMerit
+  { x: 1265, y: 662 }, // Scene 03: Mountain bend dipping around rocky outcrop
+  { x: 1690, y: 608 }, // Stop 02 — Haegl Tech (revealed around ridge bend)
+  { x: 2080, y: 632 }, // Upper foothill pass transition
+  { x: 2450, y: 582 }, // Stop 03 — RYVO (open mountain overlook)
+  { x: 2790, y: 564 }, // Scene 06: Trail continues into misty ridge pullback
 ] as const;
 
 /**
@@ -92,7 +93,7 @@ export const JOURNEY_MILESTONES: readonly JourneyMilestone[] = [
     logo: null,
     link: null,
     trailStop: 0.24,
-    milestonePosition: { x: 865, y: 552 },
+    milestonePosition: { x: 870, y: 616 },
     sideEdge: "right",
   },
   {
@@ -112,7 +113,7 @@ export const JOURNEY_MILESTONES: readonly JourneyMilestone[] = [
     logo: null,
     link: null,
     trailStop: 0.54,
-    milestonePosition: { x: 1695, y: 496 },
+    milestonePosition: { x: 1700, y: 590 },
     sideEdge: "left",
   },
   {
@@ -132,7 +133,7 @@ export const JOURNEY_MILESTONES: readonly JourneyMilestone[] = [
     logo: null,
     link: null,
     trailStop: 0.81,
-    milestonePosition: { x: 2455, y: 444 },
+    milestonePosition: { x: 2455, y: 564 },
     sideEdge: "left",
   },
 ] as const;

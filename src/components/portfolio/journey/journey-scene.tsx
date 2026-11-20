@@ -84,9 +84,10 @@ export function JourneyScene() {
   const accumulatedDistRef = useRef(0);
   const facingRef = useRef<"forward" | "backward">("forward");
   const idleTimerRef = useRef<number | null>(null);
-  const hoverGraceTimerRef = useRef<number | null>(null);
+  const prevReachedIdRef = useRef<string | null>(null);
+  const clickedStopProgressRef = useRef<number | null>(null);
 
-  // Discrete React state
+  // Discrete React state (updated only on meaningful state transitions)
   const [activeIndex, setActiveIndex] = useState(0);
   const [walkFrame, setWalkFrame] = useState(0);
   const [isWalking, setIsWalking] = useState(false);
@@ -95,18 +96,23 @@ export function JourneyScene() {
   const [milestoneReveal, setMilestoneReveal] = useState<readonly number[]>([
     0.4, 0, 0,
   ]);
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const [pinnedId, setPinnedId] = useState<string | null>(null);
+  const [reachedId, setReachedId] = useState<string | null>(null);
+  const [clickedId, setClickedId] = useState<string | null>(null);
+  const [dismissedId, setDismissedId] = useState<string | null>(null);
 
-  // Mobile state (tap-friendly step journey; borderless typography opens on marker tap)
+  // Mobile state (traveler starts at Stop 01 and displays its details automatically; tap marker or steps to inspect/switch)
   const [mobileStopIdx, setMobileStopIdx] = useState(0);
-  const [mobileInspectedId, setMobileInspectedId] = useState<string | null>(null);
+  const [mobileInspectedId, setMobileInspectedId] = useState<string | null>(
+    JOURNEY_MILESTONES[0]?.id ?? null
+  );
 
   const reducedMotion = usePrefersReducedMotion();
   const isDesktop = useIsDesktop(1024);
   const showPinnedDesktop = isDesktop && !reducedMotion;
 
-  const activeDisplayedId = pinnedId ?? hoveredId;
+  // Display when clicked OR automatically when the traveler reaches the checkpoint (never on hover)
+  const activeDisplayedId =
+    clickedId ?? (reachedId && reachedId !== dismissedId ? reachedId : null);
   const activeDisplayedMilestone = useMemo(
     () => JOURNEY_MILESTONES.find((m) => m.id === activeDisplayedId) ?? null,
     [activeDisplayedId]
@@ -119,35 +125,27 @@ export function JourneyScene() {
     [mobileInspectedId]
   );
 
-  // Clear hover grace timer helper
-  const clearHoverGrace = useCallback(() => {
-    if (hoverGraceTimerRef.current !== null) {
-      window.clearTimeout(hoverGraceTimerRef.current);
-      hoverGraceTimerRef.current = null;
-    }
-  }, []);
-
-  // Escape key dismisses pinned or previewed borderless typography
+  // Escape key dismisses currently displayed borderless typography
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        clearHoverGrace();
-        setPinnedId(null);
-        setHoveredId(null);
-        setMobileInspectedId(null);
+        if (showPinnedDesktop) {
+          clickedStopProgressRef.current = null;
+          setClickedId(null);
+          setDismissedId(prevReachedIdRef.current);
+        } else {
+          setMobileInspectedId(null);
+        }
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [clearHoverGrace]);
+  }, [showPinnedDesktop]);
 
-  // Cleanup timers on unmount
+  // Cleanup idle timer on unmount
   useEffect(() => {
     return () => {
       if (idleTimerRef.current !== null) window.clearTimeout(idleTimerRef.current);
-      if (hoverGraceTimerRef.current !== null) {
-        window.clearTimeout(hoverGraceTimerRef.current);
-      }
     };
   }, []);
 
@@ -278,6 +276,22 @@ export function JourneyScene() {
       );
       return changed ? pose.milestoneReveal : prev;
     });
+
+    // Automatic checkpoint arrival reveal & clean handoff when scrolling away from a clicked stop
+    if (prevReachedIdRef.current !== pose.reachedMilestoneId) {
+      prevReachedIdRef.current = pose.reachedMilestoneId;
+      setReachedId(pose.reachedMilestoneId);
+      setDismissedId(null);
+    }
+
+    if (
+      isUserScroll &&
+      clickedStopProgressRef.current !== null &&
+      Math.abs(rawProgress - clickedStopProgressRef.current) > 0.085
+    ) {
+      clickedStopProgressRef.current = null;
+      setClickedId(null);
+    }
   }, []);
 
   // Mount GSAP ScrollTrigger inside permanent pin host (React 19 safe)
@@ -312,12 +326,16 @@ export function JourneyScene() {
     };
   }, [applyJourneyProgress, showPinnedDesktop]);
 
-  // Smoothly scroll virtual camera to a specific milestone index
+  // Smoothly scroll virtual camera to a specific milestone index and display it
   const scrollToMilestone = useCallback(
     (index: number) => {
       const safeIdx = Math.max(0, Math.min(JOURNEY_MILESTONES.length - 1, index));
       const target = JOURNEY_MILESTONES[safeIdx];
       if (!target) return;
+
+      clickedStopProgressRef.current = target.trailStop;
+      setDismissedId(null);
+      setClickedId(target.id);
 
       const st = triggerRef.current;
       if (st && showPinnedDesktop) {
@@ -330,56 +348,33 @@ export function JourneyScene() {
     [applyJourneyProgress, showPinnedDesktop]
   );
 
-  // Marker & typography interaction handlers
-  const handleMarkerPointerEnter = useCallback(
-    (id: string) => {
-      clearHoverGrace();
-      setHoveredId(id);
-    },
-    [clearHoverGrace]
-  );
-
-  const handleMarkerPointerLeave = useCallback(
-    (id: string) => {
-      clearHoverGrace();
-      // Grace window so borderless text never vanishes instantly on pointer leave
-      hoverGraceTimerRef.current = window.setTimeout(() => {
-        setHoveredId((prev) => (prev === id ? null : prev));
-        hoverGraceTimerRef.current = null;
-      }, 480);
-    },
-    [clearHoverGrace]
-  );
-
-  const handleMarkerFocus = useCallback(
-    (id: string) => {
-      clearHoverGrace();
-      setHoveredId(id);
-    },
-    [clearHoverGrace]
-  );
-
-  const handleMarkerBlur = useCallback((id: string) => {
-    setHoveredId((prev) => (prev === id ? null : prev));
-  }, []);
-
+  // Click-only stone marker handler (zero hover triggering)
   const handleMarkerClick = useCallback(
     (milestone: JourneyMilestone) => {
-      clearHoverGrace();
-      const idx = JOURNEY_MILESTONES.findIndex((m) => m.id === milestone.id);
-      if (idx >= 0 && idx !== activeIndex) {
-        scrollToMilestone(idx);
+      const isAlreadyDisplayed = activeDisplayedId === milestone.id;
+      if (isAlreadyDisplayed) {
+        clickedStopProgressRef.current = null;
+        setClickedId(null);
+        setDismissedId(milestone.id);
+        return;
       }
-      setPinnedId((prev) => (prev === milestone.id ? null : milestone.id));
+
+      const idx = JOURNEY_MILESTONES.findIndex((m) => m.id === milestone.id);
+      if (idx >= 0) {
+        scrollToMilestone(idx);
+      } else {
+        setDismissedId(null);
+        setClickedId(milestone.id);
+      }
     },
-    [activeIndex, clearHoverGrace, scrollToMilestone]
+    [activeDisplayedId, scrollToMilestone]
   );
 
   const handleDismissTypography = useCallback(() => {
-    clearHoverGrace();
-    setPinnedId(null);
-    setHoveredId(null);
-  }, [clearHoverGrace]);
+    clickedStopProgressRef.current = null;
+    setClickedId(null);
+    setDismissedId(prevReachedIdRef.current);
+  }, []);
 
   return (
     <div ref={rootRef} className="relative w-full">
@@ -410,30 +405,70 @@ export function JourneyScene() {
                 className="pointer-events-none absolute inset-0"
                 style={{
                   background:
-                    "linear-gradient(180deg, #F3E9DE 0%, #F5ECE2 54%, #EAE0D4 100%)",
+                    "linear-gradient(180deg, #F3E9DE 0%, #F5ECE3 58%, #EDE2D5 100%)",
                 }}
               />
 
-              {/* LAYER 1: Distant sumi-e mountain silhouettes (0.14x parallax) */}
+              {/* LAYER 1: Distant sumi-e mountain silhouettes — compact, airy horizon scale (0.14x parallax) */}
               <ParallaxLayer
                 layerRef={farLayerRef}
                 zIndex={1}
                 testId="journey-layer-far"
                 className="flex items-end"
               >
-                <div className="relative h-full w-[132vw] -ml-[6vw]">
+                <div className="relative mb-[24vh] h-[44vh] max-h-[410px] w-max flex items-end -ml-[4vw]">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={JOURNEY_ARTWORK.farMountains}
                     alt=""
                     aria-hidden="true"
                     referrerPolicy="no-referrer"
-                    className="h-full w-full object-cover object-bottom opacity-80"
+                    style={{
+                      WebkitMaskImage:
+                        "linear-gradient(90deg, transparent 0%, black 12%, black 88%, transparent 100%), linear-gradient(180deg, black 0%, black 80%, transparent 100%)",
+                      WebkitMaskComposite: "source-in",
+                      maskImage:
+                        "linear-gradient(90deg, transparent 0%, black 12%, black 88%, transparent 100%), linear-gradient(180deg, black 0%, black 80%, transparent 100%)",
+                      maskComposite: "intersect",
+                    }}
+                    className="h-full w-auto aspect-[16/9] shrink-0 object-cover object-bottom opacity-70"
+                  />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={JOURNEY_ARTWORK.farMountains}
+                    alt=""
+                    aria-hidden="true"
+                    referrerPolicy="no-referrer"
+                    style={{
+                      WebkitMaskImage:
+                        "linear-gradient(90deg, transparent 0%, black 16%, black 88%, transparent 100%), linear-gradient(180deg, black 0%, black 80%, transparent 100%)",
+                      WebkitMaskComposite: "source-in",
+                      maskImage:
+                        "linear-gradient(90deg, transparent 0%, black 16%, black 88%, transparent 100%), linear-gradient(180deg, black 0%, black 80%, transparent 100%)",
+                      maskComposite: "intersect",
+                    }}
+                    className="-ml-[140px] h-full w-auto aspect-[16/9] shrink-0 object-cover object-bottom -scale-x-100 opacity-68"
+                  />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={JOURNEY_ARTWORK.farMountains}
+                    alt=""
+                    aria-hidden="true"
+                    referrerPolicy="no-referrer"
+                    style={{
+                      WebkitMaskImage:
+                        "linear-gradient(90deg, transparent 0%, black 16%, black 90%, transparent 100%), linear-gradient(180deg, black 0%, black 80%, transparent 100%)",
+                      WebkitMaskComposite: "source-in",
+                      maskImage:
+                        "linear-gradient(90deg, transparent 0%, black 16%, black 90%, transparent 100%), linear-gradient(180deg, black 0%, black 80%, transparent 100%)",
+                      maskComposite: "intersect",
+                    }}
+                    className="-ml-[140px] h-full w-auto aspect-[16/9] shrink-0 object-cover object-bottom opacity-68"
                   />
                 </div>
               </ParallaxLayer>
 
-              {/* LAYER 2: Atmospheric soft ink-paper mist band (0.28x parallax) */}
+              {/* LAYER 2: Atmospheric soft ink-paper mist band separating far peaks from mid ridges (0.28x parallax) */}
               <ParallaxLayer
                 layerRef={mistLayerRef}
                 zIndex={2}
@@ -448,90 +483,83 @@ export function JourneyScene() {
                   <defs>
                     <linearGradient id="journeyMistFade" x1="0%" y1="0%" x2="0%" y2="100%">
                       <stop offset="0%" stopColor="#F3E9DE" stopOpacity="0" />
-                      <stop offset="48%" stopColor="#F3E9DE" stopOpacity="0.62" />
+                      <stop offset="48%" stopColor="#F3E9DE" stopOpacity="0.72" />
                       <stop offset="100%" stopColor="#F3E9DE" stopOpacity="0" />
                     </linearGradient>
                   </defs>
                   <path
-                    d="M 0 520 Q 340 470, 720 530 T 1480 500 T 2200 540 L 2200 760 L 0 760 Z"
+                    d="M 0 530 Q 340 492, 720 536 T 1480 512 T 2200 540 L 2200 720 L 0 720 Z"
                     fill="url(#journeyMistFade)"
                   />
                   <ellipse
-                    cx="680"
-                    cy="590"
+                    cx="720"
+                    cy="595"
                     rx="460"
-                    ry="62"
+                    ry="48"
                     fill="#F3E9DE"
-                    fillOpacity="0.46"
+                    fillOpacity="0.54"
                   />
                   <ellipse
-                    cx="1520"
-                    cy="550"
+                    cx="1540"
+                    cy="575"
                     rx="520"
-                    ry="70"
+                    ry="54"
                     fill="#F3E9DE"
-                    fillOpacity="0.42"
+                    fillOpacity="0.5"
                   />
                 </svg>
               </ParallaxLayer>
 
-              {/* LAYER 3: Middle-distance rocky mountain ridges & restrained Japanese pines (0.54x) */}
+              {/* LAYER 3: Smaller, crisp middle-distance rocky mountain peaks & miniature pines (0.54x)
+                  Each span matches its exact 16:9 image bounds (w-auto aspect-[16/9]) so horizontal
+                  feather masks align 1:1 with the artwork edges—zero vertical seams or sharp cuts. */}
               <ParallaxLayer
                 layerRef={midLayerRef}
                 zIndex={3}
                 testId="journey-layer-mid"
                 className="flex items-end"
               >
-                <div className="relative h-[84%] w-[196vw] -ml-[8vw] flex">
-                  {/* First mountain range ridge span with soft right-edge blend */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={JOURNEY_ARTWORK.midRidges}
-                    alt=""
-                    aria-hidden="true"
-                    referrerPolicy="no-referrer"
-                    style={{
-                      WebkitMaskImage:
-                        "linear-gradient(90deg, black 0%, black 84%, transparent 100%)",
-                      maskImage:
-                        "linear-gradient(90deg, black 0%, black 84%, transparent 100%)",
-                    }}
-                    className="h-full w-[112vw] shrink-0 object-cover object-bottom opacity-[0.84]"
-                  />
-                  {/* Continuation ridge span feathered smoothly on its left seam */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={JOURNEY_ARTWORK.midRidges}
-                    alt=""
-                    aria-hidden="true"
-                    referrerPolicy="no-referrer"
-                    style={{
-                      WebkitMaskImage:
-                        "linear-gradient(90deg, transparent 0%, black 18%, black 100%)",
-                      maskImage:
-                        "linear-gradient(90deg, transparent 0%, black 18%, black 100%)",
-                    }}
-                    className="-ml-[22vw] h-full w-[112vw] shrink-0 object-cover object-bottom -scale-x-100 opacity-[0.82]"
-                  />
+                <div className="relative mb-[25vh] h-[34vh] max-h-[320px] w-max flex items-end -ml-[40px]">
+                  {[0, 1, 2, 3, 4].map((spanIdx) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={spanIdx}
+                      src={JOURNEY_ARTWORK.midRidges}
+                      alt=""
+                      aria-hidden="true"
+                      referrerPolicy="no-referrer"
+                      style={{
+                        WebkitMaskImage:
+                          "linear-gradient(90deg, transparent 0%, black 18%, black 82%, transparent 100%), linear-gradient(180deg, black 0%, black 76%, transparent 100%)",
+                        WebkitMaskComposite: "source-in",
+                        maskImage:
+                          "linear-gradient(90deg, transparent 0%, black 18%, black 82%, transparent 100%), linear-gradient(180deg, black 0%, black 76%, transparent 100%)",
+                        maskComposite: "intersect",
+                      }}
+                      className={`${spanIdx === 0 ? "" : "-ml-[130px]"} h-full w-auto aspect-[16/9] shrink-0 object-cover object-bottom ${
+                        spanIdx % 2 === 1 ? "-scale-x-100 opacity-[0.84]" : "opacity-[0.88]"
+                      } contrast-[1.06]`}
+                    />
+                  ))}
                 </div>
               </ParallaxLayer>
 
-              {/* Subtle mist veil softening transition from mid peaks onto walking trail plane */}
+              {/* Soft valley mist veil melting the mountain foothills seamlessly into the footpath terrace */}
               <div
                 aria-hidden="true"
                 style={{ zIndex: 4 }}
-                className="pointer-events-none absolute inset-x-0 bottom-0 h-[52%]"
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-[42%]"
               >
                 <div
                   className="h-full w-full"
                   style={{
                     background:
-                      "linear-gradient(180deg, rgba(243,233,222,0) 0%, rgba(243,233,222,0.52) 48%, rgba(243,233,222,0.88) 100%)",
+                      "linear-gradient(180deg, rgba(243,233,222,0) 0%, rgba(243,233,222,0.58) 38%, rgba(243,233,222,0.96) 76%, #F3E9DE 100%)",
                   }}
                 />
               </div>
 
-              {/* LAYERS 4 & 5: Panoramic 3000 x 900 Trail World (Winding Path + Stone Landmarks + Traveler Cat) */}
+              {/* LAYERS 4 & 5: Panoramic 3000 x 900 Trail World (Blended Hillside Footpath + Stone Landmarks + Traveler Cat) */}
               <div
                 ref={trailWorldRef}
                 data-testid="journey-layer-trail"
@@ -543,22 +571,17 @@ export function JourneyScene() {
                 }}
                 className="absolute left-0 top-0 will-change-transform pointer-events-none"
               >
-                {/* Layer 4A: Winding stone/earth trail SVG */}
+                {/* Layer 4A: Blended sumi-e hillside & winding stone/earth trail SVG */}
                 <JourneyPath traveledPathRef={traveledPathRef} />
 
-                {/* Layer 4B: Three physically grounded stone milestone markers */}
+                {/* Layer 4B: Three physically grounded stone milestone markers (click + arrival only) */}
                 {JOURNEY_MILESTONES.map((milestone, idx) => (
                   <MilestoneMarker
                     key={milestone.id}
                     milestone={milestone}
                     isActiveStop={idx === activeIndex}
-                    isHovered={hoveredId === milestone.id}
-                    isPinned={pinnedId === milestone.id}
+                    isDisplayed={activeDisplayedId === milestone.id}
                     revealStrength={milestoneReveal[idx] ?? 1}
-                    onPointerEnter={handleMarkerPointerEnter}
-                    onPointerLeave={handleMarkerPointerLeave}
-                    onFocus={handleMarkerFocus}
-                    onBlur={handleMarkerBlur}
                     onClick={handleMarkerClick}
                   />
                 ))}
@@ -578,14 +601,14 @@ export function JourneyScene() {
                     isWalking={isWalking}
                     facing={facing}
                     slopeDeg={catSlopeDeg}
-                    sizePx={94}
+                    sizePx={90}
                   />
                 </div>
               </div>
 
-              {/* LAYER 6A: Sculpted near-ground occluding rocky ridge shoulders (1.24x parallax)
-                  Feathered on both lateral flanks so the ridges rise organically out of mist
-                  without any vertical rectangular seams. */}
+              {/* LAYER 6A: Compact, low-profile foothill rock outcrops (1.24x parallax)
+                  Scaled small and softly feathered along the lower slope edge so they add depth
+                  without obstructing the road or creating giant dark clutter. */}
               <ParallaxLayer
                 layerRef={occludingRidgeRef}
                 zIndex={15}
@@ -593,7 +616,7 @@ export function JourneyScene() {
                 className="pointer-events-none"
               >
                 <div className="relative h-full w-[3600px]">
-                  {/* Ridge shoulder between Stop 01 (iMerit) and Stop 02 (Haegl Tech) */}
+                  {/* Small rocky outcrop nestled below the bend between Stop 01 and Stop 02 */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={JOURNEY_ARTWORK.nearCrag}
@@ -601,17 +624,19 @@ export function JourneyScene() {
                     aria-hidden="true"
                     referrerPolicy="no-referrer"
                     style={{
-                      left: "1120px",
-                      bottom: "-125px",
-                      width: "920px",
+                      left: "1240px",
+                      bottom: "-72px",
+                      width: "440px",
                       WebkitMaskImage:
-                        "linear-gradient(90deg, transparent 0%, black 22%, black 78%, transparent 100%)",
+                        "linear-gradient(90deg, transparent 0%, black 22%, black 78%, transparent 100%), linear-gradient(180deg, black 0%, black 68%, transparent 100%)",
+                      WebkitMaskComposite: "source-in",
                       maskImage:
-                        "linear-gradient(90deg, transparent 0%, black 22%, black 78%, transparent 100%)",
+                        "linear-gradient(90deg, transparent 0%, black 22%, black 78%, transparent 100%), linear-gradient(180deg, black 0%, black 68%, transparent 100%)",
+                      maskComposite: "intersect",
                     }}
-                    className="absolute h-auto opacity-[0.92] select-none"
+                    className="absolute h-auto opacity-[0.62] select-none"
                   />
-                  {/* Secondary rocky pass shoulder between Stop 02 and Stop 03 (RYVO) */}
+                  {/* Secondary compact foothill rock nestled below the pass toward Stop 03 */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={JOURNEY_ARTWORK.nearCrag}
@@ -619,68 +644,50 @@ export function JourneyScene() {
                     aria-hidden="true"
                     referrerPolicy="no-referrer"
                     style={{
-                      left: "2120px",
-                      bottom: "-160px",
-                      width: "840px",
+                      left: "2280px",
+                      bottom: "-86px",
+                      width: "410px",
                       WebkitMaskImage:
-                        "linear-gradient(90deg, transparent 0%, black 22%, black 78%, transparent 100%)",
+                        "linear-gradient(90deg, transparent 0%, black 22%, black 78%, transparent 100%), linear-gradient(180deg, black 0%, black 68%, transparent 100%)",
+                      WebkitMaskComposite: "source-in",
                       maskImage:
-                        "linear-gradient(90deg, transparent 0%, black 22%, black 78%, transparent 100%)",
+                        "linear-gradient(90deg, transparent 0%, black 22%, black 78%, transparent 100%), linear-gradient(180deg, black 0%, black 68%, transparent 100%)",
+                      maskComposite: "intersect",
                     }}
-                    className="absolute h-auto -scale-x-100 opacity-[0.88] select-none"
+                    className="absolute h-auto -scale-x-100 opacity-[0.58] select-none"
                   />
                 </div>
               </ParallaxLayer>
 
-              {/* LAYER 6B: Restrained foreground pine framing & lower grass silhouettes (1.42x)
-                  Strictly single-span peripheral framing + bottom grass tufts so no pine
-                  trunk ever cuts vertically through the center or behind side typography. */}
+              {/* LAYER 6B: Crisp, restrained sumi-e foreground grass reeds strictly along bottom edge (1.42x)
+                  Zero cropped trunks or muddying foliage cutting across the road or sky. */}
               <ParallaxLayer
                 layerRef={fgPinesRef}
                 zIndex={20}
                 testId="journey-layer-fg-pines"
-                className="pointer-events-none"
+                className="pointer-events-none flex items-end"
               >
-                <div className="relative h-full w-[3800px]">
-                  {/* Delicate lower-left grass & pine accent at trailhead (kept clear of upper-left headline) */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={JOURNEY_ARTWORK.fgPines}
-                    alt=""
-                    aria-hidden="true"
-                    referrerPolicy="no-referrer"
-                    style={{
-                      left: "-40px",
-                      bottom: "-18px",
-                      width: "1280px",
-                      height: "52%",
-                      WebkitMaskImage:
-                        "linear-gradient(180deg, transparent 0%, black 34%, black 100%)",
-                      maskImage:
-                        "linear-gradient(180deg, transparent 0%, black 34%, black 100%)",
-                    }}
-                    className="absolute object-cover object-bottom opacity-60"
-                  />
-                  {/* Subtle foreground grass & low bough framing near the far mountain overlook */}
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={JOURNEY_ARTWORK.fgPines}
-                    alt=""
-                    aria-hidden="true"
-                    referrerPolicy="no-referrer"
-                    style={{
-                      left: "2260px",
-                      bottom: "-22px",
-                      width: "1360px",
-                      height: "54%",
-                      WebkitMaskImage:
-                        "linear-gradient(180deg, transparent 0%, black 36%, black 100%)",
-                      maskImage:
-                        "linear-gradient(180deg, transparent 0%, black 36%, black 100%)",
-                    }}
-                    className="absolute object-cover object-bottom -scale-x-100 opacity-58"
-                  />
-                </div>
+                <svg
+                  viewBox="0 0 3800 140"
+                  preserveAspectRatio="none"
+                  className="h-[118px] w-[3800px] shrink-0 block"
+                  aria-hidden="true"
+                >
+                  <g fill="none" stroke="#362A28" strokeLinecap="round" opacity="0.34">
+                    {[120, 560, 1080, 1680, 2240, 2860, 3420].map((xPos, idx) => (
+                      <g
+                        key={xPos}
+                        transform={`translate(${xPos}, 140) scale(${idx % 2 === 0 ? 1 : -0.92}, 1)`}
+                      >
+                        <path d="M 0 0 Q -12 -38 -32 -66" strokeWidth="2.1" />
+                        <path d="M 8 0 Q 4 -48 -10 -82" strokeWidth="2.3" />
+                        <path d="M 18 0 Q 24 -42 42 -68" strokeWidth="1.9" />
+                        <path d="M 28 0 Q 42 -28 62 -46" strokeWidth="1.5" />
+                        <path d="M -14 0 Q -26 -24 -44 -38" strokeWidth="1.5" />
+                      </g>
+                    ))}
+                  </g>
+                </svg>
               </ParallaxLayer>
 
               {/* LAYER 7A: Scene 01 Opening Headline (settles quietly in clean upper-left sky before walking begins) */}
@@ -688,7 +695,7 @@ export function JourneyScene() {
                 ref={introRef}
                 data-testid="journey-intro-headline"
                 style={{ zIndex: 25 }}
-                className="pointer-events-none absolute left-[max(40px,5vw)] top-[104px] max-w-[540px] will-change-transform"
+                className="pointer-events-none absolute left-[max(40px,5vw)] top-[96px] max-w-[540px] will-change-transform"
               >
                 <p className="m-0 font-mono text-[11px] uppercase tracking-[0.22em] text-[#792B33]/72 tabular-nums">
                   Chapter {JOURNEY_INTRO.chapterNumber} · {JOURNEY_INTRO.chapterLabel}
@@ -709,14 +716,10 @@ export function JourneyScene() {
                 </p>
               </div>
 
-              {/* LAYER 7B: Borderless Editorial Company Typography (reveals ONLY on marker hover/focus/click) */}
+              {/* LAYER 7B: Borderless Editorial Company Typography (displays automatically on checkpoint arrival or click) */}
               <ExperienceTypography
                 milestone={activeDisplayedMilestone}
-                isPinned={pinnedId !== null}
-                onPointerEnter={clearHoverGrace}
-                onPointerLeave={() => {
-                  if (hoveredId) handleMarkerPointerLeave(hoveredId);
-                }}
+                isManuallySelected={clickedId !== null}
                 onDismiss={handleDismissTypography}
                 variant="overlay"
               />
@@ -846,63 +849,105 @@ export function JourneyScene() {
             surface="ivory"
           />
 
-          {/* Simplified 2.5D mountain illustration window with stepped parallax */}
-          <div className="relative h-[300px] sm:h-[340px] w-full overflow-hidden border-y border-[#792B33]/20 bg-[#F3E9DE]">
-            {/* Far mountain silhouette */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={JOURNEY_ARTWORK.farMountains}
-              alt="Distant Japanese sumi-e mountains"
-              referrerPolicy="no-referrer"
+          {/* Simplified 2.5D mountain illustration window with compact clear peaks and blended hillside trail */}
+          <div className="relative h-[280px] sm:h-[320px] w-full overflow-hidden border-y border-[#792B33]/20 bg-[#F3E9DE]">
+            {/* Far mountain silhouette (seamless aspect-matched horizon) */}
+            <div
               style={{
                 transform: `translate3d(${-mobileStopIdx * 18}px, 0, 0)`,
               }}
-              className="pointer-events-none absolute inset-0 h-full w-[125%] max-w-none object-cover object-bottom opacity-80 transition-transform duration-500 ease-out"
-            />
-            {/* Mid rocky ridge */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={JOURNEY_ARTWORK.midRidges}
-              alt=""
-              aria-hidden="true"
-              referrerPolicy="no-referrer"
-              style={{
-                transform: `translate3d(${-mobileStopIdx * 52}px, 0, 0)`,
-              }}
-              className="pointer-events-none absolute inset-0 h-full w-[145%] max-w-none object-cover object-bottom opacity-85 transition-transform duration-500 ease-out"
-            />
-
-            {/* Soft ground mist veil */}
+              className="pointer-events-none absolute left-0 bottom-[62px] flex h-[156px] w-max transition-transform duration-500 ease-out"
+            >
+              {[0, 1].map((idx) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={idx}
+                  src={JOURNEY_ARTWORK.farMountains}
+                  alt={idx === 0 ? "Distant Japanese sumi-e mountains" : ""}
+                  aria-hidden={idx === 0 ? undefined : true}
+                  referrerPolicy="no-referrer"
+                  style={{
+                    WebkitMaskImage:
+                      "linear-gradient(90deg, transparent 0%, black 14%, black 86%, transparent 100%)",
+                    maskImage:
+                      "linear-gradient(90deg, transparent 0%, black 14%, black 86%, transparent 100%)",
+                  }}
+                  className={`${idx === 0 ? "-ml-6" : "-ml-16 -scale-x-100"} h-full w-auto aspect-[16/9] shrink-0 object-cover object-bottom opacity-72`}
+                />
+              ))}
+            </div>
+            {/* Mid rocky ridge (compact, crisp, continuous feathered range behind the trail) */}
             <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-x-0 bottom-0 h-28"
               style={{
-                background:
-                  "linear-gradient(180deg, rgba(243,233,222,0) 0%, rgba(243,233,222,0.86) 65%, #F3E9DE 100%)",
+                transform: `translate3d(${-mobileStopIdx * 48}px, 0, 0)`,
               }}
-            />
+              className="pointer-events-none absolute left-0 bottom-[60px] flex h-[132px] w-max transition-transform duration-500 ease-out"
+            >
+              {[0, 1, 2].map((idx) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={idx}
+                  src={JOURNEY_ARTWORK.midRidges}
+                  alt=""
+                  aria-hidden="true"
+                  referrerPolicy="no-referrer"
+                  style={{
+                    WebkitMaskImage:
+                      "linear-gradient(90deg, transparent 0%, black 18%, black 82%, transparent 100%), linear-gradient(180deg, black 0%, black 75%, transparent 100%)",
+                    WebkitMaskComposite: "source-in",
+                    maskImage:
+                      "linear-gradient(90deg, transparent 0%, black 18%, black 82%, transparent 100%), linear-gradient(180deg, black 0%, black 75%, transparent 100%)",
+                    maskComposite: "intersect",
+                  }}
+                  className={`${idx === 0 ? "-ml-4" : "-ml-16"} ${idx % 2 === 1 ? "-scale-x-100" : ""} h-full w-auto aspect-[16/9] shrink-0 object-cover object-bottom opacity-86 contrast-[1.06]`}
+                />
+              ))}
+            </div>
 
-            {/* Winding simplified trail line */}
+            {/* Soft blended hillside & organic footpath SVG */}
             <svg
-              viewBox="0 0 360 120"
+              viewBox="0 0 360 128"
               preserveAspectRatio="none"
-              className="pointer-events-none absolute inset-x-0 bottom-0 h-24 w-full"
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-[116px] w-full"
               aria-hidden="true"
             >
+              <defs>
+                <filter id="mobileTrailSoft" x="-10%" y="-30%" width="120%" height="160%">
+                  <feGaussianBlur stdDeviation="3.2" />
+                </filter>
+                <linearGradient id="mobileHillWash" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#E3D5C5" stopOpacity="0.82" />
+                  <stop offset="48%" stopColor="#EFE4D7" stopOpacity="0.98" />
+                  <stop offset="100%" stopColor="#F3E9DE" stopOpacity="1" />
+                </linearGradient>
+              </defs>
               <path
-                d="M -10 92 Q 95 66, 180 78 T 370 54"
+                d="M -20 74 Q 95 54, 180 64 T 380 46 L 380 128 L -20 128 Z"
+                fill="url(#mobileHillWash)"
+              />
+              <path
+                d="M -20 82 Q 95 62, 180 72 T 380 54"
                 fill="none"
-                stroke="#DFCDBD"
-                strokeWidth="16"
+                stroke="#CBB8A4"
+                strokeOpacity="0.52"
+                strokeWidth="22"
+                filter="url(#mobileTrailSoft)"
+              />
+              <path
+                d="M -20 82 Q 95 62, 180 72 T 380 54"
+                fill="none"
+                stroke="#EBE0D3"
+                strokeOpacity="0.88"
+                strokeWidth="12"
                 strokeLinecap="round"
               />
               <path
-                d="M -10 92 Q 95 66, 180 78 T 370 54"
+                d="M -20 82 Q 95 62, 180 72 T 380 54"
                 fill="none"
                 stroke="#792B33"
                 strokeOpacity="0.45"
-                strokeWidth="2"
-                strokeDasharray="6 6"
+                strokeWidth="1.6"
+                strokeLinecap="round"
               />
             </svg>
 
@@ -1049,11 +1094,11 @@ export function JourneyScene() {
             </div>
           </div>
 
-          {/* Borderless mobile company typography revealed when marker or stop is tapped */}
+          {/* Borderless mobile company typography shown for reached checkpoint / tapped marker */}
           {mobileInspectedMilestone ? (
             <ExperienceTypography
               milestone={mobileInspectedMilestone}
-              isPinned
+              isManuallySelected={false}
               onDismiss={() => setMobileInspectedId(null)}
               variant="inline"
             />

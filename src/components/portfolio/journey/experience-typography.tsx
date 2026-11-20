@@ -5,9 +5,7 @@ import type { JourneyMilestone } from "@/data/experience-journey";
 
 export interface ExperienceTypographyProps {
   milestone: JourneyMilestone | null;
-  isPinned: boolean;
-  onPointerEnter?: () => void;
-  onPointerLeave?: () => void;
+  isManuallySelected: boolean;
   onDismiss: () => void;
   /** Desktop edge overlay vs. inline flow beneath mobile scene */
   variant?: "overlay" | "inline";
@@ -24,9 +22,7 @@ export interface ExperienceTypographyProps {
  */
 export function ExperienceTypography({
   milestone,
-  isPinned,
-  onPointerEnter,
-  onPointerLeave,
+  isManuallySelected,
   onDismiss,
   variant = "overlay",
 }: ExperienceTypographyProps) {
@@ -111,12 +107,10 @@ export function ExperienceTypography({
     <aside
       data-testid="experience-typography-overlay"
       data-company-id={milestone.id}
-      data-pinned={isPinned ? "true" : "false"}
+      data-selection-mode={isManuallySelected ? "clicked" : "reached"}
       aria-label={`${milestone.companyName} experience details`}
-      onPointerEnter={onPointerEnter}
-      onPointerLeave={onPointerLeave}
       onClick={(e) => e.stopPropagation()}
-      className={`pointer-events-auto absolute top-[104px] z-40 w-[min(430px,36vw)] transition-all duration-300 ease-out ${
+      className={`pointer-events-auto absolute top-[96px] z-40 w-[min(430px,36vw)] transition-all duration-300 ease-out ${
         isRight ? "right-[max(40px,4.8vw)] text-left" : "left-[max(40px,4.8vw)] text-left"
       }`}
     >
@@ -130,13 +124,13 @@ export function ExperienceTypography({
         }}
       />
 
-      {/* Company Number + subtle pinned dismiss control */}
+      {/* Company Number + subtle dismiss control */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.24em] text-[#792B33] tabular-nums">
           <span>{milestone.number}</span>
           <span aria-hidden="true" className="inline-block h-px w-8 bg-[#792B33]/55" />
           <span className="text-[#792B33]/70">
-            {isPinned ? "Pinned" : "Milestone"}
+            {isManuallySelected ? "Selected" : "Checkpoint"}
           </span>
         </div>
 

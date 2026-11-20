@@ -168,3 +168,19 @@ test("stepTravelerAnimation advances 8-frame walk cycle on scroll, flips on reve
   assert.equal(backward.facing, "backward");
   assert.ok(backward.accumulatedDistance > stopped.accumulatedDistance);
 });
+
+test("computeMountainJourneyPose triggers reachedMilestoneId only when the traveler arrives at a checkpoint", () => {
+  const atStart = computeMountainJourneyPose(0, MOUNTAIN_TRAIL_POINTS, JOURNEY_MILESTONES);
+  const atStop1 = computeMountainJourneyPose(0.24, MOUNTAIN_TRAIL_POINTS, JOURNEY_MILESTONES);
+  const atBend = computeMountainJourneyPose(0.4, MOUNTAIN_TRAIL_POINTS, JOURNEY_MILESTONES);
+  const atStop2 = computeMountainJourneyPose(0.54, MOUNTAIN_TRAIL_POINTS, JOURNEY_MILESTONES);
+  const atStop3 = computeMountainJourneyPose(0.81, MOUNTAIN_TRAIL_POINTS, JOURNEY_MILESTONES);
+  const atEnding = computeMountainJourneyPose(0.98, MOUNTAIN_TRAIL_POINTS, JOURNEY_MILESTONES);
+
+  assert.equal(atStart.reachedMilestoneId, null);
+  assert.equal(atStop1.reachedMilestoneId, "imerit");
+  assert.equal(atBend.reachedMilestoneId, null);
+  assert.equal(atStop2.reachedMilestoneId, "haegl-tech");
+  assert.equal(atStop3.reachedMilestoneId, "ryvo");
+  assert.equal(atEnding.reachedMilestoneId, null);
+});

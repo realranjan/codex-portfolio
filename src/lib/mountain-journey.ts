@@ -45,6 +45,8 @@ export interface MountainJourneyPose {
   readonly activeMilestoneIndex: number;
   /** ID of the nearest milestone */
   readonly activeMilestoneId: string;
+  /** ID of the milestone the traveler has currently arrived at, or null between stops */
+  readonly reachedMilestoneId: string | null;
   /** Proximity [0..1] to the active milestone (1 = settled directly beside marker) */
   readonly milestoneSettle: number;
   /** Traveler cat world coordinates in 3000 x 900 space */
@@ -219,6 +221,31 @@ export function classifyJourneyScenePhase(rawProgress: number): JourneyScenePhas
 }
 
 /**
+ * Returns the ID of the checkpoint the traveler has currently reached along the
+ * trail, or null while walking through the opening trailhead, open bends, or
+ * ending pullback. Keeps Scene 01 intro headline and checkpoint readouts clean
+ * and non-overlapping.
+ */
+export function getReachedMilestoneId(
+  rawProgress: number,
+  milestones: readonly JourneyMilestone[],
+  arrivalRadius = 0.085
+): string | null {
+  const p = clamp01(rawProgress);
+  let bestId: string | null = null;
+  let bestDist = Infinity;
+
+  for (const m of milestones) {
+    const dist = Math.abs(p - m.trailStop);
+    if (dist <= arrivalRadius && dist < bestDist) {
+      bestDist = dist;
+      bestId = m.id;
+    }
+  }
+  return bestId;
+}
+
+/**
  * Computes the complete 2.5D virtual camera pose, cat world position, and 7-layer
  * parallax transforms from a single scroll progress value [0..1].
  */
@@ -264,6 +291,7 @@ export function computeMountainJourneyPose(
     }
   }
   const activeMilestoneId = milestones[activeMilestoneIndex]?.id ?? "";
+  const reachedMilestoneId = getReachedMilestoneId(raw, milestones);
   const milestoneSettle = Number(clamp01(1 - bestDist / 0.11).toFixed(4));
 
   // Virtual camera framing:
@@ -273,23 +301,25 @@ export function computeMountainJourneyPose(
   const passPresence =
     smoothstep(0.12, 0.35, raw) * (1 - endingPullback * 0.85);
 
-  // Restrained zoom: 1.00 at arrival -> ~1.055 through the mountain pass -> 0.92 at scenic ending
+  // Restrained zoom: 1.00 at arrival -> ~1.045 through the mountain pass -> 0.93 at scenic ending
   const cameraScale = Number(
-    (1.0 + passPresence * 0.055 - endingPullback * 0.08).toFixed(4)
+    (1.0 + passPresence * 0.045 - endingPullback * 0.07).toFixed(4)
   );
 
   // Lead camera slightly right of cat so upcoming terrain breathes ahead,
-  // shifting gently toward the active marker when settled, and centering during Scene 06 pullback
-  const lookAheadX = lerp(180, -140, endingPullback);
+  // centering calmly during Scene 06 pullback
+  const lookAheadX = lerp(175, -130, endingPullback);
   const targetFocusX = clamp(
     catWorld.x + lookAheadX,
     viewportWidth * 0.46,
     worldWidth - viewportWidth * 0.46
   );
+  // Anchor camera vertically slightly above the footpath so the trail rests cleanly
+  // in the lower ~35% of the viewport and the upper sky stays wide and calm
   const targetFocusY = clamp(
-    lerp(catWorld.y - 75, worldHeight * 0.52, endingPullback * 0.65),
-    worldHeight * 0.38,
-    worldHeight * 0.62
+    lerp(catWorld.y - 165, worldHeight * 0.50, endingPullback * 0.45),
+    worldHeight * 0.44,
+    worldHeight * 0.58
   );
 
   // Pan of the 1.0x trail world relative to the viewport center
@@ -298,11 +328,15 @@ export function computeMountainJourneyPose(
 
   // Relative pan delta from starting camera position so parallax layers start framed cleanly
   const startFocusX = clamp(
-    (trailPoints[0]?.x ?? 210) + 180,
+    (trailPoints[0]?.x ?? 210) + 175,
     viewportWidth * 0.46,
     worldWidth - viewportWidth * 0.46
   );
-  const startFocusY = clamp((trailPoints[0]?.y ?? 690) - 75, worldHeight * 0.38, worldHeight * 0.62);
+  const startFocusY = clamp(
+    (trailPoints[0]?.y ?? 694) - 165,
+    worldHeight * 0.44,
+    worldHeight * 0.58
+  );
   const travelDeltaX = startFocusX - targetFocusX; // negative as we travel right
   const travelDeltaY = startFocusY - targetFocusY; // positive as we climb upward
 
@@ -361,6 +395,7 @@ export function computeMountainJourneyPose(
     introTranslateYPx,
     activeMilestoneIndex,
     activeMilestoneId,
+    reachedMilestoneId,
     milestoneSettle,
     catWorld: {
       x: Number(catWorld.x.toFixed(2)),
