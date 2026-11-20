@@ -23,6 +23,7 @@ import {
 } from "@/lib/tumble-deck";
 import {
   CameraProgressRule,
+  useIsDesktop,
   usePrefersReducedMotion,
 } from "@/components/portfolio/camera-primitives";
 import {
@@ -214,6 +215,8 @@ export function ChapterProjects() {
   const [openProjectIndex, setOpenProjectIndex] = useState<number | null>(null);
   const [gallerySlideIdx, setGallerySlideIdx] = useState(0);
   const reducedMotion = usePrefersReducedMotion();
+  const isDesktop = useIsDesktop(1024);
+  const showPinnedDesktop = isDesktop && !reducedMotion;
 
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const lastTriggerRef = useRef<HTMLElement | null>(null);
@@ -241,15 +244,10 @@ export function ChapterProjects() {
     [count]
   );
 
-  // Pinned desktop 3D Tumble Deck scroll journey
-  // Uses useIsomorphicLayoutEffect + permanently mounted wrapper so GSAP pin-spacer
-  // unwraps safely before React commits on reduced-motion toggles.
+  // Pinned desktop 3D Tumble Deck scroll journey (mounts/unmounts cleanly across breakpoints)
   useIsomorphicLayoutEffect(() => {
     const pinEl = pinStageRef.current;
-    if (!pinEl || reducedMotion) return;
-
-    const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
-    if (!isDesktop) return;
+    if (!pinEl || !showPinnedDesktop) return;
 
     const ctx = gsap.context(() => {
       applyScrollProgress(0);
@@ -257,7 +255,7 @@ export function ChapterProjects() {
       scrollTriggerRef.current = ScrollTrigger.create({
         trigger: pinEl,
         start: "top top",
-        end: "+=260%",
+        end: "+=175%",
         pin: true,
         scrub: true,
         anticipatePin: 1,
@@ -272,7 +270,7 @@ export function ChapterProjects() {
       scrollTriggerRef.current = null;
       ctx.revert();
     };
-  }, [applyScrollProgress, reducedMotion]);
+  }, [applyScrollProgress, showPinnedDesktop]);
 
   const navigateToProject = useCallback(
     (targetIdx: number) => {
@@ -375,23 +373,26 @@ export function ChapterProjects() {
           DESKTOP PINNED 3D TUMBLE DECK SHOWCASE (>= 1024px)
           Vertical scroll tips each project card forward on its bottom floor hinge
          ═══════════════════════════════════════════════════════════════════════ */}
-      <div
-        className={reducedMotion ? "hidden" : "hidden lg:block"}
-        aria-hidden={reducedMotion || undefined}
-      >
+      <div className={showPinnedDesktop ? "block" : "hidden"}>
         <div
           ref={pinStageRef}
-          tabIndex={0}
-          role="region"
-          aria-roledescription="3D tumbling project deck"
-          aria-label="Selected Projects 3D tumble deck"
-          onKeyDown={handleStageKeyDown}
-          data-testid="projects-camera-stage"
+          tabIndex={showPinnedDesktop ? 0 : -1}
+          role={showPinnedDesktop ? "region" : undefined}
+          aria-roledescription={showPinnedDesktop ? "3D tumbling project deck" : undefined}
+          aria-label={showPinnedDesktop ? "Selected Projects 3D tumble deck" : undefined}
+          onKeyDown={showPinnedDesktop ? handleStageKeyDown : undefined}
+          data-testid={showPinnedDesktop ? "projects-camera-stage" : undefined}
           data-camera-progress="0.000"
           data-deck-pos="0.000"
           data-active-project={String(activeIndex + 1)}
-          className="relative flex h-[100svh] min-h-[680px] w-full flex-col justify-between bg-[#F3E9DE] pt-[84px] pb-5 focus-visible:outline-none"
+          className={
+            showPinnedDesktop
+              ? "relative flex h-[100svh] min-h-[640px] w-full flex-col justify-between bg-[#F3E9DE] pt-[76px] pb-4 focus-visible:outline-none"
+              : ""
+          }
         >
+          {showPinnedDesktop && (
+            <>
           {/* Compact Editorial Header Strip */}
           <div className="page-container relative z-10 flex items-end justify-between gap-6 border-b border-[#792B33]/18 pb-3.5">
             <div className="min-w-0">
@@ -442,7 +443,7 @@ export function ChapterProjects() {
               depth={4}
               aspect={1.96}
               height="100%"
-              heightRatio={0.47}
+              heightRatio={0.51}
               background="#F3E9DE"
               shadeColor="#792B33"
               showFloorLine
@@ -515,16 +516,15 @@ export function ChapterProjects() {
               </button>
             </div>
           </div>
+            </>
+          )}
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          REDUCED-MOTION STATIC GALLERY (Desktop & Mobile)
-         ═══════════════════════════════════════════════════════════════════════ */}
-      {reducedMotion ? (
+      {!showPinnedDesktop && (reducedMotion ? (
         <div
           data-testid="projects-static-gallery"
-          className="page-container pt-24 pb-24 space-y-12"
+          className="page-container pt-12 pb-14 space-y-8"
         >
           <ChapterHeading
             id="projects-heading"
@@ -586,18 +586,13 @@ export function ChapterProjects() {
             ))}
           </div>
         </div>
-      ) : null}
-
-      {/* ═══════════════════════════════════════════════════════════════════════
-          MOBILE & TABLET INTERACTIVE 3D TUMBLE DECK (< 1024px, Zero Pinning)
-         ═══════════════════════════════════════════════════════════════════════ */}
-      {!reducedMotion ? (
+      ) : (
         <div
           data-testid="projects-mobile-carousel"
-          className="lg:hidden page-container pt-20 pb-20"
+          className="page-container pt-10 pb-12"
         >
           <ChapterHeading
-            id="projects-heading-mobile"
+            id="projects-heading"
             number={PROJECTS_CONTENT.chapterNumber}
             label={PROJECTS_CONTENT.chapterLabel}
             heading={PROJECTS_CONTENT.heading}
@@ -689,7 +684,7 @@ export function ChapterProjects() {
             </div>
           </div>
         </div>
-      ) : null}
+      ))}
 
       {/* ── FULLSCREEN EDITORIAL PROJECT CASE STUDY OVERLAY ── */}
       {openProject && openProjectIndex !== null && (

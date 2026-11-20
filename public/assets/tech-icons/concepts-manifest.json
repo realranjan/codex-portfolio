@@ -1,0 +1,140 @@
+{
+  "concepts": [
+    {
+      "slug": "rest",
+      "label": "REST",
+      "kind": "protocol",
+      "category": "apis",
+      "summary": "Resource-oriented HTTP API architecture and stateless contract design.",
+      "hasBrandLogo": false
+    },
+    {
+      "slug": "oauth",
+      "label": "OAuth 2.0",
+      "kind": "protocol",
+      "category": "apis",
+      "summary": "Delegated token authorization, PKCE flows, and identity federation.",
+      "hasBrandLogo": false
+    },
+    {
+      "slug": "websockets",
+      "label": "WebSockets",
+      "kind": "protocol",
+      "category": "backend",
+      "summary": "Full-duplex low-latency bidirectional messaging over persistent TCP.",
+      "hasBrandLogo": false
+    },
+    {
+      "slug": "sse",
+      "label": "Server-Sent Events",
+      "kind": "protocol",
+      "category": "apis",
+      "summary": "Streaming token and live telemetry delivery over HTTP.",
+      "hasBrandLogo": false
+    },
+    {
+      "slug": "webrtc",
+      "label": "WebRTC",
+      "kind": "protocol",
+      "category": "backend",
+      "summary": "Real-time peer-to-peer audio, video, and low-latency data channels.",
+      "hasBrandLogo": false
+    },
+    {
+      "slug": "rag",
+      "label": "RAG",
+      "kind": "concept",
+      "category": "ai-ml",
+      "summary": "Retrieval-Augmented Generation grounding LLMs with hybrid vector/keyword search.",
+      "hasBrandLogo": false
+    },
+    {
+      "slug": "nlp",
+      "label": "NLP",
+      "kind": "concept",
+      "category": "ai-ml",
+      "summary": "Natural language parsing, tokenization, semantic extraction, and classification.",
+      "hasBrandLogo": false
+    },
+    {
+      "slug": "agentic-workflows",
+      "label": "Agentic Workflows",
+      "kind": "concept",
+      "category": "ai-ml",
+      "summary": "Tool-calling loops, structured output routing, and deterministic verification.",
+      "hasBrandLogo": false
+    },
+    {
+      "slug": "fine-tuning-lora",
+      "label": "Fine-Tuning & LoRA",
+      "kind": "concept",
+      "category": "ai-ml",
+      "summary": "Parameter-efficient domain adaptation and synthetic dataset curation.",
+      "hasBrandLogo": false
+    },
+    {
+      "slug": "vector-embeddings",
+      "label": "Vector Embeddings",
+      "kind": "concept",
+      "category": "ai-ml",
+      "summary": "Dense semantic indexing, chunking strategies, and cosine similarity reranking.",
+      "hasBrandLogo": false
+    },
+    {
+      "slug": "prompt-engineering",
+      "label": "Prompt Engineering",
+      "kind": "concept",
+      "category": "ai-ml",
+      "summary": "Structured system specifications, evaluation harnesses, and rubric scoring.",
+      "hasBrandLogo": false
+    },
+    {
+      "slug": "sql",
+      "label": "SQL",
+      "kind": "standard",
+      "category": "languages",
+      "summary": "Relational query language, CTEs, window functions, and schema indexing.",
+      "hasBrandLogo": false
+    },
+    {
+      "slug": "glsl",
+      "label": "GLSL Shaders",
+      "kind": "standard",
+      "category": "three-d",
+      "summary": "Custom vertex and fragment shaders for procedural surfaces and post-processing.",
+      "hasBrandLogo": false
+    },
+    {
+      "slug": "ssr-rsc",
+      "label": "SSR & Server Components",
+      "kind": "architecture",
+      "category": "frontend",
+      "summary": "Streaming server rendering, edge caching, and lean client bundles.",
+      "hasBrandLogo": false
+    },
+    {
+      "slug": "ci-cd",
+      "label": "CI / CD",
+      "kind": "architecture",
+      "category": "cloud",
+      "summary": "Automated lint, test, container build, and zero-downtime deployment pipelines.",
+      "hasBrandLogo": false
+    },
+    {
+      "slug": "microservices",
+      "label": "Microservices",
+      "kind": "architecture",
+      "category": "backend",
+      "summary": "Bounded service decomposition, async queues, and resilient fault isolation.",
+      "hasBrandLogo": false
+    },
+    {
+      "slug": "wcag",
+      "label": "Accessibility (WCAG)",
+      "kind": "standard",
+      "category": "frontend",
+      "summary": "Keyboard navigation, semantic landmarks, contrast ratios, and reduced motion.",
+      "hasBrandLogo": false
+    }
+  ]
+}

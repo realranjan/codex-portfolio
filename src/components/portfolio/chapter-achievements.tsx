@@ -52,7 +52,7 @@ export function ChapterAchievements() {
       id="achievements"
       aria-labelledby="achievements-heading"
       data-chapter-surface="burgundy"
-      className="relative bg-[#792B33] text-[#F3E9DE] pt-12 sm:pt-16 pb-20 sm:pb-24 overflow-x-clip"
+      className="relative bg-[#792B33] text-[#F3E9DE] pt-8 sm:pt-12 pb-10 sm:pb-14 overflow-x-clip"
     >
       <div className="page-container">
         <ChapterHeading
@@ -103,9 +103,9 @@ export function ChapterAchievements() {
         {/* Desktop Restful Layered Showcase (Flat 2D, Zero 3D Rotation) */}
         <div
           data-testid="achievements-layered-gallery"
-          className="relative mt-12 sm:mt-16"
+          className="relative mt-8 sm:mt-10"
         >
-          <div className="relative hidden md:block h-[470px] lg:h-[500px] w-full overflow-visible">
+          <div className="relative hidden md:block h-[410px] lg:h-[430px] w-full overflow-visible">
             {items.map((item, idx) => {
               const state = computeSpatialSlideState(idx, safeIndex, count);
               const mediaIdx = galleryIdxByItem[item.id] ?? 0;
@@ -283,7 +283,7 @@ export function ChapterAchievements() {
           </div>
 
           {/* Navigation Bar */}
-          <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-[#F3E9DE]/20 pt-6">
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-[#F3E9DE]/20 pt-4">
             <div className="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.18em] text-[#F3E9DE]/78 tabular-nums">
               <span>
                 {activeItem.number} / 00{count}

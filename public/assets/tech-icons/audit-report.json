@@ -1,0 +1,15 @@
+{
+  "generatedAt": "2026-11-19T19:06:30.824Z",
+  "totalIcons": 102,
+  "verifiedCount": 102,
+  "unverifiedCount": 0,
+  "totalConcepts": 17,
+  "categoriesCount": 12,
+  "missing": [],
+  "surfaceRules": {
+    "burgundy": "#792B33",
+    "ivory": "#F3E9DE",
+    "ivoryPlateOnBurgundyCount": 59,
+    "burgundyPlateOnIvoryCount": 15
+  }
+}

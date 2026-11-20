@@ -10,7 +10,10 @@ import {
   computeAboutStoryState,
   computePinePointerTarget,
 } from "@/lib/about-story";
-import { usePrefersReducedMotion } from "@/components/portfolio/camera-primitives";
+import {
+  useIsDesktop,
+  usePrefersReducedMotion,
+} from "@/components/portfolio/camera-primitives";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -69,6 +72,8 @@ export function ChapterAbout() {
   const [activeIndex, setActiveIndex] = useState<0 | 1 | 2 | 3>(0);
   const [activeScene, setActiveScene] = useState<1 | 2 | 3 | 4 | 5>(1);
   const reducedMotion = usePrefersReducedMotion();
+  const isDesktop = useIsDesktop(768);
+  const showPinnedDesktop = isDesktop && !reducedMotion;
 
   const lastActiveIndexRef = useRef<0 | 1 | 2 | 3>(0);
   const lastActiveSceneRef = useRef<1 | 2 | 3 | 4 | 5>(1);
@@ -76,10 +81,7 @@ export function ChapterAbout() {
   // 1. Desktop pinned 5-scene reversible scroll choreography
   useIsomorphicLayoutEffect(() => {
     const pinEl = pinStageRef.current;
-    if (!pinEl || reducedMotion) return;
-
-    const isDesktop = window.matchMedia("(min-width: 768px)").matches;
-    if (!isDesktop) return;
+    if (!pinEl || !showPinnedDesktop) return;
 
     const applyStoryToDom = (progress: number) => {
       const state = computeAboutStoryState(progress);
@@ -156,7 +158,7 @@ export function ChapterAbout() {
       scrollTriggerRef.current = ScrollTrigger.create({
         trigger: pinEl,
         start: "top top",
-        end: "+=340%",
+        end: "+=200%",
         pin: true,
         scrub: true,
         anticipatePin: 1,
@@ -171,7 +173,7 @@ export function ChapterAbout() {
       scrollTriggerRef.current = null;
       ctx.revert();
     };
-  }, [reducedMotion]);
+  }, [showPinnedDesktop]);
 
   // 2. Bounded smooth pointer parallax for foreground pine (active only while pointer moves; zero idle drift)
   useEffect(() => {
@@ -258,17 +260,20 @@ export function ChapterAbout() {
           DESKTOP & TABLET PINNED CINEMATIC SUMI-E STORYTELLING STAGE
           (Automatically switches to static readable editorial layout when reduced motion is enabled)
          ═══════════════════════════════════════════════════════════════════════ */}
-      <div
-        className={reducedMotion ? "hidden" : "hidden md:block"}
-        aria-hidden={reducedMotion || undefined}
-      >
+      <div className={showPinnedDesktop ? "block" : "hidden"}>
         <div
           ref={pinStageRef}
-          data-testid="about-sumie-stage"
+          data-testid={showPinnedDesktop ? "about-sumie-stage" : undefined}
           data-about-scene={String(activeScene)}
           data-about-progress="0.000"
-          className="relative flex min-h-[100svh] w-full flex-col justify-between overflow-hidden bg-[#792B33]"
+          className={
+            showPinnedDesktop
+              ? "relative flex min-h-[100svh] w-full flex-col justify-between overflow-hidden bg-[#792B33]"
+              : ""
+          }
         >
+          {showPinnedDesktop && (
+            <>
           {/* Layer 0: Extremely fine static washi paper grain */}
           <div
             aria-hidden="true"
@@ -501,18 +506,19 @@ export function ChapterAbout() {
               </div>
             </div>
           </div>
+            </>
+          )}
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════════
+      {!showPinnedDesktop && (
+      /* ═══════════════════════════════════════════════════════════════════════
           MOBILE LAYOUT (< 768px) & REDUCED-MOTION FALLBACK
           Clean non-pinned editorial presentation with 100% readable typography
-         ═══════════════════════════════════════════════════════════════════════ */}
+         ═══════════════════════════════════════════════════════════════════════ */
       <div
         data-testid="about-static-stage"
-        className={`${
-          reducedMotion ? "block" : "md:hidden"
-        } relative overflow-hidden bg-[#792B33] pt-24 pb-20 sm:pt-28 sm:pb-24`}
+        className="relative overflow-hidden bg-[#792B33] pt-16 pb-14 sm:pt-20 sm:pb-16"
       >
         {/* Ultra-fine static paper grain */}
         <div
@@ -566,7 +572,7 @@ export function ChapterAbout() {
             </p>
 
             <h2
-              id={reducedMotion ? "about-heading" : undefined}
+              id="about-heading"
               className="m-0 text-left text-[#F3E9DE]"
               style={{
                 fontFamily: "var(--font-manrope), system-ui, sans-serif",
@@ -626,6 +632,7 @@ export function ChapterAbout() {
           </div>
         </div>
       </div>
+      )}
     </section>
   );
 }

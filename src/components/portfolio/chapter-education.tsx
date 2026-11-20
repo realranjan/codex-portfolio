@@ -58,7 +58,7 @@ export function ChapterEducation() {
       id="education"
       aria-labelledby="education-heading"
       data-chapter-surface="burgundy"
-      className="relative bg-[#792B33] text-[#F3E9DE] pt-12 sm:pt-16 pb-20 sm:pb-28 overflow-x-clip"
+      className="relative bg-[#792B33] text-[#F3E9DE] pt-8 sm:pt-12 pb-12 sm:pb-16 overflow-x-clip"
     >
       <div className="page-container">
         <ChapterHeading
@@ -89,7 +89,7 @@ export function ChapterEducation() {
         />
 
         {/* Restrained Oversized Year Editorial Entries (Visual Rest) */}
-        <div className="mt-12 sm:mt-16 space-y-12 sm:space-y-16">
+        <div className="mt-8 sm:mt-10 space-y-8 sm:space-y-10">
           {EDUCATION_ENTRIES.map((entry, idx) => {
             const isFocused = idx === activeIdx;
             return (
@@ -97,12 +97,12 @@ export function ChapterEducation() {
                 key={entry.id}
                 onMouseEnter={() => setActiveIdx(idx)}
                 data-testid={`education-entry-${entry.index}`}
-                className={`grid grid-cols-1 lg:grid-cols-12 gap-8 items-start border-b pb-12 transition-colors duration-300 ${
+                className={`grid grid-cols-1 lg:grid-cols-12 gap-6 items-start border-b pb-8 transition-colors duration-300 ${
                   isFocused ? "border-[#F3E9DE]/38" : "border-[#F3E9DE]/18"
                 }`}
               >
                 {/* Oversized Masked Years Column */}
-                <div className="lg:col-span-5 space-y-3">
+                <div className="lg:col-span-5 space-y-2">
                   <div className="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.2em] text-[#F3E9DE]/65 tabular-nums">
                     <span>Entry {entry.index} / 0{EDUCATION_ENTRIES.length}</span>
                     <span aria-hidden="true">·</span>
@@ -117,7 +117,7 @@ export function ChapterEducation() {
                       className="block leading-[0.88] tracking-[-0.03em] text-[#F3E9DE] tabular-nums will-change-transform"
                       style={{
                         fontFamily: "var(--font-anton), Impact, sans-serif",
-                        fontSize: "clamp(54px, 6.8vw, 108px)",
+                        fontSize: "clamp(48px, 5.8vw, 92px)",
                       }}
                     >
                       {entry.startYear} — {entry.graduationYear}
@@ -126,7 +126,7 @@ export function ChapterEducation() {
                 </div>
 
                 {/* Institution & Details Column */}
-                <div className="lg:col-span-7 space-y-5 lg:border-l lg:border-[#F3E9DE]/18 lg:pl-10">
+                <div className="lg:col-span-7 space-y-3.5 lg:border-l lg:border-[#F3E9DE]/18 lg:pl-8">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <h3

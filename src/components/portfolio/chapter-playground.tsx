@@ -86,9 +86,9 @@ export function ChapterPlayground() {
       id="playground"
       aria-labelledby="playground-heading"
       data-chapter-surface="ivory"
-      className="relative bg-[#F3E9DE] text-[#792B33] pt-16 sm:pt-24 overflow-x-clip"
+      className="relative bg-[#F3E9DE] text-[#792B33] pt-10 sm:pt-14 overflow-x-clip"
     >
-      <div className="page-container pb-20 sm:pb-28">
+      <div className="page-container pb-12 sm:pb-16">
         <ChapterHeading
           id="playground-heading"
           number={PLAYGROUND_CONTENT.chapterNumber}
@@ -103,27 +103,27 @@ export function ChapterPlayground() {
           }
         />
 
-        {/* Curated Asymmetric Exhibition Gallery */}
+        {/* Curated Asymmetric Exhibition Gallery (Balanced 7/5 -> 5/7 -> 6/6, Zero Blank Holes) */}
         <div
           data-testid="playground-asymmetric-grid"
-          className="mt-14 sm:mt-20 grid grid-cols-1 md:grid-cols-12 gap-8 sm:gap-10 items-start"
+          className="mt-8 sm:mt-10 grid grid-cols-1 md:grid-cols-12 gap-5 sm:gap-6 items-stretch"
         >
           {EXPERIMENTS.map((exp) => {
             const isSelected = selected?.id === exp.id;
             return (
               <div
                 key={exp.id}
-                className={`${exp.layout.colSpanClass} ${exp.layout.offsetYClass}`}
+                className={`${exp.layout.colSpanClass} ${exp.layout.offsetYClass} flex`}
               >
                 <button
                   type="button"
                   onClick={() => setSelected(exp)}
                   aria-expanded={isSelected}
                   data-testid={`playground-tile-${exp.code}`}
-                  className="group block w-full text-left cursor-pointer transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-safe:hover:-translate-y-[6px] focus-visible:outline-2 focus-visible:outline-[#792B33] focus-visible:outline-offset-4"
+                  className="group flex w-full text-left cursor-pointer transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-safe:hover:-translate-y-[5px] focus-visible:outline-2 focus-visible:outline-[#792B33] focus-visible:outline-offset-4"
                 >
                   <div
-                    className={`border p-4 sm:p-5 transition-[border-color,background-color,color,box-shadow] duration-300 ${
+                    className={`flex w-full flex-col justify-between border p-3.5 sm:p-4 transition-[border-color,background-color,color,box-shadow] duration-300 ${
                       isSelected
                         ? "border-[#792B33] bg-[#792B33] text-[#F3E9DE] shadow-[0_14px_30px_rgba(121,43,51,0.16)]"
                         : "border-[#792B33]/26 bg-[#F3E9DE] text-[#792B33] group-hover:border-[#792B33] group-hover:shadow-[0_14px_28px_rgba(121,43,51,0.10)]"
@@ -143,50 +143,52 @@ export function ChapterPlayground() {
                       imageAlt={exp.title}
                     />
 
-                    <div className="mt-4 flex items-baseline justify-between gap-3">
-                      <div>
+                    <div className="mt-3.5">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <div>
+                          <span
+                            className={`block font-mono text-[10px] uppercase tracking-[0.16em] ${
+                              isSelected ? "text-[#F3E9DE]/72" : "text-[#792B33]/65"
+                            }`}
+                          >
+                            {exp.code} · {exp.status}
+                          </span>
+                          <h3
+                            className="mt-1 m-0 text-xl sm:text-2xl font-normal uppercase leading-none tracking-[-0.02em]"
+                            style={{ fontFamily: "var(--font-anton), Impact, sans-serif" }}
+                          >
+                            {exp.title}
+                          </h3>
+                        </div>
+
                         <span
-                          className={`block font-mono text-[11px] uppercase tracking-[0.16em] ${
-                            isSelected ? "text-[#F3E9DE]/72" : "text-[#792B33]/65"
+                          aria-hidden="true"
+                          className={`inline-flex h-8 w-8 shrink-0 items-center justify-center border transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ${
+                            isSelected
+                              ? "border-[#F3E9DE]/45 text-[#F3E9DE]"
+                              : "border-[#792B33]/30 text-[#792B33]"
                           }`}
                         >
-                          {exp.code} · {exp.status}
+                          <ArrowUpRight size={14} strokeWidth={1.7} />
                         </span>
-                        <h3
-                          className="mt-1 m-0 text-2xl sm:text-3xl font-normal uppercase leading-none tracking-[-0.02em]"
-                          style={{ fontFamily: "var(--font-anton), Impact, sans-serif" }}
-                        >
-                          {exp.title}
-                        </h3>
                       </div>
 
-                      <span
-                        aria-hidden="true"
-                        className={`inline-flex h-9 w-9 shrink-0 items-center justify-center border transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ${
-                          isSelected
-                            ? "border-[#F3E9DE]/45 text-[#F3E9DE]"
-                            : "border-[#792B33]/30 text-[#792B33]"
+                      <p
+                        className={`mt-2 m-0 text-xs sm:text-sm leading-relaxed ${
+                          isSelected ? "text-[#F3E9DE]/82" : "text-[#792B33]/78"
                         }`}
                       >
-                        <ArrowUpRight size={15} strokeWidth={1.7} />
-                      </span>
+                        {exp.shortDescription}
+                      </p>
+
+                      <p
+                        className={`mt-2.5 m-0 font-mono text-[10px] ${
+                          isSelected ? "text-[#F3E9DE]/68" : "text-[#792B33]/60"
+                        }`}
+                      >
+                        {exp.technologies.join(" · ")}
+                      </p>
                     </div>
-
-                    <p
-                      className={`mt-2.5 m-0 text-sm leading-relaxed ${
-                        isSelected ? "text-[#F3E9DE]/82" : "text-[#792B33]/78"
-                      }`}
-                    >
-                      {exp.shortDescription}
-                    </p>
-
-                    <p
-                      className={`mt-3 m-0 font-mono text-[11px] ${
-                        isSelected ? "text-[#F3E9DE]/68" : "text-[#792B33]/60"
-                      }`}
-                    >
-                      {exp.technologies.join(" · ")}
-                    </p>
                   </div>
                 </button>
               </div>
@@ -199,26 +201,26 @@ export function ChapterPlayground() {
       <div
         ref={transitionRef}
         aria-hidden="true"
-        className="relative h-[220px] sm:h-[260px] w-full overflow-hidden bg-[#F3E9DE]"
+        className="relative h-[112px] sm:h-[132px] w-full overflow-hidden bg-[#F3E9DE]"
       >
         {/* Converging architectural guidelines pulling toward screen center */}
-        <div className="pointer-events-none absolute inset-x-0 top-10 z-[2] flex items-center justify-center gap-6 px-6">
+        <div className="pointer-events-none absolute inset-x-0 top-3.5 z-[2] flex items-center justify-center gap-5 px-6">
           <div
             ref={leftLineRef}
-            className="flex flex-1 items-center justify-end gap-4 will-change-transform"
+            className="flex flex-1 items-center justify-end gap-3 will-change-transform"
           >
-            <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#792B33]/70 whitespace-nowrap">
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#792B33]/70 whitespace-nowrap">
               Curiosity
             </span>
-            <span className="h-px w-full max-w-[320px] bg-[#792B33]/45" />
+            <span className="h-px w-full max-w-[280px] bg-[#792B33]/45" />
           </div>
-          <span className="h-2.5 w-2.5 shrink-0 rotate-45 border border-[#792B33]" />
+          <span className="h-2 w-2 shrink-0 rotate-45 border border-[#792B33]" />
           <div
             ref={rightLineRef}
-            className="flex flex-1 items-center justify-start gap-4 will-change-transform"
+            className="flex flex-1 items-center justify-start gap-3 will-change-transform"
           >
-            <span className="h-px w-full max-w-[320px] bg-[#792B33]/45" />
-            <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#792B33]/70 whitespace-nowrap">
+            <span className="h-px w-full max-w-[280px] bg-[#792B33]/45" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#792B33]/70 whitespace-nowrap">
               Instrument
             </span>
           </div>
@@ -227,9 +229,9 @@ export function ChapterPlayground() {
         {/* Masked geometric Burgundy reveal rising cleanly into Chapter 04 */}
         <div
           ref={maskBoxRef}
-          className="absolute inset-x-0 bottom-0 top-16 z-[3] flex items-end justify-center bg-[#792B33] pb-6 will-change-[clip-path]"
+          className="absolute inset-x-0 bottom-0 top-9 z-[3] flex items-end justify-center bg-[#792B33] pb-3.5 will-change-[clip-path]"
         >
-          <span className="font-mono text-[11px] uppercase tracking-[0.26em] text-[#F3E9DE]/75">
+          <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-[#F3E9DE]/75">
             Next · The Art of Making Things
           </span>
         </div>

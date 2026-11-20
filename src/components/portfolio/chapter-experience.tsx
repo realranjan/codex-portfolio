@@ -17,6 +17,7 @@ import { computeExperienceCameraState } from "@/lib/camera-system";
 import { wrapIndex } from "@/lib/carousel";
 import {
   CameraProgressRule,
+  useIsDesktop,
   usePrefersReducedMotion,
 } from "@/components/portfolio/camera-primitives";
 import {
@@ -55,6 +56,8 @@ export function ChapterExperience() {
   const [mediaSlideByStop, setMediaSlideByStop] = useState<Record<string, number>>({});
   const [reachedSet, setReachedSet] = useState<string[]>([EXPERIENCE_STOPS[0].id]);
   const reducedMotion = usePrefersReducedMotion();
+  const isDesktop = useIsDesktop(1024);
+  const showPinnedDesktop = isDesktop && !reducedMotion;
 
   const waypoints = useMemo(
     () => EXPERIENCE_STOPS.map((stop) => stop.waypoint),
@@ -116,18 +119,15 @@ export function ChapterExperience() {
 
   useIsomorphicLayoutEffect(() => {
     const stageEl = desktopStageRef.current;
-    if (!stageEl || reducedMotion) return;
+    if (!stageEl || !showPinnedDesktop) return;
 
     applyCameraSample(0);
-
-    const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
-    if (!isDesktop) return;
 
     const ctx = gsap.context(() => {
       const st = ScrollTrigger.create({
         trigger: stageEl,
         start: "top top",
-        end: "+=235%",
+        end: "+=165%",
         pin: true,
         scrub: true,
         anticipatePin: 1,
@@ -143,7 +143,7 @@ export function ChapterExperience() {
       triggerRef.current = null;
       ctx.revert();
     };
-  }, [applyCameraSample, reducedMotion]);
+  }, [applyCameraSample, showPinnedDesktop]);
 
   const handleSelectStop = useCallback(
     (idx: number) => {
@@ -182,42 +182,76 @@ export function ChapterExperience() {
       id="experience"
       aria-labelledby="experience-heading"
       data-chapter-surface="ivory"
-      className="relative bg-[#F3E9DE] text-[#792B33] pt-24 sm:pt-28 overflow-x-clip"
+      className="relative bg-[#F3E9DE] text-[#792B33] overflow-x-clip"
     >
-      {/* Chapter Header */}
-      <div className="page-container pb-10 sm:pb-14">
-        <ChapterHeading
-          id="experience-heading"
-          number={EXPERIENCE_CONTENT.chapterNumber}
-          label={EXPERIENCE_CONTENT.chapterLabel}
-          heading={EXPERIENCE_CONTENT.heading}
-          supportingText={EXPERIENCE_CONTENT.supportingText}
-          surface="ivory"
-          action={
-            <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#792B33]/72">
-              {reducedMotion ? "Accessible Timeline" : "Scroll Route or Jump to Any Stop"}
-            </span>
-          }
-        />
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════════════════════
-          DESKTOP PINNED CAMERA-TRACKED AIRPLANE ROUTE (>= 1024px)
-         ═══════════════════════════════════════════════════════════════════════ */}
-      <div
-        className={reducedMotion ? "hidden" : "hidden lg:block"}
-        aria-hidden={reducedMotion || undefined}
-      >
+      <div className={showPinnedDesktop ? "block" : "hidden"}>
         <div
           ref={desktopStageRef}
-          data-testid="experience-airplane-stage"
+          data-testid={showPinnedDesktop ? "experience-airplane-stage" : undefined}
           data-camera-pan-x="0"
           data-camera-pan-y="0"
           data-active-stop="1"
-          className="flex min-h-[100svh] w-full flex-col justify-between bg-[#F3E9DE] pt-20 pb-8"
+          className={
+            showPinnedDesktop
+              ? "flex h-[100svh] min-h-[680px] w-full flex-col justify-between bg-[#F3E9DE] pt-[76px] pb-4"
+              : ""
+          }
         >
-          {/* Top direct milestone navigator + hairline camera route progress */}
-          <div className="page-container flex items-center justify-between gap-4 border-b border-[#792B33]/18 pb-4">
+          {showPinnedDesktop && (
+            <>
+          {/* Compact Integrated Editorial Header + Direct Milestone Navigator */}
+          <div className="page-container space-y-3 border-b border-[#792B33]/18 pb-3">
+            <div className="flex items-end justify-between gap-6">
+              <div className="min-w-0">
+                <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.2em] text-[#792B33]/68 tabular-nums">
+                  <span>Chapter {EXPERIENCE_CONTENT.chapterNumber}</span>
+                  <span aria-hidden="true">·</span>
+                  <span>{EXPERIENCE_CONTENT.chapterLabel}</span>
+                </div>
+                <div className="mt-1 flex items-baseline gap-5">
+                  <h2
+                    id="experience-heading"
+                    className="m-0 font-normal uppercase leading-[0.9] tracking-[-0.03em] text-[#792B33]"
+                    style={{
+                      fontFamily: "var(--font-anton), Impact, sans-serif",
+                      fontSize: "clamp(32px, 3.4vw, 48px)",
+                    }}
+                  >
+                    {EXPERIENCE_CONTENT.heading}
+                  </h2>
+                  <p className="m-0 hidden xl:block text-sm text-[#792B33]/72 max-w-[42ch] truncate">
+                    {EXPERIENCE_CONTENT.supportingText}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <CameraProgressRule
+                  barRef={progressBarRef}
+                  surface="ivory"
+                  className="w-28 xl:w-36"
+                />
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectStop(activeIndex - 1)}
+                    aria-label="Previous company stop"
+                    className="inline-flex h-9 w-9 items-center justify-center border border-[#792B33]/28 text-[#792B33] hover:bg-[#792B33] hover:text-[#F3E9DE] cursor-pointer"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSelectStop(activeIndex + 1)}
+                    aria-label="Next company stop"
+                    className="inline-flex h-9 w-9 items-center justify-center border border-[#792B33]/28 text-[#792B33] hover:bg-[#792B33] hover:text-[#F3E9DE] cursor-pointer"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div className="flex items-center gap-2" role="tablist" aria-label="Experience milestones">
               {EXPERIENCE_STOPS.map((stop, idx) => {
                 const isCurrent = idx === activeIndex;
@@ -228,7 +262,7 @@ export function ChapterExperience() {
                     role="tab"
                     aria-selected={isCurrent}
                     onClick={() => handleSelectStop(idx)}
-                    className={`inline-flex h-10 items-center gap-2 px-3.5 font-mono text-xs uppercase tracking-[0.14em] transition-colors cursor-pointer ${
+                    className={`inline-flex h-8 items-center gap-2 px-3 font-mono text-[11px] uppercase tracking-[0.14em] transition-colors cursor-pointer ${
                       isCurrent
                         ? "bg-[#792B33] text-[#F3E9DE]"
                         : "border border-[#792B33]/25 text-[#792B33] hover:border-[#792B33]"
@@ -240,36 +274,10 @@ export function ChapterExperience() {
                 );
               })}
             </div>
-
-            <div className="flex items-center gap-4">
-              <CameraProgressRule
-                barRef={progressBarRef}
-                surface="ivory"
-                className="w-28 xl:w-36"
-              />
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => handleSelectStop(activeIndex - 1)}
-                  aria-label="Previous company stop"
-                  className="inline-flex h-10 w-10 items-center justify-center border border-[#792B33]/28 text-[#792B33] hover:bg-[#792B33] hover:text-[#F3E9DE] cursor-pointer"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSelectStop(activeIndex + 1)}
-                  aria-label="Next company stop"
-                  className="inline-flex h-10 w-10 items-center justify-center border border-[#792B33]/28 text-[#792B33] hover:bg-[#792B33] hover:text-[#F3E9DE] cursor-pointer"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
           </div>
 
           {/* Center split: Camera-Tracked Curved SVG Route (7 cols) + Stationary HTML Details Panel (5 cols) */}
-          <div className="page-container my-auto grid grid-cols-12 gap-8 items-center py-4">
+          <div className="page-container my-auto grid grid-cols-12 gap-6 items-center py-2">
             {/* Left: Camera Viewport tracking the airplane sideways & slightly diagonally */}
             <div className="col-span-7 relative overflow-hidden border border-[#792B33]/20 bg-[#F3E9DE] p-4">
               <svg
@@ -415,7 +423,7 @@ export function ChapterExperience() {
             {/* Right: Stationary, Stable HTML Company Details Panel */}
             <article
               data-testid="experience-active-panel"
-              className="col-span-5 border border-[#792B33]/32 bg-[#F3E9DE] p-6 xl:p-7 space-y-5"
+              className="col-span-5 border border-[#792B33]/32 bg-[#F3E9DE] p-5 space-y-3.5"
             >
               <div className="flex items-start justify-between gap-4 border-b border-[#792B33]/18 pb-4">
                 <div className="min-w-0">
@@ -525,25 +533,37 @@ export function ChapterExperience() {
               </div>
             </article>
           </div>
+            </>
+          )}
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          REDUCED-MOTION ACCESSIBLE VERTICAL TIMELINE
-         ═══════════════════════════════════════════════════════════════════════ */}
-      {reducedMotion ? (
+      {!showPinnedDesktop && (reducedMotion ? (
         <div
           data-testid="experience-accessible-timeline"
-          className="page-container pb-16"
+          className="page-container pt-10 pb-12 space-y-8"
         >
-          <ol className="m-0 list-none border-l border-[#792B33]/30 pl-6 sm:pl-8 space-y-10 p-0">
+          <ChapterHeading
+            id="experience-heading"
+            number={EXPERIENCE_CONTENT.chapterNumber}
+            label={EXPERIENCE_CONTENT.chapterLabel}
+            heading={EXPERIENCE_CONTENT.heading}
+            supportingText={EXPERIENCE_CONTENT.supportingText}
+            surface="ivory"
+            action={
+              <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#792B33]/72">
+                Accessible Timeline
+              </span>
+            }
+          />
+          <ol className="m-0 list-none border-l border-[#792B33]/30 pl-6 sm:pl-8 space-y-8 p-0">
             {EXPERIENCE_STOPS.map((stop) => (
               <li key={stop.id} className="relative">
                 <span
                   aria-hidden="true"
                   className="absolute -left-[31px] sm:-left-[39px] top-1.5 h-3 w-3 rounded-full bg-[#792B33]"
                 />
-                <article className="border border-[#792B33]/26 bg-[#F3E9DE] p-6 space-y-4">
+                <article className="border border-[#792B33]/26 bg-[#F3E9DE] p-5 space-y-3.5">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#792B33]/68 tabular-nums">
                       Stop {stop.number} · {stop.dates}
@@ -577,16 +597,19 @@ export function ChapterExperience() {
             ))}
           </ol>
         </div>
-      ) : null}
-
-      {/* ═══════════════════════════════════════════════════════════════════════
-          MOBILE / TABLET SIMPLIFIED ROUTE (Natural Scrolling, Zero Pinning)
-         ═══════════════════════════════════════════════════════════════════════ */}
-      {!reducedMotion ? (
+      ) : (
         <div
           data-testid="experience-mobile-journey"
-          className="lg:hidden page-container pb-16 space-y-6"
+          className="page-container pt-10 pb-10 space-y-5"
         >
+          <ChapterHeading
+            id="experience-heading"
+            number={EXPERIENCE_CONTENT.chapterNumber}
+            label={EXPERIENCE_CONTENT.chapterLabel}
+            heading={EXPERIENCE_CONTENT.heading}
+            supportingText={EXPERIENCE_CONTENT.supportingText}
+            surface="ivory"
+          />
           <div className="border border-[#792B33]/22 p-4 space-y-3">
             <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.16em] text-[#792B33]/72">
               <span>
@@ -668,19 +691,19 @@ export function ChapterExperience() {
             </p>
           </article>
         </div>
-      ) : null}
+      ))}
 
       {/* ── TRANSITION TO CHAPTER 06 (EDUCATION): ROUTE STRAIGHTENS INTO TYPOGRAPHIC LINE ── */}
       <div aria-hidden="true" className="relative w-full">
-        <div className="flex flex-col items-center bg-[#F3E9DE] pt-6">
-          <span className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#792B33]/65">
+        <div className="flex flex-col items-center bg-[#F3E9DE] pt-3">
+          <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[#792B33]/65">
             Route Settling · Roots
           </span>
-          <div className="mt-4 h-20 w-px bg-[#792B33]/60" />
+          <div className="mt-2 h-8 w-px bg-[#792B33]/60" />
         </div>
-        <div className="flex flex-col items-center bg-[#792B33] pb-4">
-          <div className="h-16 w-px bg-[#F3E9DE]/55" />
-          <span className="mt-2 h-2 w-2 rotate-45 border border-[#F3E9DE]" />
+        <div className="flex flex-col items-center bg-[#792B33] pb-2">
+          <div className="h-7 w-px bg-[#F3E9DE]/55" />
+          <span className="mt-1.5 h-1.5 w-1.5 rotate-45 border border-[#F3E9DE]" />
         </div>
       </div>
     </section>
