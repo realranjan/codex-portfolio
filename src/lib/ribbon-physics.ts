@@ -163,12 +163,19 @@ export function stepRibbonKinematics(
     };
   }
 
-  const targetVelocity =
-    params.isPaused || params.isHoveredOrFocused
-      ? 0
-      : params.baseSpeedPxPerSec * params.direction * params.speedMultiplier;
+  if (params.isHoveredOrFocused) {
+    return {
+      offsetPx: wrapRibbonOffset(state.offsetPx, params.periodPx),
+      velocityPxPerSec: 0,
+      impulsePxPerSec: 0,
+    };
+  }
 
-  // Exponential smoothing (~180ms settle time)
+  const targetVelocity = params.isPaused
+    ? 0
+    : params.baseSpeedPxPerSec * params.direction * params.speedMultiplier;
+
+  // Exponential smoothing (~180ms settle time) when accelerating back to cruise speed
   const easeAlpha = 1 - Math.exp(-9.5 * dt);
   let nextVelocity =
     state.velocityPxPerSec + (targetVelocity - state.velocityPxPerSec) * easeAlpha;

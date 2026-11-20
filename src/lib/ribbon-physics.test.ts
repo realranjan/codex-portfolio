@@ -64,7 +64,22 @@ test("stepRibbonKinematics cruises smoothly, eases to 0 on hover, and decays fli
   }
   assert.ok(state.offsetPx < -44 && state.offsetPx > -48);
 
-  // Hover should smoothly decelerate velocity toward 0 within ~0.6s
+  // Hover pauses immediately with zero drift under the cursor
+  const preHoverOffset = state.offsetPx;
+  state = stepRibbonKinematics(state, {
+    periodPx: 2000,
+    baseSpeedPxPerSec: 46,
+    direction: -1,
+    speedMultiplier: 1,
+    isPaused: false,
+    isHoveredOrFocused: true,
+    isDragging: false,
+    dtSec: 1 / 60,
+  });
+  assert.equal(state.velocityPxPerSec, 0);
+  assert.equal(state.offsetPx, preHoverOffset);
+
+  // Moving off hover smoothly accelerates back into cruise speed
   for (let i = 0; i < 40; i += 1) {
     state = stepRibbonKinematics(state, {
       periodPx: 2000,
@@ -72,12 +87,12 @@ test("stepRibbonKinematics cruises smoothly, eases to 0 on hover, and decays fli
       direction: -1,
       speedMultiplier: 1,
       isPaused: false,
-      isHoveredOrFocused: true,
+      isHoveredOrFocused: false,
       isDragging: false,
       dtSec: 1 / 60,
     });
   }
-  assert.ok(Math.abs(state.velocityPxPerSec) < 1);
+  assert.ok(state.velocityPxPerSec < -44 && state.offsetPx < preHoverOffset);
 
   // Fling impulse decays cleanly back toward 0
   let flung = { offsetPx: -200, velocityPxPerSec: 0, impulsePxPerSec: 600 };
