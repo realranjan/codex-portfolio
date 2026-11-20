@@ -7,11 +7,11 @@ import FlowArt, {
 } from "@/components/ui/story-scroll";
 import { ABOUT_CONTENT } from "@/data/portfolio-content";
 
-import koiArtwork from "@/assets/images/jp_flow_koi_curiosity_1795184918518.jpg";
-import craneArtwork from "@/assets/images/jp_flow_crane_pine_1795184921090.jpg";
-import waveArtwork from "@/assets/images/jp_flow_indigo_wave_1795184920745.jpg";
-import lanternArtwork from "@/assets/images/jp_flow_autumn_lantern_1795184917772.jpg";
-import camelliaArtwork from "@/assets/images/jp_flow_camellia_moon_1795184930276.jpg";
+import koiArtwork from "@/assets/images/jp_koi_stream_1795198280022.jpg";
+import craneArtwork from "@/assets/images/jp_crane_pine_1795198278729.jpg";
+import waveArtwork from "@/assets/images/jp_indigo_wave_1795198278504.jpg";
+import lanternArtwork from "@/assets/images/jp_autumn_lantern_1795198278348.jpg";
+import camelliaArtwork from "@/assets/images/jp_camellia_moon_1795198277489.jpg";
 
 /**
  * Ultra-fine static paper grain overlay (composited once, zero runtime filter cost).
@@ -178,7 +178,7 @@ export function ChapterAbout() {
               src={koiArtwork}
               alt="Traditional Japanese Nihonga painting of vermilion and gold koi gliding through midnight indigo water with crimson maple leaves"
               caption="Plate I · Koi & Autumn Stream"
-              imageClassName="scale-[1.16] object-cover object-center"
+              imageClassName="scale-[1.15] object-cover object-center"
               edgeFadeColor="rgba(121, 43, 51, 0.34)"
             />
           </div>
@@ -267,8 +267,8 @@ export function ChapterAbout() {
               src={craneArtwork}
               alt="Traditional Japanese Rinpa painting of a red-crowned crane beneath emerald pine boughs and antique gold clouds"
               caption="Plate II · Crane & Black Pine"
-              imageClassName="scale-[1.2] object-cover object-[center_60%]"
-              edgeFadeColor="rgba(23, 19, 21, 0.42)"
+              imageClassName="scale-[1.03] object-cover object-center"
+              edgeFadeColor="rgba(23, 19, 21, 0.36)"
             />
           </div>
 
@@ -360,8 +360,8 @@ export function ChapterAbout() {
               src={waveArtwork}
               alt="Japanese ukiyo-e woodblock print of Prussian-indigo curling waves beneath a warm ochre moon and cliffside vermilion torii"
               caption="Plate III · Moonlit Tide"
-              imageClassName="scale-[1.15] object-cover object-center"
-              edgeFadeColor="rgba(243, 233, 222, 0.22)"
+              imageClassName="scale-[1.14] object-cover object-center"
+              edgeFadeColor="rgba(243, 233, 222, 0.18)"
               isLightSurface
             />
           </div>
@@ -448,8 +448,8 @@ export function ChapterAbout() {
               src={lanternArtwork}
               alt="Japanese shin-hanga woodblock print of scarlet autumn maple branches over a softly glowing mossy granite lantern in indigo rain"
               caption="Plate IV · Autumn Lantern"
-              imageClassName="scale-[1.14] object-cover object-center"
-              edgeFadeColor="rgba(27, 38, 56, 0.36)"
+              imageClassName="scale-[1.03] object-cover object-center"
+              edgeFadeColor="rgba(27, 38, 56, 0.32)"
             />
           </div>
 
@@ -518,8 +518,8 @@ export function ChapterAbout() {
               src={camelliaArtwork}
               alt="Japanese Nihonga illustration of deep crimson camellia blossoms, dark emerald foliage, temple eaves, and a burnished gold crescent moon"
               caption="Plate V · Tsubaki & Crescent Moon"
-              imageClassName="scale-[1.12] object-cover object-center"
-              edgeFadeColor="rgba(121, 43, 51, 0.34)"
+              imageClassName="scale-[1.03] object-cover object-center"
+              edgeFadeColor="rgba(121, 43, 51, 0.3)"
             />
           </div>
 
