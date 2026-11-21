@@ -160,9 +160,7 @@ export function ChapterAbout() {
         {/* Chapter Header Bar */}
         <header className="flex flex-wrap items-end justify-between gap-4 border-b border-[#F3E9DE]/22 pb-4">
           <div>
-            <div className="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.22em] text-[#F3E9DE]/68 tabular-nums">
-              <span>Chapter {ABOUT_CONTENT.chapterNumber}</span>
-              <span aria-hidden="true">·</span>
+            <div className="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.22em] text-[#F3E9DE]/68">
               <span>{ABOUT_CONTENT.chapterLabel}</span>
             </div>
             <h2
@@ -267,8 +265,8 @@ export function ChapterAbout() {
             <div className="mt-9 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 border-t border-[#F3E9DE]/20 pt-6">
               {ABOUT_CONTENT.storyStatements.map((item) => (
                 <div key={item.index} className="flex items-baseline gap-3">
-                  <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#F3E9DE]/55 tabular-nums shrink-0">
-                    {item.index}
+                  <span aria-hidden="true" className="font-mono text-xs text-[#F3E9DE]/55 shrink-0">
+                    —
                   </span>
                   <span className="text-sm sm:text-[15px] leading-snug text-[#F3E9DE]/88">
                     {item.text}

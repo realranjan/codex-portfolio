@@ -77,11 +77,6 @@ export function ChapterPlayground() {
           heading={PLAYGROUND_CONTENT.heading}
           supportingText={PLAYGROUND_CONTENT.supportingText}
           surface="ivory"
-          action={
-            <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#792B33]/72 md:mr-36 lg:mr-44">
-              06 Experiments
-            </span>
-          }
         />
 
         {/* Curated Asymmetric Exhibition Gallery (Balanced 7/5 -> 5/7 -> 6/6, Zero Blank Holes) */}
@@ -112,7 +107,6 @@ export function ChapterPlayground() {
                   >
                     <PlaceholderVisual
                       surface={isSelected ? "burgundy" : "ivory"}
-                      number={exp.code}
                       label={
                         exp.mediaKind === "3d"
                           ? "3D ASSET COMING SOON"
@@ -132,7 +126,7 @@ export function ChapterPlayground() {
                               isSelected ? "text-[#F3E9DE]/72" : "text-[#792B33]/65"
                             }`}
                           >
-                            {exp.code} · {exp.status}
+                            {exp.status}
                           </span>
                           <h3
                             className="mt-1 m-0 text-xl sm:text-2xl font-normal uppercase leading-none tracking-[-0.02em]"
@@ -193,7 +187,7 @@ export function ChapterPlayground() {
           <div className="relative h-full w-full max-w-xl overflow-y-auto border-l border-[#792B33]/25 bg-[#F3E9DE] p-6 sm:p-10 text-[#792B33]">
             <div className="flex items-center justify-between border-b border-[#792B33]/20 pb-4">
               <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#792B33]/72">
-                Playground · {selected.code}
+                Playground · {selected.category}
               </span>
               <button
                 ref={closeRef}
@@ -223,7 +217,6 @@ export function ChapterPlayground() {
 
               <PlaceholderVisual
                 surface="ivory"
-                number={selected.code}
                 label={
                   selected.mediaKind === "3d"
                     ? "3D ASSET COMING SOON"

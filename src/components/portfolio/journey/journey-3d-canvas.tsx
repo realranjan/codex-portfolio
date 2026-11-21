@@ -860,10 +860,6 @@ export const Journey3DCanvas = forwardRef<
                       : "bg-[#F3E9DE]/88 text-[#522429]/85 border-[#792B33]/28 group-hover:border-[#792B33] group-hover:text-[#792B33]"
                 }`}
               >
-                <span className="tabular-nums font-semibold">
-                  {milestone.number}
-                </span>
-                <span aria-hidden="true">·</span>
                 <span>{milestone.companyName}</span>
               </span>
               <span

@@ -10,7 +10,6 @@ import {
 } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   JOURNEY_ARTWORK,
   JOURNEY_INTRO,
@@ -273,15 +272,6 @@ export function JourneyScene() {
     setMobileInspectedId((prev) => (prev === milestone.id ? null : milestone.id));
   }, []);
 
-  const handleMobileStep = useCallback((delta: -1 | 1) => {
-    setMobileStopIdx((prev) => {
-      const next = Math.max(0, Math.min(JOURNEY_MILESTONES.length - 1, prev + delta));
-      const nextMilestone = JOURNEY_MILESTONES[next];
-      if (nextMilestone) setMobileInspectedId(nextMilestone.id);
-      return next;
-    });
-  }, []);
-
   return (
     <div ref={rootRef} className="relative w-full">
       {/* ═══════════════════════════════════════════════════════════════════════════
@@ -322,8 +312,8 @@ export function JourneyScene() {
                 style={{ zIndex: 25 }}
                 className="pointer-events-none absolute left-[max(40px,5vw)] top-[96px] max-w-[540px] will-change-transform"
               >
-                <p className="m-0 font-mono text-[11px] uppercase tracking-[0.22em] text-[#792B33]/72 tabular-nums">
-                  Chapter {JOURNEY_INTRO.chapterNumber} · {JOURNEY_INTRO.chapterLabel}
+                <p className="m-0 font-mono text-[11px] uppercase tracking-[0.22em] text-[#792B33]/72">
+                  {JOURNEY_INTRO.chapterLabel}
                 </p>
                 <h2
                   id="experience-heading"
@@ -349,14 +339,13 @@ export function JourneyScene() {
                 variant="overlay"
               />
 
-              {/* Compact 01 / 03 Journey Navigation */}
+              {/* Clean Minimalist Journey Navigation */}
               <JourneyNavigation
                 milestones={JOURNEY_MILESTONES}
                 activeIndex={activeIndex}
                 selectedId={activeDisplayedId}
                 progressBarRef={progressBarRef}
                 onSelectStop={scrollToMilestone}
-                onStepStop={(delta) => scrollToMilestone(activeIndex + delta)}
               />
             </>
           )}
@@ -417,7 +406,7 @@ export function JourneyScene() {
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
                   <div className="md:col-span-5">
                     <p className="m-0 font-mono text-xs uppercase tracking-[0.22em] text-[#792B33]/72 tabular-nums">
-                      {milestone.number} · {milestone.period}
+                      {milestone.period}
                     </p>
                     <h3
                       className="mt-1.5 m-0 font-normal uppercase leading-[0.9] tracking-[-0.02em] text-[#792B33]"
@@ -488,53 +477,25 @@ export function JourneyScene() {
             />
           </div>
 
-          {/* Mobile step controls (01 / 03 + Prev / Next + direct stop selection) */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#792B33]/18 pb-4">
-            <span className="font-mono text-xs uppercase tracking-[0.2em] text-[#792B33] tabular-nums">
-              {String(mobileStopIdx + 1).padStart(2, "0")} /{" "}
-              {String(JOURNEY_MILESTONES.length).padStart(2, "0")}
-            </span>
-
-            <div className="flex items-center gap-3">
-              {JOURNEY_MILESTONES.map((m, idx) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => {
-                    setMobileStopIdx(idx);
-                    setMobileInspectedId(m.id);
-                  }}
-                  className={`min-h-[40px] px-1 font-mono text-[11px] uppercase tracking-[0.14em] whitespace-nowrap cursor-pointer transition-colors ${
-                    idx === mobileStopIdx
-                      ? "text-[#792B33] font-semibold underline underline-offset-4"
-                      : "text-[#792B33]/55 hover:text-[#792B33]"
-                  }`}
-                >
-                  {m.number} {m.companyName}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-2">
+          {/* Mobile company selector (company names only, zero counts/numbers) */}
+          <div className="flex flex-wrap items-center justify-center gap-5 border-b border-[#792B33]/18 pb-4">
+            {JOURNEY_MILESTONES.map((m, idx) => (
               <button
+                key={m.id}
                 type="button"
-                aria-label="Previous milestone"
-                disabled={mobileStopIdx <= 0}
-                onClick={() => handleMobileStep(-1)}
-                className="inline-flex h-10 w-10 items-center justify-center border border-[#792B33]/30 text-[#792B33] disabled:opacity-35 cursor-pointer disabled:cursor-not-allowed"
+                onClick={() => {
+                  setMobileStopIdx(idx);
+                  setMobileInspectedId(m.id);
+                }}
+                className={`min-h-[40px] px-1 font-mono text-[11px] uppercase tracking-[0.14em] whitespace-nowrap cursor-pointer transition-colors ${
+                  idx === mobileStopIdx
+                    ? "text-[#792B33] font-semibold underline underline-offset-4"
+                    : "text-[#792B33]/55 hover:text-[#792B33]"
+                }`}
               >
-                <ChevronLeft size={16} />
+                {m.companyName}
               </button>
-              <button
-                type="button"
-                aria-label="Next milestone"
-                disabled={mobileStopIdx >= JOURNEY_MILESTONES.length - 1}
-                onClick={() => handleMobileStep(1)}
-                className="inline-flex h-10 w-10 items-center justify-center border border-[#792B33]/30 text-[#792B33] disabled:opacity-35 cursor-pointer disabled:cursor-not-allowed"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
+            ))}
           </div>
 
           {/* Inline borderless company typography beneath the 3D mountain window */}

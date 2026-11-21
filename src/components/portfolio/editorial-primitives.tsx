@@ -5,7 +5,7 @@ import type { ChapterSurface } from "@/data/portfolio-content";
 
 interface ChapterHeadingProps {
   id: string;
-  number: string;
+  number?: string;
   label: string;
   heading: string;
   supportingText?: string;
@@ -21,7 +21,6 @@ interface ChapterHeadingProps {
  */
 export function ChapterHeading({
   id,
-  number,
   label,
   heading,
   supportingText,
@@ -42,15 +41,11 @@ export function ChapterHeading({
       } ${className}`}
     >
       <div
-        className={`mb-3 flex flex-wrap items-center gap-3 text-xs font-mono uppercase tracking-[0.2em] tabular-nums ${muted} ${
+        className={`mb-3 flex flex-wrap items-center gap-3 text-xs font-mono uppercase tracking-[0.2em] ${muted} ${
           align === "center" ? "justify-center" : "justify-between"
         }`}
       >
-        <span className="inline-flex items-center gap-3">
-          <span className={`font-medium ${ink}`}>Chapter {number}</span>
-          <span aria-hidden="true">·</span>
-          <span>{label}</span>
-        </span>
+        <span className={`font-medium ${ink}`}>{label}</span>
         {action && align !== "center" && <div>{action}</div>}
       </div>
 

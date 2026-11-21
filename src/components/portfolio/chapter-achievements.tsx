@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowUpRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import {
   ACHIEVEMENTS,
   ACHIEVEMENTS_CONTENT,
@@ -30,24 +30,15 @@ type TabKind = "achievements" | "certifications";
 export function ChapterAchievements() {
   const [activeTab, setActiveTab] = useState<TabKind>("achievements");
   const [activeIndex, setActiveIndex] = useState(0);
-  const [galleryIdxByItem, setGalleryIdxByItem] = useState<Record<string, number>>({});
 
   const items = activeTab === "achievements" ? ACHIEVEMENTS : CERTIFICATIONS;
   const count = items.length;
   const safeIndex = wrapIndex(activeIndex, count);
-  const activeItem = items[safeIndex] ?? items[0];
 
   const handleSwitchTab = (nextTab: TabKind) => {
     setActiveTab(nextTab);
     setActiveIndex(0);
   };
-
-  const stepGallery = (delta: number) => {
-    setActiveIndex((prev) => wrapIndex(prev + delta, count));
-  };
-
-  const activeMediaIdx = galleryIdxByItem[activeItem.id] ?? 0;
-  const activeMedia = activeItem.gallery[activeMediaIdx] ?? activeItem.gallery[0];
 
   return (
     <section
@@ -95,7 +86,7 @@ export function ChapterAchievements() {
                     : "text-[#F3E9DE]/78 hover:text-[#F3E9DE]"
                 }`}
               >
-                Achievements · 0{ACHIEVEMENTS.length}
+                Achievements
               </button>
               <button
                 type="button"
@@ -109,7 +100,7 @@ export function ChapterAchievements() {
                     : "text-[#F3E9DE]/78 hover:text-[#F3E9DE]"
                 }`}
               >
-                Certifications · 0{CERTIFICATIONS.length}
+                Certifications
               </button>
             </div>
           }
@@ -120,11 +111,10 @@ export function ChapterAchievements() {
           data-testid="achievements-layered-gallery"
           className="relative mt-8 sm:mt-10"
         >
-          <div className="relative hidden md:block h-[410px] lg:h-[430px] w-full overflow-visible">
+          <div className="relative hidden md:block h-[390px] lg:h-[410px] w-full overflow-visible">
             {items.map((item, idx) => {
               const state = computeSpatialSlideState(idx, safeIndex, count);
-              const mediaIdx = galleryIdxByItem[item.id] ?? 0;
-              const currentSlide = item.gallery[mediaIdx] ?? item.gallery[0];
+              const currentSlide = item.gallery[0];
 
               return (
                 <article
@@ -150,69 +140,26 @@ export function ChapterAchievements() {
                         : "border-[#F3E9DE]/22"
                     }`}
                   >
-                    {/* Left: Oversized Number + Certificate/Achievement Preview */}
-                    <div className="col-span-6 border-r border-[#F3E9DE]/18 p-6 flex flex-col justify-between gap-4">
+                    {/* Left: Certificate/Achievement Preview */}
+                    <div className="col-span-6 border-r border-[#F3E9DE]/18 p-6 flex flex-col justify-center">
                       <PlaceholderVisual
                         surface="burgundy"
-                        number={item.number}
                         label={currentSlide?.label ?? item.previewLabel}
                         sublabel={item.category}
                         aspectClass="aspect-[4/3]"
                         imageUrl={currentSlide?.imageUrl ?? null}
                       />
-
-                      {item.gallery.length > 1 && state.isActive && (
-                        <div className="flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.14em] text-[#F3E9DE]/68">
-                          <span>
-                            Preview 0{mediaIdx + 1} / 0{item.gallery.length}
-                          </span>
-                          <div className="flex gap-1">
-                            {item.gallery.map((g, gIdx) => (
-                              <button
-                                key={g.id}
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setGalleryIdxByItem((prev) => ({
-                                    ...prev,
-                                    [item.id]: gIdx,
-                                  }));
-                                }}
-                                aria-label={`Show preview ${gIdx + 1} for ${item.title}`}
-                                className={`h-7 px-2 font-mono text-[11px] cursor-pointer ${
-                                  gIdx === mediaIdx
-                                    ? "bg-[#F3E9DE] text-[#792B33]"
-                                    : "border border-[#F3E9DE]/28 text-[#F3E9DE]"
-                                }`}
-                              >
-                                0{gIdx + 1}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </div>
 
                     {/* Right: Editorial Details */}
                     <div className="col-span-6 p-6 lg:p-8 flex flex-col justify-between">
                       <div>
-                        <div className="flex items-baseline justify-between gap-3">
-                          <span
-                            className="leading-none tracking-[-0.04em] text-[#F3E9DE]"
-                            style={{
-                              fontFamily: "var(--font-anton), Impact, sans-serif",
-                              fontSize: "clamp(48px, 5vw, 76px)",
-                            }}
-                          >
-                            {item.number}
-                          </span>
-                          <span className="font-mono text-xs uppercase tracking-[0.16em] text-[#F3E9DE]/72 tabular-nums">
-                            {item.year}
-                          </span>
-                        </div>
+                        <span className="font-mono text-xs uppercase tracking-[0.16em] text-[#F3E9DE]/72 tabular-nums">
+                          {item.year}
+                        </span>
 
                         <h3
-                          className="mt-5 m-0 font-normal uppercase leading-[0.96] tracking-[-0.02em] text-[#F3E9DE]"
+                          className="mt-3 m-0 font-normal uppercase leading-[0.96] tracking-[-0.02em] text-[#F3E9DE]"
                           style={{
                             fontFamily: "var(--font-anton), Impact, sans-serif",
                             fontSize: "clamp(28px, 2.8vw, 42px)",
@@ -258,89 +205,49 @@ export function ChapterAchievements() {
             })}
           </div>
 
-          {/* Mobile Accessible Single-Focus Card */}
-          <div className="md:hidden border border-[#F3E9DE]/32 p-5 space-y-5">
-            <div className="flex items-baseline justify-between">
-              <span
-                className="text-5xl leading-none text-[#F3E9DE]"
-                style={{ fontFamily: "var(--font-anton), Impact, sans-serif" }}
-              >
-                {activeItem.number}
-              </span>
-              <span className="font-mono text-xs text-[#F3E9DE]/72 tabular-nums">
-                {activeItem.year}
-              </span>
-            </div>
-
-            <PlaceholderVisual
-              surface="burgundy"
-              number={activeItem.number}
-              label={activeMedia?.label ?? activeItem.previewLabel}
-              sublabel={activeItem.category}
-              aspectClass="aspect-[4/3]"
-              imageUrl={activeMedia?.imageUrl ?? null}
-            />
-
-            <div>
-              <h3
-                className="m-0 text-3xl uppercase leading-none text-[#F3E9DE]"
-                style={{ fontFamily: "var(--font-anton), Impact, sans-serif" }}
-              >
-                {activeItem.title}
-              </h3>
-              <p className="mt-1.5 m-0 font-mono text-xs text-[#F3E9DE]/70">
-                {activeItem.issuer}
-              </p>
-              <p className="mt-3 m-0 text-sm leading-relaxed text-[#F3E9DE]/82">
-                {activeItem.description}
-              </p>
-            </div>
-          </div>
-
-          {/* Navigation Bar */}
-          <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-t border-[#F3E9DE]/20 pt-4">
-            <div className="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.18em] text-[#F3E9DE]/78 tabular-nums">
-              <span>
-                {activeItem.number} / 00{count}
-              </span>
-              <span aria-hidden="true">·</span>
-              <span>{activeItem.title}</span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {items.map((item, idx) => (
-                <button
+          {/* Mobile Accessible Stacked Cards (zero pagination buttons needed) */}
+          <div className="md:hidden space-y-5">
+            {items.map((item) => {
+              const firstSlide = item.gallery[0];
+              return (
+                <article
                   key={item.id}
-                  type="button"
-                  onClick={() => setActiveIndex(idx)}
-                  aria-label={`Focus ${item.title}`}
-                  aria-pressed={idx === safeIndex}
-                  className={`h-10 min-w-[44px] px-2 font-mono text-xs tabular-nums transition-colors cursor-pointer ${
-                    idx === safeIndex
-                      ? "bg-[#F3E9DE] text-[#792B33]"
-                      : "border border-[#F3E9DE]/30 text-[#F3E9DE] hover:border-[#F3E9DE]"
-                  }`}
+                  className="border border-[#F3E9DE]/32 p-5 space-y-4"
                 >
-                  {item.number}
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => stepGallery(-1)}
-                aria-label="Previous item"
-                className="inline-flex h-10 w-10 items-center justify-center border border-[#F3E9DE]/32 text-[#F3E9DE] hover:bg-[#F3E9DE] hover:text-[#792B33] cursor-pointer"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <button
-                type="button"
-                onClick={() => stepGallery(1)}
-                aria-label="Next item"
-                className="inline-flex h-10 w-10 items-center justify-center border border-[#F3E9DE]/32 text-[#F3E9DE] hover:bg-[#F3E9DE] hover:text-[#792B33] cursor-pointer"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
+                  <div className="flex items-baseline justify-between">
+                    <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#F3E9DE]/68">
+                      {item.category}
+                    </span>
+                    <span className="font-mono text-xs text-[#F3E9DE]/72 tabular-nums">
+                      {item.year}
+                    </span>
+                  </div>
+
+                  <PlaceholderVisual
+                    surface="burgundy"
+                    label={firstSlide?.label ?? item.previewLabel}
+                    sublabel={item.category}
+                    aspectClass="aspect-[4/3]"
+                    imageUrl={firstSlide?.imageUrl ?? null}
+                  />
+
+                  <div>
+                    <h3
+                      className="m-0 text-3xl uppercase leading-none text-[#F3E9DE]"
+                      style={{ fontFamily: "var(--font-anton), Impact, sans-serif" }}
+                    >
+                      {item.title}
+                    </h3>
+                    <p className="mt-1.5 m-0 font-mono text-xs text-[#F3E9DE]/70">
+                      {item.issuer}
+                    </p>
+                    <p className="mt-3 m-0 text-sm leading-relaxed text-[#F3E9DE]/82">
+                      {item.description}
+                    </p>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </div>
       </div>

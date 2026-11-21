@@ -82,25 +82,6 @@ export function ChapterEducation() {
           label={EDUCATION_CONTENT.chapterLabel}
           heading={EDUCATION_CONTENT.heading}
           surface="burgundy"
-          action={
-            <div className="flex items-center gap-2 font-mono text-xs tabular-nums">
-              {EDUCATION_ENTRIES.map((entry, idx) => (
-                <button
-                  key={entry.id}
-                  type="button"
-                  onClick={() => setActiveIdx(idx)}
-                  aria-pressed={activeIdx === idx}
-                  className={`h-8 px-2.5 transition-colors cursor-pointer ${
-                    activeIdx === idx
-                      ? "bg-[#F3E9DE] text-[#792B33]"
-                      : "border border-[#F3E9DE]/30 text-[#F3E9DE]/75 hover:border-[#F3E9DE]"
-                  }`}
-                >
-                  {entry.index}
-                </button>
-              ))}
-            </div>
-          }
         />
 
         {/* Restrained Oversized Year Editorial Entries (Visual Rest) */}
@@ -118,9 +99,7 @@ export function ChapterEducation() {
               >
                 {/* Oversized Masked Years Column */}
                 <div className="lg:col-span-5 space-y-2">
-                  <div className="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.2em] text-[#F3E9DE]/65 tabular-nums">
-                    <span>Entry {entry.index} / 0{EDUCATION_ENTRIES.length}</span>
-                    <span aria-hidden="true">·</span>
+                  <div className="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.2em] text-[#F3E9DE]/65">
                     <span>{entry.location}</span>
                   </div>
 

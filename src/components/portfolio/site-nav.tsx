@@ -31,8 +31,6 @@ export function SiteNav({ onOpenResume }: SiteNavProps) {
     (PRIMARY_NAV_CHAPTERS as readonly string[]).includes(ch.id)
   );
 
-  const activeChapter = CHAPTERS.find((ch) => ch.id === activeId) ?? null;
-
   useEffect(() => {
     const onScroll = () => {
       const y = window.scrollY;
@@ -188,9 +186,7 @@ export function SiteNav({ onOpenResume }: SiteNavProps) {
                   : "border-[#792B33]/34 text-[#792B33] hover:bg-[#792B33] hover:text-[#F3E9DE]"
               }`}
             >
-              <span className="tabular-nums">
-                {activeChapter ? `${activeChapter.number} / 08` : "Chapters"}
-              </span>
+              <span>Chapters</span>
               {menuOpen ? (
                 <X size={15} strokeWidth={1.7} aria-hidden="true" />
               ) : (
@@ -210,7 +206,7 @@ export function SiteNav({ onOpenResume }: SiteNavProps) {
           >
             <div className="page-container py-6 sm:py-8">
               <div className="mb-4 flex items-center justify-between font-mono text-[11px] uppercase tracking-[0.2em] text-[#792B33]/65">
-                <span>Portfolio Chapters · 01 — 08</span>
+                <span>Portfolio Chapters</span>
                 <span>Select to jump</span>
               </div>
 
@@ -231,12 +227,7 @@ export function SiteNav({ onOpenResume }: SiteNavProps) {
                           : "text-[#792B33] hover:bg-[#792B33]/[0.07]"
                       }`}
                     >
-                      <span className="flex items-baseline gap-3">
-                        <span className="font-mono text-xs tabular-nums opacity-72">
-                          {ch.number}
-                        </span>
-                        <span className="text-sm font-medium">{ch.label}</span>
-                      </span>
+                      <span className="text-sm font-medium">{ch.label}</span>
                       <span className="font-mono text-[10px] uppercase tracking-[0.14em] opacity-60">
                         {ch.surface}
                       </span>
@@ -254,7 +245,7 @@ export function SiteNav({ onOpenResume }: SiteNavProps) {
                   }}
                   className="font-mono text-xs uppercase tracking-[0.16em] text-[#792B33]/75 no-underline hover:text-[#792B33]"
                 >
-                  00 · Return to Opening Hero
+                  Return to Opening Hero
                 </a>
 
                 <button

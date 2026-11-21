@@ -64,7 +64,7 @@ function ProjectTumblePlate({
       data-active={isActive ? "true" : "false"}
       className="relative flex h-full w-full flex-col bg-[#F3E9DE] text-[#792B33]"
     >
-      {/* Top Archival Folio Tab Bar — receding cards show title on peeking tab; active plate avoids repeating its display heading */}
+      {/* Top Archival Folio Tab Bar — shows project title & category without numeric counters */}
       <div
         className={`flex shrink-0 items-center justify-between gap-3 border-b border-[#792B33]/22 ${
           compact ? "h-7 px-3" : "h-9 px-4"
@@ -72,29 +72,12 @@ function ProjectTumblePlate({
       >
         <div className="flex items-center gap-2 min-w-0">
           <span
-            className={`font-mono font-semibold tabular-nums tracking-[0.14em] ${
-              compact ? "text-[10px]" : "text-[11px]"
-            }`}
+            className={`truncate font-mono uppercase tracking-[0.14em] ${
+              compact ? "text-[9px]" : "text-[11px]"
+            } ${isActive ? "text-[#F3E9DE]" : "text-[#792B33]/88"}`}
           >
-            {project.number}
+            {project.title}
           </span>
-          {(!isActive || hasImage) && (
-            <>
-              <span
-                aria-hidden="true"
-                className={isActive ? "text-[#F3E9DE]/40" : "text-[#792B33]/35"}
-              >
-                ·
-              </span>
-              <span
-                className={`truncate font-mono uppercase tracking-[0.14em] ${
-                  compact ? "text-[9px]" : "text-[11px]"
-                } ${isActive ? "text-[#F3E9DE]" : "text-[#792B33]/88"}`}
-              >
-                {project.title}
-              </span>
-            </>
-          )}
         </div>
 
         <span
@@ -224,7 +207,6 @@ export function ChapterProjects() {
   const lastTriggerRef = useRef<HTMLElement | null>(null);
 
   const count = PROJECTS.length;
-  const activeProject = PROJECTS[activeIndex] ?? PROJECTS[0];
   const openProject: PortfolioProject | null =
     openProjectIndex !== null ? (PROJECTS[openProjectIndex] ?? null) : null;
 
@@ -404,9 +386,7 @@ export function ChapterProjects() {
           {/* Compact Editorial Header Strip */}
           <div className="page-container relative z-10 flex items-end justify-between gap-6 border-b border-[#792B33]/18 pb-3.5">
             <div className="min-w-0">
-              <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.2em] text-[#792B33]/68 tabular-nums">
-                <span>Chapter {PROJECTS_CONTENT.chapterNumber}</span>
-                <span aria-hidden="true">·</span>
+              <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.2em] text-[#792B33]/68">
                 <span>{PROJECTS_CONTENT.chapterLabel}</span>
               </div>
               <div className="mt-1 flex items-baseline gap-6">
@@ -438,13 +418,7 @@ export function ChapterProjects() {
                 testId="projects-crane-spot"
                 className="hidden lg:block w-[108px] xl:w-[126px] -my-6 -mr-1 opacity-95"
               />
-              <div className="flex flex-col items-end gap-2 shrink-0">
-                <span
-                  data-testid="projects-camera-counter"
-                  className="font-mono text-xs uppercase tracking-[0.18em] text-[#792B33] tabular-nums"
-                >
-                  {activeProject.number} / 0{count}
-                </span>
+              <div className="flex flex-col items-end justify-end pb-1 shrink-0">
                 <CameraProgressRule
                   barRef={progressBarRef}
                   surface="ivory"
@@ -477,66 +451,8 @@ export function ChapterProjects() {
             />
           </div>
 
-          {/* Bottom Deck Controls Bar (Active project label + deck index controls) */}
-          <div className="page-container relative z-10 flex items-center justify-between gap-4 border-t border-[#792B33]/18 pt-3.5">
-            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-[#792B33]/72 truncate">
-              {activeProject.number} · {activeProject.title}
-            </span>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={(e) => openCaseStudy(activeIndex, e.currentTarget)}
-                aria-label={`Open case study for ${activeProject.title}`}
-                className="mr-2 inline-flex h-9 items-center gap-1.5 border border-[#792B33] bg-[#792B33] px-3.5 font-mono text-[11px] uppercase tracking-[0.14em] text-[#F3E9DE] transition-colors hover:bg-[#F3E9DE] hover:text-[#792B33] cursor-pointer whitespace-nowrap"
-              >
-                <span>Open Case</span>
-                <ArrowUpRight size={13} strokeWidth={1.8} aria-hidden="true" />
-              </button>
-
-              <div className="flex items-center gap-1 mr-1.5" role="group" aria-label="Select project">
-                {PROJECTS.map((p, idx) => {
-                  const isCurrent = idx === activeIndex;
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => navigateToProject(idx)}
-                      aria-label={`Show ${p.title}`}
-                      aria-pressed={isCurrent}
-                      className={`h-9 min-w-[38px] px-2.5 font-mono text-xs tabular-nums transition-colors cursor-pointer ${
-                        isCurrent
-                          ? "bg-[#792B33] text-[#F3E9DE]"
-                          : "border border-[#792B33]/28 text-[#792B33] hover:border-[#792B33]"
-                      }`}
-                    >
-                      {p.number}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => stepProject(-1)}
-                disabled={activeIndex === 0}
-                aria-label="Previous project"
-                className="inline-flex h-9 w-9 items-center justify-center border border-[#792B33]/32 text-[#792B33] transition-colors hover:bg-[#792B33] hover:text-[#F3E9DE] disabled:opacity-35 disabled:pointer-events-none cursor-pointer"
-              >
-                <ChevronLeft size={17} strokeWidth={1.7} />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => stepProject(1)}
-                disabled={activeIndex === count - 1}
-                aria-label="Next project"
-                className="inline-flex h-9 w-9 items-center justify-center border border-[#792B33]/32 text-[#792B33] transition-colors hover:bg-[#792B33] hover:text-[#F3E9DE] disabled:opacity-35 disabled:pointer-events-none cursor-pointer"
-              >
-                <ChevronRight size={17} strokeWidth={1.7} />
-              </button>
-            </div>
-          </div>
+          {/* Clean breathing space — users scroll or click any card directly */}
+          <div aria-hidden="true" className="h-3" />
             </>
           )}
         </div>
@@ -558,18 +474,15 @@ export function ChapterProjects() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {PROJECTS.map((project, idx) => (
-              <article
+              <button
                 key={project.id}
-                className="border border-[#792B33]/30 bg-[#F3E9DE] p-6 flex flex-col justify-between gap-5"
+                type="button"
+                onClick={(e) => openCaseStudy(idx, e.currentTarget)}
+                aria-label={`View ${project.title}`}
+                className="group border border-[#792B33]/30 bg-[#F3E9DE] p-6 text-left flex flex-col justify-between gap-5 transition-colors hover:border-[#792B33] cursor-pointer"
               >
-                <div className="space-y-4">
+                <div className="space-y-4 w-full">
                   <div className="flex items-baseline justify-between gap-3">
-                    <span
-                      className="text-5xl leading-none text-[#792B33]"
-                      style={{ fontFamily: "var(--font-anton), Impact, sans-serif" }}
-                    >
-                      {project.number}
-                    </span>
                     <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#792B33]/70">
                       {project.category}
                     </span>
@@ -577,7 +490,6 @@ export function ChapterProjects() {
 
                   <PlaceholderVisual
                     surface="ivory"
-                    number={project.number}
                     label={project.previewLabel}
                     sublabel={project.category}
                     aspectClass="aspect-[16/10]"
@@ -594,16 +506,7 @@ export function ChapterProjects() {
                     {project.shortDescription}
                   </p>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={(e) => openCaseStudy(idx, e.currentTarget)}
-                  className="inline-flex min-h-[42px] items-center justify-center gap-2 bg-[#792B33] px-4 py-2 text-xs font-mono uppercase tracking-[0.14em] text-[#F3E9DE] cursor-pointer"
-                >
-                  <span>Open Case Study</span>
-                  <ArrowUpRight size={14} aria-hidden="true" />
-                </button>
-              </article>
+              </button>
             ))}
           </div>
         </div>
@@ -645,60 +548,6 @@ export function ChapterProjects() {
             />
           </div>
 
-          {/* Primary Action + Compact Controls Bar (Zero duplicated card copy) */}
-          <div className="mt-3 space-y-4">
-            <button
-              type="button"
-              onClick={(e) => openCaseStudy(activeIndex, e.currentTarget)}
-              className="w-full inline-flex min-h-[44px] items-center justify-center gap-2 bg-[#792B33] px-5 py-3 text-xs font-mono uppercase tracking-[0.16em] text-[#F3E9DE] cursor-pointer"
-            >
-              <span>Open Case Study · {activeProject.title}</span>
-              <ArrowUpRight size={15} strokeWidth={1.7} aria-hidden="true" />
-            </button>
-
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#792B33]/20 pt-4">
-              <span className="font-mono text-xs uppercase tracking-[0.16em] text-[#792B33] tabular-nums">
-                {activeProject.number} / 0{count}
-              </span>
-
-              <div className="flex items-center gap-1.5">
-                {PROJECTS.map((p, idx) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => navigateToProject(idx)}
-                    aria-label={`Show ${p.title}`}
-                    aria-pressed={idx === activeIndex}
-                    className={`h-10 min-w-[40px] px-2 font-mono text-xs tabular-nums ${
-                      idx === activeIndex
-                        ? "bg-[#792B33] text-[#F3E9DE]"
-                        : "border border-[#792B33]/28 text-[#792B33]"
-                    }`}
-                  >
-                    {p.number}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => stepProject(-1)}
-                  disabled={activeIndex === 0}
-                  aria-label="Previous project"
-                  className="inline-flex h-10 w-10 items-center justify-center border border-[#792B33]/32 text-[#792B33] disabled:opacity-35"
-                >
-                  <ChevronLeft size={17} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => stepProject(1)}
-                  disabled={activeIndex === count - 1}
-                  aria-label="Next project"
-                  className="inline-flex h-10 w-10 items-center justify-center border border-[#792B33]/32 text-[#792B33] disabled:opacity-35"
-                >
-                  <ChevronRight size={17} />
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       ))}
 
@@ -714,10 +563,8 @@ export function ChapterProjects() {
           {/* Sticky top bar inside overlay */}
           <div className="sticky top-0 z-10 border-b border-[#792B33]/20 bg-[#F3E9DE]/95">
             <div className="page-container flex h-16 items-center justify-between gap-4">
-              <div className="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.16em] tabular-nums">
-                <span>
-                  Project {openProject.number} / 0{count}
-                </span>
+              <div className="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.16em]">
+                <span>{openProject.title}</span>
                 <span aria-hidden="true">·</span>
                 <span className="hidden sm:inline text-[#792B33]/70">
                   {openProject.category}
@@ -768,7 +615,7 @@ export function ChapterProjects() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-end">
               <div className="lg:col-span-7">
                 <p className="font-mono text-xs uppercase tracking-[0.2em] text-[#792B33]/68">
-                  Case Study {openProject.number} · {openProject.category}
+                  {openProject.category}
                 </p>
                 <h2
                   id="project-overlay-title"
@@ -819,7 +666,6 @@ export function ChapterProjects() {
 
             <PlaceholderVisual
               surface="ivory"
-              number={openProject.number}
               label={`HERO SCREENSHOT · ${openProject.title.toUpperCase()}`}
               sublabel="Hero Media Placeholder"
               aspectClass="aspect-[16/8]"
@@ -830,7 +676,7 @@ export function ChapterProjects() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10 border-t border-[#792B33]/20 pt-10">
               <div className="space-y-3">
                 <h3 className="font-mono text-xs uppercase tracking-[0.2em] text-[#792B33]/68">
-                  01. Overview
+                  Overview
                 </h3>
                 <p className="m-0 text-base leading-relaxed text-[#792B33]/88">
                   {openProject.caseStudy.overview}
@@ -838,7 +684,7 @@ export function ChapterProjects() {
               </div>
               <div className="space-y-3">
                 <h3 className="font-mono text-xs uppercase tracking-[0.2em] text-[#792B33]/68">
-                  02. Problem
+                  Problem
                 </h3>
                 <p className="m-0 text-base leading-relaxed text-[#792B33]/88">
                   {openProject.caseStudy.problem}
@@ -846,7 +692,7 @@ export function ChapterProjects() {
               </div>
               <div className="space-y-3">
                 <h3 className="font-mono text-xs uppercase tracking-[0.2em] text-[#792B33]/68">
-                  03. Approach
+                  Approach
                 </h3>
                 <p className="m-0 text-base leading-relaxed text-[#792B33]/88">
                   {openProject.caseStudy.approach}
@@ -854,7 +700,7 @@ export function ChapterProjects() {
               </div>
               <div className="space-y-3">
                 <h3 className="font-mono text-xs uppercase tracking-[0.2em] text-[#792B33]/68">
-                  04. Solution
+                  Solution
                 </h3>
                 <p className="m-0 text-base leading-relaxed text-[#792B33]/88">
                   {openProject.caseStudy.solution}
@@ -865,27 +711,27 @@ export function ChapterProjects() {
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 border-t border-[#792B33]/20 pt-10">
               <div className="lg:col-span-7 space-y-4">
                 <h3 className="font-mono text-xs uppercase tracking-[0.2em] text-[#792B33]/68">
-                  05. Technical Architecture
+                  Technical Architecture
                 </h3>
-                <ol className="m-0 list-none space-y-3 p-0">
+                <ul className="m-0 list-none space-y-3 p-0">
                   {openProject.caseStudy.technicalArchitecture.map((item, i) => (
                     <li
                       key={i}
-                      className="grid grid-cols-[36px_1fr] gap-3 border-b border-[#792B33]/14 pb-3 text-sm sm:text-base text-[#792B33]/86"
+                      className="flex items-start gap-3 border-b border-[#792B33]/14 pb-3 text-sm sm:text-base text-[#792B33]/86"
                     >
-                      <span className="font-mono text-xs text-[#792B33]/60 tabular-nums pt-1">
-                        0{i + 1}
+                      <span aria-hidden="true" className="font-mono text-xs text-[#792B33]/55 pt-1">
+                        —
                       </span>
                       <span>{item}</span>
                     </li>
                   ))}
-                </ol>
+                </ul>
               </div>
 
               <div className="lg:col-span-5 space-y-8">
                 <div className="space-y-3">
                   <h3 className="font-mono text-xs uppercase tracking-[0.2em] text-[#792B33]/68">
-                    06. Technology Stack
+                    Technology Stack
                   </h3>
                   <p className="m-0 font-mono text-sm leading-loose text-[#792B33]">
                     {openProject.technologies.join(" · ")}
@@ -894,7 +740,7 @@ export function ChapterProjects() {
 
                 <div className="space-y-3 border-t border-[#792B33]/16 pt-6">
                   <h3 className="font-mono text-xs uppercase tracking-[0.2em] text-[#792B33]/68">
-                    07. Challenges &amp; Lessons Learned
+                    Challenges &amp; Lessons Learned
                   </h3>
                   <ul className="m-0 list-none space-y-3 p-0 text-sm sm:text-base text-[#792B33]/86">
                     {openProject.caseStudy.challengesAndLessons.map((lesson, i) => (
@@ -910,8 +756,7 @@ export function ChapterProjects() {
             <div className="border-t border-[#792B33]/20 pt-10 space-y-5">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <h3 className="font-mono text-xs uppercase tracking-[0.2em] text-[#792B33]/68">
-                  08. Gallery · {String(gallerySlideIdx + 1).padStart(2, "0")} /{" "}
-                  {String(openProject.caseStudy.gallery.length).padStart(2, "0")}
+                  Gallery
                 </h3>
                 <div className="flex items-center gap-2">
                   <button
@@ -950,7 +795,6 @@ export function ChapterProjects() {
                   <div className="space-y-3">
                     <PlaceholderVisual
                       surface="ivory"
-                      number={`0${gallerySlideIdx + 1}`}
                       label={slide.label}
                       sublabel={openProject.title}
                       aspectClass="aspect-[16/9]"

@@ -44,10 +44,7 @@ export function ExperienceTypography({
         {/* High-contrast burgundy header band */}
         <div className="flex items-center justify-between gap-3 bg-[#792B33] px-4 py-2.5 text-[#F3E9DE]">
           <div className="flex items-center gap-2.5 font-mono text-[11px] uppercase tracking-[0.2em] tabular-nums">
-            <span className="inline-flex h-5 w-5 items-center justify-center bg-[#C8372D] font-bold text-[10px] text-[#F3E9DE]">
-              {milestone.number}
-            </span>
-            <span className="text-[#F3E9DE]/90">{milestone.period}</span>
+            <span className="text-[#F3E9DE]/92">{milestone.period}</span>
           </div>
           <button
             type="button"
@@ -142,9 +139,6 @@ export function ExperienceTypography({
           {/* High-contrast Deep Burgundy header strip */}
           <div className="flex items-center justify-between gap-4 bg-[#792B33] px-5 py-3 text-[#F3E9DE]">
             <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.22em] tabular-nums">
-              <span className="inline-flex h-6 min-w-[28px] items-center justify-center bg-[#C8372D] px-1.5 font-semibold text-[11px] text-[#F3E9DE]">
-                {milestone.number}
-              </span>
               <span className="text-[#F3E9DE]/92">{milestone.period}</span>
             </div>
 

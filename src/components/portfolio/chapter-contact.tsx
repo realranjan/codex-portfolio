@@ -19,8 +19,8 @@ import { CONTACT_CONTENT, SOCIAL_LINKS } from "@/data/portfolio-content";
 import { computeFooterTouchState } from "@/lib/footer-touch";
 import footerSakuraCutout from "@/assets/illustrations/footer-sakura-cutout.png";
 import footerWavesCutout from "@/assets/illustrations/footer-waves-cutout.png";
-import footerColorCatCutout from "@/assets/illustrations/footer-color-cat-cutout.png";
-import footerColorPawCutout from "@/assets/illustrations/footer-color-paw-cutout.png";
+import footerLeftSamuraiSingle from "@/assets/illustrations/footer-left-samurai-single.png";
+import footerRightSamuraiSingle from "@/assets/illustrations/footer-right-samurai-single.png";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -65,12 +65,6 @@ export function ChapterContact({ onOpenResume }: ChapterContactProps) {
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
-
-  // Zero-broken-image fallback tracking
-  const [missingAssets, setMissingAssets] = useState<Record<string, boolean>>({});
-  const markAssetMissing = (key: string) => {
-    setMissingAssets((prev) => (prev[key] ? prev : { ...prev, [key]: true }));
-  };
 
   // Apply deterministic whole-cat scroll choreography directly to compositor-only transforms/opacity
   const applyTouchProgress = (rawProgress: number) => {
@@ -222,11 +216,6 @@ export function ChapterContact({ onOpenResume }: ChapterContactProps) {
     }
   };
 
-  const {
-    realisticBodyUrl,
-    realisticPawUrl,
-  } = CONTACT_CONTENT.footerArtwork;
-
   return (
     <footer
       ref={footerRef}
@@ -286,7 +275,7 @@ export function ChapterContact({ onOpenResume }: ChapterContactProps) {
         <div className="inline-flex items-center gap-3.5 text-[#792B33]/84">
           <span aria-hidden="true" className="h-px w-8 sm:w-10 bg-gradient-to-r from-transparent to-[#D94836]/65" />
           <p className="m-0 font-mono text-[11px] uppercase tracking-[0.26em]">
-            {CONTACT_CONTENT.chapterNumber} / {CONTACT_CONTENT.chapterLabel}
+            {CONTACT_CONTENT.chapterLabel}
           </p>
           <span
             aria-hidden="true"
@@ -321,19 +310,19 @@ export function ChapterContact({ onOpenResume }: ChapterContactProps) {
         </p>
       </div>
 
-      {/* ── MAIN ARTWORK STAGE — FULL-WIDTH WHOLE-CAT MICHELANGELO GLIDE ── */}
+      {/* ── MAIN ARTWORK STAGE — BIG UNIFIED SINGLE-FIGURE SAMURAI CATS GLIDING TO MEET ── */}
       <div
         data-testid="footer-touch-stage"
-        className="relative z-[5] mt-2 sm:mt-3 w-full h-[215px] sm:h-[290px] md:h-[330px] lg:h-[360px] overflow-hidden select-none"
+        className="relative z-[5] mt-2 sm:mt-4 w-full h-[clamp(220px,38vw,535px)] overflow-hidden select-none"
       >
         {/* Vibrant Vermilion-to-Gold Japanese Rising Sun + Golden Mist Clouds behind touch point */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute left-1/2 top-[52%] z-[2] -translate-x-1/2 -translate-y-1/2"
+          className="pointer-events-none absolute left-1/2 top-[56%] z-[2] -translate-x-1/2 -translate-y-1/2"
         >
           <svg
             viewBox="0 0 320 320"
-            className="h-[162px] w-[162px] sm:h-[224px] sm:w-[224px] lg:h-[260px] lg:w-[260px]"
+            className="h-[188px] w-[188px] sm:h-[275px] sm:w-[275px] lg:h-[340px] lg:w-[340px]"
             fill="none"
           >
             <defs>
@@ -379,110 +368,46 @@ export function ChapterContact({ onOpenResume }: ChapterContactProps) {
           </svg>
         </div>
 
-        {/* ── UNIFIED LEFT SAMURAI CAT FIGURE (Body + Proportionate Reaching Arm Glide Together as ONE) ── */}
+        {/* ── SINGLE BIG UNIFIED LEFT SAMURAI CAT FIGURE (One Whole Unbroken Illustration) ── */}
         <div
           ref={leftCatUnitRef}
           data-testid="footer-left-cat-unit"
-          className="pointer-events-none absolute top-0 bottom-0 right-[calc(50%-6px)] z-[6] w-[49vw] sm:w-[clamp(300px,46vw,600px)] will-change-transform"
+          className="pointer-events-none absolute bottom-0 right-[calc(50%-6px)] z-[6] w-[min(51.5vw,726px)] will-change-transform"
           style={{
             transformOrigin: "38% 72%",
           }}
         >
-          {/* Left Proportionate Armored Paw — deeply tucked into shoulder armor, reaching upward like Creation of Adam */}
-          <div
-            data-testid="footer-left-paw"
-            className="absolute top-[56.5%] right-0 z-[1] w-[48%] -translate-y-1/2"
-            style={{
-              transformOrigin: "100% 50%",
-              transform: "rotate(-13deg)",
-            }}
-          >
-            {!missingAssets.realisticPaw ? (
-              <Image
-                src={realisticPawUrl}
-                alt=""
-                width={806}
-                height={285}
-                sizes="(max-width: 640px) 26vw, 310px"
-                aria-hidden="true"
-                referrerPolicy="no-referrer"
-                onError={() => markAssetMissing("realisticPaw")}
-                className="block h-auto w-full drop-shadow-[0_10px_18px_rgba(121,43,51,0.16)]"
-              />
-            ) : (
-              <div className="h-12 w-full border border-dashed border-[#792B33]/35 bg-[#792B33]/10" />
-            )}
-          </div>
-
-          {/* Left Realistic Armored Samurai Cat Body — solidly overlaps inner shoulder sleeve */}
-          <div
-            data-testid="footer-left-body"
-            className="absolute -bottom-[8%] sm:-bottom-[12%] left-[12%] sm:left-[16%] z-[2] w-[54%] sm:w-[52%]"
-          >
-            {!missingAssets.realisticBody ? (
-              <Image
-                src={realisticBodyUrl}
-                alt="Realistic armored 3D samurai cat reaching toward the center"
-                width={840}
-                height={1125}
-                sizes="(max-width: 640px) 28vw, 320px"
-                referrerPolicy="no-referrer"
-                onError={() => markAssetMissing("realisticBody")}
-                className="block h-auto w-full drop-shadow-[0_14px_26px_rgba(121,43,51,0.18)]"
-              />
-            ) : (
-              <div className="aspect-[3/4] w-full border border-dashed border-[#792B33]/35 bg-[#792B33]/10" />
-            )}
-          </div>
+          <Image
+            src={footerLeftSamuraiSingle}
+            alt="Realistic armored 3D samurai cat reaching toward the center"
+            sizes="(max-width: 640px) 52vw, 726px"
+            referrerPolicy="no-referrer"
+            className="block h-auto w-full object-contain drop-shadow-[0_18px_32px_rgba(121,43,51,0.2)]"
+          />
         </div>
 
-        {/* ── UNIFIED RIGHT POLYCHROME UKIYO-E SAMURAI CAT FIGURE (Indigo, Vermilion & Gold Armor) ── */}
+        {/* ── SINGLE BIG UNIFIED RIGHT POLYCHROME UKIYO-E SAMURAI CAT FIGURE (One Whole Unbroken Illustration) ── */}
         <div
           ref={rightCatUnitRef}
           data-testid="footer-right-cat-unit"
-          className="pointer-events-none absolute top-0 bottom-0 left-[calc(50%-6px)] z-[6] w-[49vw] sm:w-[clamp(300px,46vw,600px)] will-change-transform"
+          className="pointer-events-none absolute bottom-0 left-[calc(50%-6px)] z-[6] w-[min(51.5vw,726px)] will-change-transform"
           style={{
             transformOrigin: "62% 72%",
           }}
         >
-          {/* Right Colorful Polychrome Ukiyo-e Paw — indigo/crimson/gold armored cuff reaching left */}
-          <div
-            data-testid="footer-right-paw"
-            className="absolute top-[57%] -left-1 z-[1] w-[47%] -translate-y-1/2"
-            style={{
-              transformOrigin: "0% 50%",
-              transform: "rotate(12deg)",
-            }}
-          >
-            <Image
-              src={footerColorPawCutout}
-              alt=""
-              sizes="(max-width: 640px) 25vw, 300px"
-              aria-hidden="true"
-              referrerPolicy="no-referrer"
-              className="block h-auto w-full drop-shadow-[0_10px_18px_rgba(33,54,84,0.2)]"
-            />
-          </div>
-
-          {/* Right Polychrome Ukiyo-e Samurai Cat Bust — vibrant indigo, turquoise, vermilion & gold */}
-          <div
-            data-testid="footer-right-body"
-            className="absolute -bottom-[7%] sm:-bottom-[11%] right-[10%] sm:right-[14%] z-[2] w-[54%] sm:w-[52%]"
-          >
-            <Image
-              src={footerColorCatCutout}
-              alt="Colorful Japanese polychrome ukiyo-e samurai cat in indigo and gold armor reaching toward the center"
-              sizes="(max-width: 640px) 28vw, 320px"
-              referrerPolicy="no-referrer"
-              className="block h-auto w-full drop-shadow-[0_14px_26px_rgba(33,54,84,0.22)]"
-            />
-          </div>
+          <Image
+            src={footerRightSamuraiSingle}
+            alt="Colorful Japanese polychrome ukiyo-e samurai cat in indigo and gold armor reaching toward the center"
+            sizes="(max-width: 640px) 52vw, 726px"
+            referrerPolicy="no-referrer"
+            className="block h-auto w-full object-contain drop-shadow-[0_18px_32px_rgba(33,54,84,0.22)]"
+          />
         </div>
 
-        {/* ── PHASE D (85–100%) COLORFUL POETIC CONTACT MOMENTS AT EXACT CENTER ── */}
+        {/* ── PHASE D (85–100%) COLORFUL POETIC CONTACT MOMENTS AT EXACT PAW-TIP HEIGHT (60%) ── */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute left-1/2 top-[56.5%] z-[12] h-0 w-0"
+          className="pointer-events-none absolute left-1/2 top-[60%] z-[12] h-0 w-0"
         >
           {/* Warm gold-vermilion brushstroke expanding along touch axis */}
           <svg
@@ -712,7 +637,7 @@ export function ChapterContact({ onOpenResume }: ChapterContactProps) {
             <div className="flex items-start justify-between gap-4 border-b border-[#792B33]/18 pb-4">
               <div>
                 <p className="m-0 font-mono text-[11px] uppercase tracking-[0.2em] text-[#792B33]/65">
-                  09 / Direct Contact
+                  Direct Contact
                 </p>
                 <h3
                   id="contact-dialog-title"
