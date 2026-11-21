@@ -75,6 +75,7 @@ export function ChapterPlayground() {
           number={PLAYGROUND_CONTENT.chapterNumber}
           label={PLAYGROUND_CONTENT.chapterLabel}
           heading={PLAYGROUND_CONTENT.heading}
+          secretHeading="BREAKING THINGS"
           supportingText={PLAYGROUND_CONTENT.supportingText}
           surface="ivory"
         />

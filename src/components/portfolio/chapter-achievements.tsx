@@ -66,6 +66,7 @@ export function ChapterAchievements() {
           number={ACHIEVEMENTS_CONTENT.chapterNumber}
           label={ACHIEVEMENTS_CONTENT.chapterLabel}
           heading={ACHIEVEMENTS_CONTENT.heading}
+          secretHeading="MILESTONES"
           surface="burgundy"
           action={
             /* Segmented interactive tab bar (Achievements | Certifications) */

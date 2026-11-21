@@ -34,6 +34,7 @@ interface ParticlePortraitProps {
   centerMixRef?: MutableRefObject<number>;
   controlsRef?: MutableRefObject<SpatialControlValues>;
   onReadyChange?: (ready: boolean) => void;
+  onProgressChange?: (percent: number) => void;
 }
 
 interface RevealUniforms {
@@ -396,13 +397,16 @@ export default function ParticlePortrait({
   centerMixRef,
   controlsRef,
   onReadyChange,
+  onProgressChange,
 }: ParticlePortraitProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
   const onReadyChangeRef = useRef(onReadyChange);
+  const onProgressChangeRef = useRef(onProgressChange);
   useEffect(() => {
     onReadyChangeRef.current = onReadyChange;
-  }, [onReadyChange]);
+    onProgressChangeRef.current = onProgressChange;
+  }, [onReadyChange, onProgressChange]);
   const [ready, setReady] = useState(false);
   const [webglUnavailable, setWebglUnavailable] = useState(false);
 
@@ -563,19 +567,49 @@ export default function ParticlePortrait({
           if (!cleaned) {
             setWebglUnavailable(true);
             setReady(true);
+            onProgressChangeRef.current?.(100);
             onReadyChangeRef.current?.(true);
           }
           return;
         }
 
         const isSoftwareGl = detectSoftwareWebGL();
-        const noopBytes = () => {};
+        let samuraiLoaded = 0;
+        let samuraiTotal = 8_651_784;
+        let cuteLoaded = 0;
+        let cuteTotal = 8_026_276;
+        let lastReportedPct = -1;
+
+        const reportProgress = (pct: number) => {
+          const clamped = Math.max(0, Math.min(100, Math.round(pct)));
+          if (clamped !== lastReportedPct) {
+            lastReportedPct = clamped;
+            onProgressChangeRef.current?.(clamped);
+          }
+        };
+
+        const updateFetchProgress = () => {
+          const combined =
+            (samuraiLoaded + cuteLoaded) / Math.max(1, samuraiTotal + cuteTotal);
+          reportProgress(Math.min(92, Math.round(combined * 92)));
+        };
+
+        reportProgress(4);
 
         const [samuraiBuffer, cuteBuffer] = await Promise.all([
-          fetchGlbWithProgress(SAMURAI_MODEL, controller.signal, noopBytes),
-          fetchGlbWithProgress(CUTE_MODEL, controller.signal, noopBytes),
+          fetchGlbWithProgress(SAMURAI_MODEL, controller.signal, (l, t) => {
+            samuraiLoaded = l;
+            samuraiTotal = t;
+            updateFetchProgress();
+          }),
+          fetchGlbWithProgress(CUTE_MODEL, controller.signal, (l, t) => {
+            cuteLoaded = l;
+            cuteTotal = t;
+            updateFetchProgress();
+          }),
         ]);
 
+        reportProgress(94);
         await MeshoptDecoder.ready;
         const loader = new GLTFLoader();
         loader.setMeshoptDecoder(MeshoptDecoder);
@@ -586,6 +620,7 @@ export default function ParticlePortrait({
         ]);
 
         if (cleaned) return;
+        reportProgress(98);
         if (!reduced && !isSoftwareGl) {
           await new Promise((resolve) => setTimeout(resolve, 120));
         }
@@ -808,6 +843,7 @@ export default function ParticlePortrait({
           if (!shown) {
             shown = true;
             setReady(true);
+            onProgressChangeRef.current?.(100);
             onReadyChangeRef.current?.(true);
           }
 
@@ -1009,6 +1045,7 @@ export default function ParticlePortrait({
           console.error(cause);
           setWebglUnavailable(true);
           setReady(true);
+          onProgressChangeRef.current?.(100);
           onReadyChangeRef.current?.(true);
         }
       }

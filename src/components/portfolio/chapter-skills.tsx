@@ -40,6 +40,7 @@ export function ChapterSkills() {
           number={SKILLS_CONTENT.chapterNumber}
           label={SKILLS_CONTENT.chapterLabel}
           heading={SKILLS_CONTENT.heading}
+          secretHeading="TOOLS OF CRAFT"
           supportingText={SKILLS_CONTENT.supportingText}
           surface="burgundy"
         />

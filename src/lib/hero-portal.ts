@@ -1,16 +1,15 @@
 /**
- * Pure, deterministic geometry & scroll-step math for the Japanese
- * Scroll-Expansion Hero Portal (`ScrollExpandMedia`).
+ * Pure, deterministic geometry, Lenis-grade smooth kinematics, Japanese
+ * loader stage selection, and XrayText pointer math.
  *
- * Kept strictly free of DOM / browser globals so it can be unit-tested
- * via `node:test` and shared cleanly between the portal component and
- * Hero stage synchronization.
+ * Kept strictly free of DOM / browser globals so every calculation is
+ * unit-tested via `node:test`.
  */
 
 export interface HeroPortalGeometry {
   /** Clamped linear input progress in [0, 1]. */
   progress: number;
-  /** Smooth cubic-out eased progress for spatial expansion in [0, 1]. */
+  /** Smooth cubic-out-in eased progress for spatial expansion in [0, 1]. */
   eased: number;
   /** True when viewport is narrow mobile (< 768px). */
   isMobile: boolean;
@@ -36,10 +35,25 @@ export interface HeroPortalGeometry {
   shojiOpenProgress: number;
   /** Opacity of the ornate wooden/brass Japanese frame chrome (1 -> 0 near end). */
   frameChromeOpacity: number;
+  /** Opacity of the outside Japanese loader / percentage readout (1 -> 0 quickly as user enters). */
+  loaderChromeOpacity: number;
   /** Opacity of full-bleed Hero typography & side decor (hidden inside small frame, blooms 0.52 -> 0.94). */
   heroFullChromeOpacity: number;
   /** Opacity of the global SiteNav bar (stays tucked away until portal opens 0.84 -> 1.0). */
   navOpacity: number;
+}
+
+export interface JapaneseLoaderStage {
+  /** Verified klee-one Japanese calligraphy phrase rendered via TegakiRenderer. */
+  japaneseWord: string;
+  /** Subtle romaji/meaning label for screen readers. */
+  ariaStatus: string;
+  /** Clamped integer percentage [0..100]. */
+  percent: number;
+  /** Whether the 3D hero stage is ready for scroll entry. */
+  isReady: boolean;
+  /** Bold accent color for the exterior readout. */
+  accentHex: string;
 }
 
 export function clamp01(value: number): number {
@@ -54,9 +68,61 @@ export function smoothstep(edge0: number, edge1: number, x: number): number {
 }
 
 /**
+ * Selects the verified `tegaki/fonts/klee-one` Japanese calligraphy phrase
+ * and bold color state for the exterior preloader readout.
+ */
+export function selectJapaneseLoaderStage(
+  rawPercent: number,
+  ready: boolean
+): JapaneseLoaderStage {
+  const safePct = Number.isFinite(rawPercent)
+    ? Math.max(0, Math.min(100, Math.round(rawPercent)))
+    : 0;
+
+  if (ready || safePct >= 100) {
+    return {
+      japaneseWord: "ひらく",
+      ariaStatus: "Ready to enter — 100 percent loaded",
+      percent: 100,
+      isReady: true,
+      accentHex: "#F5C45E",
+    };
+  }
+
+  if (safePct >= 82) {
+    return {
+      japaneseWord: "まもなく",
+      ariaStatus: `Almost ready — ${safePct} percent loaded`,
+      percent: safePct,
+      isReady: false,
+      accentHex: "#FF6B4A",
+    };
+  }
+
+  if (safePct >= 42) {
+    return {
+      japaneseWord: "じゅんびちゅう",
+      ariaStatus: `Preparing scene — ${safePct} percent loaded`,
+      percent: safePct,
+      isReady: false,
+      accentHex: "#FF5644",
+    };
+  }
+
+  return {
+    japaneseWord: "よみこみ中",
+    ariaStatus: `Loading — ${safePct} percent`,
+    percent: safePct,
+    isReady: false,
+    accentHex: "#FF4D3D",
+  };
+}
+
+/**
  * Computes responsive base portal dimensions (at progress = 0) so the
  * centered Japanese architectural frame holds the 3D Samurai Cat + rising sun
- * cleanly on both desktop widescreen and narrow mobile viewports.
+ * cleanly on both desktop widescreen and narrow mobile viewports while leaving
+ * clear room below the bottom timber sill for the bold Japanese loader readout.
  */
 export function computeBasePortalDimensions(
   viewportWidth: number,
@@ -67,16 +133,17 @@ export function computeBasePortalDimensions(
   const isMobile = safeW < 768;
 
   if (isMobile) {
-    const width = Math.round(Math.min(safeW * 0.72, 310));
-    const height = Math.round(Math.min(safeH * 0.5, 410));
+    const width = Math.round(Math.min(safeW * 0.72, 304));
+    const height = Math.round(Math.min(safeH * 0.46, 390));
     return { width, height, isMobile: true };
   }
 
   // Desktop / tablet: stately vertical tokonoma window proportion (~5:7)
-  // giving generous gallery headroom above the Samurai Cat kabuto horns and
-  // beside its armored ears while keeping flanking corridor space for split titles.
-  const height = Math.round(Math.min(Math.max(safeH * 0.74, 510), 690));
-  const width = Math.round(Math.min(Math.max(height * 0.71, 380), Math.min(490, safeW * 0.36)));
+  // leaving generous gallery headroom above the Samurai Cat kabuto horns,
+  // room below the sill for the bold Japanese loader + percentage readout,
+  // and balanced flanking corridor columns for YIN / YANG.
+  const height = Math.round(Math.min(Math.max(safeH * 0.68, 490), 650));
+  const width = Math.round(Math.min(Math.max(height * 0.72, 375), Math.min(485, safeW * 0.35)));
   return { width, height, isMobile: false };
 }
 
@@ -108,7 +175,10 @@ export function computeHeroPortalGeometry(
   const insetY = progress >= 0.999 ? 0 : Math.max(0, (safeH - frameHeight) / 2);
 
   // Subtle architectural corner softening that becomes razor-square fullscreen
-  const borderRadius = progress >= 0.96 ? 0 : Number(((1 - smoothstep(0.68, 0.96, progress)) * 6).toFixed(2));
+  const borderRadius =
+    progress >= 0.96
+      ? 0
+      : Number(((1 - smoothstep(0.68, 0.96, progress)) * 6).toFixed(2));
 
   // Kyoto corridor pulls forward around the viewer as they step inside
   const backdropScale = 1 + eased * 0.18;
@@ -123,6 +193,9 @@ export function computeHeroPortalGeometry(
 
   // Wooden/brass architectural frame dissolves gracefully just as it hits viewport edges
   const frameChromeOpacity = 1 - smoothstep(0.76, 0.98, progress);
+
+  // Outside Japanese loader readout fades out smoothly as soon as the user enters
+  const loaderChromeOpacity = 1 - smoothstep(0.04, 0.34, progress);
 
   // Full-bleed Hero typography (CURIOSITY) and outer decor bloom as the frame opens wide
   const heroFullChromeOpacity = smoothstep(0.52, 0.94, progress);
@@ -145,8 +218,45 @@ export function computeHeroPortalGeometry(
     titleOpacity,
     shojiOpenProgress,
     frameChromeOpacity,
+    loaderChromeOpacity,
     heroFullChromeOpacity,
     navOpacity,
+  };
+}
+
+export interface SmoothPortalKinematicsResult {
+  nextProgress: number;
+  settled: boolean;
+}
+
+/**
+ * Lenis-style framerate-independent exponential damper for portal scroll
+ * interpolation so wheel/trackpad scrolling glides with identical buttery
+ * momentum to Lenis smooth scroll across 60Hz, 120Hz, and software renderers.
+ */
+export function stepSmoothPortalKinematics(params: {
+  current: number;
+  target: number;
+  dtSeconds: number;
+  lerpRate?: number;
+}): SmoothPortalKinematicsResult {
+  const { current, target, dtSeconds, lerpRate = 7.8 } = params;
+  const clampedTarget = clamp01(target);
+  const clampedCurrent = clamp01(current);
+  const diff = clampedTarget - clampedCurrent;
+
+  if (Math.abs(diff) < 0.0008) {
+    return { nextProgress: clampedTarget, settled: true };
+  }
+
+  // Framerate-independent exponential decay (matching Lenis's smooth feel)
+  const safeDt = Math.min(0.064, Math.max(0.004, dtSeconds));
+  const alpha = 1 - Math.exp(-safeDt * lerpRate);
+  const next = clamp01(clampedCurrent + diff * alpha);
+
+  return {
+    nextProgress: next,
+    settled: Math.abs(clampedTarget - next) < 0.0008,
   };
 }
 
@@ -175,7 +285,6 @@ export function stepPortalFromWheel(params: {
     sensitivity = 0.00105,
   } = params;
 
-  // Guard against degenerate or zero wheel noise
   if (!Number.isFinite(deltaY) || deltaY === 0) {
     return {
       nextProgress: clamp01(currentProgress),
@@ -224,7 +333,6 @@ export function stepPortalFromTouchDelta(params: {
   windowScrollY: number;
 }): PortalStepResult {
   const { currentProgress, expanded, touchDeltaY, windowScrollY } = params;
-  // Swiping finger UP (positive touchDeltaY = startY - currentY) expands portal
   const sensitivity = touchDeltaY < 0 ? 0.0036 : 0.0032;
 
   if (expanded) {
@@ -263,4 +371,20 @@ export function shouldBypassHeroPortal(params: {
   const cleanHash = params.hash.replace(/^#/, "").trim();
   if (cleanHash.length > 0 && cleanHash !== "top") return true;
   return false;
+}
+
+/**
+ * Computes pointer coordinates local to an XrayText host bounding rect.
+ */
+export function computeXrayPointerLocal(
+  clientX: number,
+  clientY: number,
+  rect: { left: number; top: number; width: number; height: number }
+): { x: number; y: number } {
+  const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
+  const y = Math.max(0, Math.min(rect.height, clientY - rect.top));
+  return {
+    x: Number(x.toFixed(1)),
+    y: Number(y.toFixed(1)),
+  };
 }

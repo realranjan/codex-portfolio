@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { motion, useInView } from "motion/react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -33,8 +35,9 @@ import {
 import TumbleDeckShowcase, {
   type TumbleDeckHandle,
 } from "@/components/ui/tumble-deck-showcase";
-import { SpotIllustration } from "@/components/portfolio/spot-illustration";
-import craneCutout from "@/assets/illustrations/crane-cutout.png";
+import { XrayText } from "@/components/ui/xray-text";
+import projectsCraneLeft from "@/assets/illustrations/projects-crane-left-cutout.png";
+import projectsDragonRight from "@/assets/illustrations/projects-dragon-right-cutout.png";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -195,6 +198,13 @@ export function ChapterProjects() {
   const desktopDeckRef = useRef<TumbleDeckHandle>(null);
   const mobileDeckRef = useRef<TumbleDeckHandle>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
+  const leftIllustRef = useRef<HTMLDivElement>(null);
+  const rightIllustRef = useRef<HTMLDivElement>(null);
+  const pinnedHeadingWrapRef = useRef<HTMLDivElement>(null);
+  const pinnedHeadingInView = useInView(pinnedHeadingWrapRef, {
+    once: true,
+    amount: "some",
+  });
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [openProjectIndex, setOpenProjectIndex] = useState<number | null>(null);
@@ -223,6 +233,28 @@ export function ChapterProjects() {
 
       if (progressBarRef.current) {
         progressBarRef.current.style.transform = `scaleX(${Math.max(0, Math.min(1, rawProgress)).toFixed(4)})`;
+      }
+
+      // Alternating Left <-> Right choreography as user scrolls through projects 01 -> 04
+      // Left crane leads on even projects (0, 2); right serpent-dragon leads on odd projects (1, 3).
+      const phase = pos * Math.PI;
+      const leftLead = 0.5 + 0.5 * Math.cos(phase);
+      const rightLead = 1 - leftLead;
+
+      if (leftIllustRef.current) {
+        const ly = (1 - leftLead) * 34 - 16;
+        const lRot = -3 + leftLead * 4.2;
+        const lScale = 0.94 + leftLead * 0.08;
+        leftIllustRef.current.style.transform = `translate3d(0, ${ly.toFixed(1)}px, 0) rotate(${lRot.toFixed(2)}deg) scale(${lScale.toFixed(3)})`;
+        leftIllustRef.current.style.opacity = (0.42 + leftLead * 0.58).toFixed(3);
+      }
+
+      if (rightIllustRef.current) {
+        const ry = (1 - rightLead) * 34 - 12;
+        const rRot = 3 - rightLead * 4.2;
+        const rScale = 0.94 + rightLead * 0.08;
+        rightIllustRef.current.style.transform = `translate3d(0, ${ry.toFixed(1)}px, 0) rotate(${rRot.toFixed(2)}deg) scale(${rScale.toFixed(3)})`;
+        rightIllustRef.current.style.opacity = (0.42 + rightLead * 0.58).toFixed(3);
       }
     },
     [count]
@@ -383,23 +415,40 @@ export function ChapterProjects() {
         >
           {showPinnedDesktop && (
             <>
-          {/* Compact Editorial Header Strip */}
-          <div className="page-container relative z-10 flex items-end justify-between gap-6 border-b border-[#792B33]/18 pb-3.5">
+          {/* Compact Editorial Header Strip with Masked Text Reveal + XrayText */}
+          <div className="page-container relative z-20 flex items-end justify-between gap-6 border-b border-[#792B33]/18 pb-3.5">
             <div className="min-w-0">
               <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.2em] text-[#792B33]/68">
                 <span>{PROJECTS_CONTENT.chapterLabel}</span>
               </div>
               <div className="mt-1 flex items-baseline gap-6">
-                <h2
-                  id="projects-heading"
-                  className="m-0 font-normal uppercase leading-[0.9] tracking-[-0.03em] text-[#792B33]"
-                  style={{
-                    fontFamily: "var(--font-anton), Impact, sans-serif",
-                    fontSize: "clamp(36px, 3.8vw, 54px)",
-                  }}
-                >
-                  {PROJECTS_CONTENT.heading}
-                </h2>
+                <div ref={pinnedHeadingWrapRef} className="masked-line-wrap py-[0.06em]">
+                  <motion.div
+                    initial={{ y: "104%", opacity: 0 }}
+                    animate={
+                      pinnedHeadingInView
+                        ? { y: "0%", opacity: 1 }
+                        : { y: "104%", opacity: 0 }
+                    }
+                    transition={{ duration: 0.68, ease: [0.22, 1, 0.36, 1] }}
+                    className="masked-line-inner"
+                  >
+                    <h2
+                      id="projects-heading"
+                      className="m-0 font-normal uppercase leading-[0.94] tracking-[0.01em] text-[#792B33]"
+                      style={{
+                        fontFamily: "var(--font-anton), Impact, sans-serif",
+                        fontSize: "clamp(36px, 3.8vw, 54px)",
+                      }}
+                    >
+                      <XrayText
+                        text={PROJECTS_CONTENT.heading}
+                        secret="SHIPPED IN BATTLE"
+                        revealColor="#C8372D"
+                      />
+                    </h2>
+                  </motion.div>
+                </div>
                 <p className="m-0 hidden xl:block text-sm text-[#792B33]/72 max-w-[38ch]">
                   {PROJECTS_CONTENT.supportingText}
                 </p>
@@ -407,17 +456,6 @@ export function ChapterProjects() {
             </div>
 
             <div className="relative flex items-end gap-5 shrink-0">
-              {/* Subtle Kigo-style background-free gliding crane accent */}
-              <SpotIllustration
-                src={craneCutout}
-                alt="Gliding red-crowned Japanese crane illustration"
-                surface="ivory"
-                parallaxY={14}
-                baseRotate={-4}
-                rotateDelta={2.5}
-                testId="projects-crane-spot"
-                className="hidden lg:block w-[108px] xl:w-[126px] -my-6 -mr-1 opacity-95"
-              />
               <div className="flex flex-col items-end justify-end pb-1 shrink-0">
                 <CameraProgressRule
                   barRef={progressBarRef}
@@ -428,27 +466,75 @@ export function ChapterProjects() {
             </div>
           </div>
 
-          {/* 3D Bottom-Hinged Tumble Deck Stage */}
-          <div className="relative flex-1 min-h-[420px] w-full">
-            <TumbleDeckShowcase
-              cards={PROJECTS}
-              deckRef={desktopDeckRef}
-              scrollMode="external"
-              loop={false}
-              depth={4}
-              aspect={1.96}
-              height="100%"
-              heightRatio={0.51}
-              background="#F3E9DE"
-              shadeColor="#792B33"
-              showFloorLine
-              testId="projects-tumble-deck"
-              ariaLabel="Selected Projects 3D Tumble Deck"
-              onActiveIndexChange={setActiveIndex}
-              onCardClick={(idx, el) => openCaseStudy(idx, el)}
-              onSelectCard={(idx) => navigateToProject(idx)}
-              renderCard={renderDesktopCard}
-            />
+          {/* 3D Bottom-Hinged Tumble Deck Stage Flanked by Big Alternating No-BG Japanese Illustrations */}
+          <div className="relative flex-1 min-h-[420px] w-full overflow-hidden">
+            {/* BIG LEFT NO-BG ILLUSTRATION — Red-Crowned Japanese Crane & Pine */}
+            <div
+              aria-hidden="true"
+              data-testid="projects-illustration-left"
+              className="pointer-events-none select-none absolute left-[-10px] xl:left-[10px] 2xl:left-[26px] top-1/2 -translate-y-1/2 z-[4] w-[225px] lg:w-[260px] xl:w-[320px] 2xl:w-[360px]"
+            >
+              <div
+                ref={leftIllustRef}
+                className="w-full will-change-[transform,opacity]"
+                style={{
+                  filter: "drop-shadow(0 18px 28px rgba(92, 34, 41, 0.14))",
+                }}
+              >
+                <Image
+                  src={projectsCraneLeft}
+                  alt="Red-crowned Japanese crane and bonsai pine ukiyo-e illustration"
+                  loading="eager"
+                  referrerPolicy="no-referrer"
+                  className="h-auto w-full object-contain"
+                />
+              </div>
+            </div>
+
+            {/* BIG RIGHT NO-BG ILLUSTRATION — Burgundy Serpent-Dragon & Great Wave */}
+            <div
+              aria-hidden="true"
+              data-testid="projects-illustration-right"
+              className="pointer-events-none select-none absolute right-[-10px] xl:right-[10px] 2xl:right-[26px] top-[52%] -translate-y-1/2 z-[4] w-[225px] lg:w-[260px] xl:w-[320px] 2xl:w-[360px]"
+            >
+              <div
+                ref={rightIllustRef}
+                className="w-full will-change-[transform,opacity]"
+                style={{
+                  filter: "drop-shadow(0 18px 28px rgba(92, 34, 41, 0.14))",
+                }}
+              >
+                <Image
+                  src={projectsDragonRight}
+                  alt="Japanese burgundy dragon and cresting ukiyo-e wave illustration"
+                  loading="eager"
+                  referrerPolicy="no-referrer"
+                  className="h-auto w-full object-contain"
+                />
+              </div>
+            </div>
+
+            <div className="relative z-10 h-full w-full">
+              <TumbleDeckShowcase
+                cards={PROJECTS}
+                deckRef={desktopDeckRef}
+                scrollMode="external"
+                loop={false}
+                depth={4}
+                aspect={1.96}
+                height="100%"
+                heightRatio={0.51}
+                background="transparent"
+                shadeColor="#792B33"
+                showFloorLine
+                testId="projects-tumble-deck"
+                ariaLabel="Selected Projects 3D Tumble Deck"
+                onActiveIndexChange={setActiveIndex}
+                onCardClick={(idx, el) => openCaseStudy(idx, el)}
+                onSelectCard={(idx) => navigateToProject(idx)}
+                renderCard={renderDesktopCard}
+              />
+            </div>
           </div>
 
           {/* Clean breathing space — users scroll or click any card directly */}
@@ -468,6 +554,7 @@ export function ChapterProjects() {
             number={PROJECTS_CONTENT.chapterNumber}
             label={PROJECTS_CONTENT.chapterLabel}
             heading={PROJECTS_CONTENT.heading}
+            secretHeading="SHIPPED IN BATTLE"
             supportingText={PROJECTS_CONTENT.supportingText}
             surface="ivory"
           />
@@ -513,18 +600,19 @@ export function ChapterProjects() {
       ) : (
         <div
           data-testid="projects-mobile-carousel"
-          className="page-container pt-10 pb-12"
+          className="page-container relative pt-10 pb-12"
         >
           <ChapterHeading
             id="projects-heading"
             number={PROJECTS_CONTENT.chapterNumber}
             label={PROJECTS_CONTENT.chapterLabel}
             heading={PROJECTS_CONTENT.heading}
+            secretHeading="SHIPPED IN BATTLE"
             supportingText={PROJECTS_CONTENT.supportingText}
             surface="ivory"
           />
 
-          {/* Compact Mobile 3D Tumble Deck (horizontal swipe + buttons, vertical scroll stays native) */}
+          {/* Compact Mobile 3D Tumble Deck flanked softly by Left Crane & Right Dragon cutouts */}
           <div className="mt-5 -mx-2 sm:mx-0">
             <TumbleDeckShowcase
               cards={PROJECTS}
@@ -536,7 +624,7 @@ export function ChapterProjects() {
               aspect={1.58}
               height="clamp(275px, 39vh, 350px)"
               heightRatio={0.54}
-              background="#F3E9DE"
+              background="transparent"
               shadeColor="#792B33"
               showFloorLine
               testId="projects-mobile-tumble-deck"
@@ -548,6 +636,23 @@ export function ChapterProjects() {
             />
           </div>
 
+          <div
+            aria-hidden="true"
+            className="pointer-events-none mt-4 flex items-center justify-between gap-4 opacity-90"
+          >
+            <Image
+              src={projectsCraneLeft}
+              alt=""
+              referrerPolicy="no-referrer"
+              className="h-auto w-[132px] sm:w-[168px] object-contain"
+            />
+            <Image
+              src={projectsDragonRight}
+              alt=""
+              referrerPolicy="no-referrer"
+              className="h-auto w-[132px] sm:w-[168px] object-contain"
+            />
+          </div>
         </div>
       ))}
 

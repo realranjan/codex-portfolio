@@ -8,8 +8,13 @@ import {
   shouldBypassHeroPortal,
   stepPortalFromTouchDelta,
   stepPortalFromWheel,
+  stepSmoothPortalKinematics,
   type HeroPortalGeometry,
 } from "@/lib/hero-portal";
+import {
+  TegakiJapaneseStatusLoader,
+  TegakiYinYangLabel,
+} from "@/components/ui/tegaki-japanese-loader";
 
 const useIsomorphicLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
@@ -25,10 +30,10 @@ export interface ScrollExpandMediaProps {
   bgImageSrc: string | StaticImageData;
   /** Optional alt text for the outer architectural backdrop. */
   bgImageAlt?: string;
-  /** Two-part editorial display title that glides left & right as the portal opens. */
+  /** Optional override title when using generic image/video mode (portal mode renders YIN / YANG). */
   title?: string;
-  /** Optional subtitle displayed cleanly above the split display title. */
-  subtitle?: string;
+  /** Live 0..100 asset loading progress for the exterior Japanese calligraphy loader. */
+  loadProgress?: number;
   /** Whether the live content inside the portal (e.g. 3D WebGL cat) has painted its first frame. */
   mediaReady?: boolean;
   /** External override to force the portal open (e.g. when a user clicks a chapter anchor). */
@@ -44,16 +49,11 @@ export interface ScrollExpandMediaProps {
 /**
  * ScrollExpandMedia — Immersive Japanese Architectural Scroll-Expansion Portal.
  *
- * Adapted for shadcn `/components/ui` architecture with Tailwind CSS, TypeScript,
- * and `motion/react`. Frames a live interactive stage (the 3D Samurai Cat Hero)
- * inside a traditional dark hinoki timber & shoji lattice portal surrounded by
- * a lantern-lit Kyoto sanctuary corridor.
- *
- * As the visitor scrolls (wheel, touch swipe, or keyboard), the sliding shoji
- * side-screens glide open, split editorial typography parts left & right, the
- * outer sanctuary corridor pulls forward and dissolves, and the wooden frame
- * expands seamlessly to 100% fullscreen — handing off at 1:1 scale with zero
- * duplicate WebGL canvas and zero scroll trap.
+ * - Flanking YIN (陰) / YANG (陽) calligraphy powered by `tegaki` (`klee-one`).
+ * - Bold exterior Japanese words + live percentage readout (`よみこみ中` -> `ひらく 100%`)
+ *   positioned outside below the wooden sill so visitors immediately understand loading state.
+ * - Lenis-grade framerate-independent exponential damping (`stepSmoothPortalKinematics`)
+ *   for silky scroll-in expansion into the live 3D Samurai Cat Hero with zero duplicate canvas.
  */
 export function ScrollExpandMedia({
   mediaType = "portal",
@@ -61,8 +61,8 @@ export function ScrollExpandMedia({
   posterSrc,
   bgImageSrc,
   bgImageAlt = "Japanese architectural sanctuary backdrop",
-  title = "RANJAN VERNEKAR",
-  subtitle,
+  title = "YIN YANG",
+  loadProgress = 0,
   mediaReady = true,
   forceExpanded = false,
   onExpandedChange,
@@ -77,15 +77,18 @@ export function ScrollExpandMedia({
   const shojiLeftRef = useRef<HTMLDivElement>(null);
   const shojiRightRef = useRef<HTMLDivElement>(null);
   const titleWrapRef = useRef<HTMLDivElement>(null);
-  const titleLeftRef = useRef<HTMLSpanElement>(null);
-  const titleRightRef = useRef<HTMLSpanElement>(null);
+  const titleLeftRef = useRef<HTMLDivElement>(null);
+  const titleRightRef = useRef<HTMLDivElement>(null);
+  const loaderOuterRef = useRef<HTMLDivElement>(null);
 
   const onExpandedChangeRef = useRef(onExpandedChange);
   const onGeometryFrameRef = useRef(onGeometryFrame);
+  const mediaReadyRef = useRef(mediaReady);
   useIsomorphicLayoutEffect(() => {
     onExpandedChangeRef.current = onExpandedChange;
     onGeometryFrameRef.current = onGeometryFrame;
-  }, [onExpandedChange, onGeometryFrame]);
+    mediaReadyRef.current = mediaReady;
+  }, [onExpandedChange, onGeometryFrame, mediaReady]);
 
   const targetProgressRef = useRef<number>(0);
   const currentProgressRef = useRef<number>(0);
@@ -93,12 +96,21 @@ export function ScrollExpandMedia({
   const expandCooldownUntilRef = useRef<number>(0);
   const touchStartYRef = useRef<number>(0);
   const rafIdRef = useRef<number>(0);
+  const lastRafTsRef = useRef<number>(0);
+  const holdPulseTimerRef = useRef<number>(0);
 
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
+  const [holdPulse, setHoldPulse] = useState<boolean>(false);
 
-  const words = title.trim().split(/\s+/).filter(Boolean);
-  const firstWord = words[0] ?? "";
-  const restOfTitle = words.slice(1).join(" ");
+  const triggerHoldPulse = () => {
+    setHoldPulse(true);
+    if (holdPulseTimerRef.current) {
+      window.clearTimeout(holdPulseTimerRef.current);
+    }
+    holdPulseTimerRef.current = window.setTimeout(() => {
+      setHoldPulse(false);
+    }, 240);
+  };
 
   // Apply exact compositor geometry synchronously to DOM nodes (zero React re-renders per wheel tick)
   const paintGeometry = (rawProgress: number) => {
@@ -159,7 +171,7 @@ export function ScrollExpandMedia({
       shojiRightRef.current.style.visibility = g.shojiOpenProgress < 0.99 ? "visible" : "hidden";
     }
 
-    // 5. Flanking split editorial typography gliding left & right
+    // 5. Flanking YIN / YANG split typography gliding left & right
     if (titleWrapRef.current) {
       const visible = g.titleOpacity > 0.005;
       titleWrapRef.current.style.opacity = g.titleOpacity.toFixed(4);
@@ -170,6 +182,14 @@ export function ScrollExpandMedia({
     }
     if (titleRightRef.current) {
       titleRightRef.current.style.transform = `translate3d(${g.titleShiftVw.toFixed(2)}vw, 0, 0)`;
+    }
+
+    // 6. Bold exterior Japanese loader + percentage readout tucked outside below the bottom sill
+    if (loaderOuterRef.current) {
+      const visible = g.loaderChromeOpacity > 0.005;
+      loaderOuterRef.current.style.opacity = g.loaderChromeOpacity.toFixed(4);
+      loaderOuterRef.current.style.visibility = visible ? "visible" : "hidden";
+      loaderOuterRef.current.style.transform = `translate3d(0, ${(g.eased * 22).toFixed(1)}px, 0)`;
     }
 
     onGeometryFrameRef.current?.(g);
@@ -204,27 +224,32 @@ export function ScrollExpandMedia({
       }
     };
 
+    // Lenis-grade framerate-independent exponential damper loop
     const startAnimationLoop = () => {
       if (rafIdRef.current) return;
-      const step = () => {
-        const current = currentProgressRef.current;
-        const target = targetProgressRef.current;
-        const diff = target - current;
+      lastRafTsRef.current = performance.now();
+      const step = (now: number) => {
+        const dtSeconds = Math.max(0.004, (now - lastRafTsRef.current) / 1000);
+        lastRafTsRef.current = now;
 
-        if (Math.abs(diff) < 0.0012) {
-          currentProgressRef.current = target;
-          paintGeometry(target);
+        const { nextProgress, settled } = stepSmoothPortalKinematics({
+          current: currentProgressRef.current,
+          target: targetProgressRef.current,
+          dtSeconds,
+          lerpRate: 7.8,
+        });
+
+        currentProgressRef.current = nextProgress;
+        paintGeometry(nextProgress);
+
+        if (settled) {
           rafIdRef.current = 0;
-          if (target >= 0.995) {
+          if (targetProgressRef.current >= 0.995) {
             syncExpandedFlag(true);
           }
           return;
         }
 
-        // Silky damped ease toward wheel/touch target
-        const next = current + diff * 0.18;
-        currentProgressRef.current = next;
-        paintGeometry(next);
         rafIdRef.current = window.requestAnimationFrame(step);
       };
       rafIdRef.current = window.requestAnimationFrame(step);
@@ -243,13 +268,25 @@ export function ScrollExpandMedia({
     }
 
     const handleWheel = (e: WheelEvent) => {
-      // Allow modal/drawer scrolling cleanly without portal interception
       const targetEl = e.target as HTMLElement | null;
       if (targetEl?.closest("[role='dialog'], #chapters-index-drawer")) return;
 
+      // Hold cleanly while the 3D Samurai Cat is still loading and pulse the bold exterior loader
+      if (!expandedRef.current && !mediaReadyRef.current) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.deltaY > 0) {
+          triggerHoldPulse();
+        }
+        return;
+      }
+
       // Absorb leftover trackpad momentum briefly right after crossing into the Hero
-      // so the visitor arrives cleanly on CURIOSITY instead of overshooting Beat 1.
-      if (expandedRef.current && e.deltaY > 0 && performance.now() < expandCooldownUntilRef.current) {
+      if (
+        expandedRef.current &&
+        e.deltaY > 0 &&
+        performance.now() < expandCooldownUntilRef.current
+      ) {
         e.preventDefault();
         e.stopPropagation();
         return;
@@ -260,6 +297,7 @@ export function ScrollExpandMedia({
         expanded: expandedRef.current,
         deltaY: e.deltaY,
         windowScrollY: window.scrollY,
+        sensitivity: 0.00115,
       });
 
       if (!step.consumed) return;
@@ -268,7 +306,6 @@ export function ScrollExpandMedia({
       e.stopPropagation();
       targetProgressRef.current = step.nextProgress;
 
-      // Immediately release or re-engage Lenis when crossing boundaries
       if (step.expanded) {
         if (!expandedRef.current) {
           expandCooldownUntilRef.current = performance.now() + 320;
@@ -292,6 +329,12 @@ export function ScrollExpandMedia({
       const touchY = e.touches[0]?.clientY ?? 0;
       const touchDeltaY = touchStartYRef.current - touchY;
       touchStartYRef.current = touchY;
+
+      if (!expandedRef.current && !mediaReadyRef.current) {
+        e.preventDefault();
+        if (touchDeltaY > 4) triggerHoldPulse();
+        return;
+      }
 
       const step = stepPortalFromTouchDelta({
         currentProgress: targetProgressRef.current,
@@ -322,6 +365,13 @@ export function ScrollExpandMedia({
       if (activeTag === "input" || activeTag === "textarea" || activeTag === "select") {
         return;
       }
+      if (!mediaReadyRef.current) {
+        if (e.key === "ArrowDown" || e.key === "PageDown" || e.key === " " || e.key === "Enter") {
+          e.preventDefault();
+          triggerHoldPulse();
+        }
+        return;
+      }
       if (e.key === "ArrowDown" || e.key === "PageDown" || e.key === " " || e.key === "Enter") {
         e.preventDefault();
         const increment = e.key === "PageDown" || e.key === "Enter" ? 1 : 0.34;
@@ -348,7 +398,6 @@ export function ScrollExpandMedia({
       }
     };
 
-    // Capture phase ensures portal intercepts wheel cleanly before Lenis smooth-scroll
     window.addEventListener("wheel", handleWheel, { passive: false, capture: true });
     window.addEventListener("touchstart", handleTouchStart, { passive: true });
     window.addEventListener("touchmove", handleTouchMove, { passive: false });
@@ -361,6 +410,9 @@ export function ScrollExpandMedia({
       if (rafIdRef.current) {
         window.cancelAnimationFrame(rafIdRef.current);
         rafIdRef.current = 0;
+      }
+      if (holdPulseTimerRef.current) {
+        window.clearTimeout(holdPulseTimerRef.current);
       }
       window.removeEventListener("wheel", handleWheel, { capture: true });
       window.removeEventListener("touchstart", handleTouchStart);
@@ -401,12 +453,11 @@ export function ScrollExpandMedia({
             referrerPolicy="no-referrer"
             className="object-cover object-center select-none"
           />
-          {/* Subtle atmospheric oxblood vignette focusing light onto the central portal */}
           <div
             className="absolute inset-0"
             style={{
               background:
-                "radial-gradient(ellipse 68% 72% at 50% 50%, rgba(36, 11, 15, 0.14) 0%, rgba(28, 9, 13, 0.48) 72%, rgba(16, 5, 8, 0.72) 100%)",
+                "radial-gradient(ellipse 68% 72% at 50% 50%, rgba(36, 11, 15, 0.14) 0%, rgba(28, 9, 13, 0.48) 72%, rgba(16, 5, 8, 0.76) 100%)",
             }}
           />
         </div>
@@ -419,6 +470,9 @@ export function ScrollExpandMedia({
         ref={portalStageRef}
         data-testid="hero-portal-stage"
         className="relative z-[10] h-full w-full will-change-[clip-path]"
+        style={{
+          clipPath: isExpanded ? "none" : "inset(22% 14% 22% 14% round 2px)",
+        }}
       >
         {mediaType === "portal" ? (
           children
@@ -444,7 +498,7 @@ export function ScrollExpandMedia({
           />
         ) : null}
 
-        {/* Serene Zero-Spinner Japanese Washi Arrival Veil (fades out the instant the 3D Cat paints) */}
+        {/* Serene Washi Rising-Sun Arrival Veil inside the window while 3D models initialize */}
         <motion.div
           aria-hidden="true"
           data-testid="hero-portal-arrival-veil"
@@ -485,11 +539,16 @@ export function ScrollExpandMedia({
         data-testid="hero-japanese-frame"
         className="pointer-events-none absolute z-[20] will-change-[opacity]"
         style={{
+          top: "22%",
+          bottom: "22%",
+          left: "14%",
+          right: "14%",
+          borderRadius: "2px",
           boxShadow:
             "0 30px 90px rgba(10, 2, 4, 0.76), 0 0 0 1px rgba(212, 150, 59, 0.32), inset 0 0 0 8px #1D0B0E, inset 0 0 0 10px #4D2720, inset 0 0 0 11px rgba(212, 150, 59, 0.58)",
         }}
       >
-        {/* Sliding Inner Shoji Kumiko Side-Screens (part outward like traditional fusuma/shoji doors) */}
+        {/* Sliding Inner Shoji Kumiko Side-Screens */}
         <div className="absolute inset-[10px] overflow-hidden">
           <div
             ref={shojiLeftRef}
@@ -551,54 +610,49 @@ export function ScrollExpandMedia({
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════════
-          LAYER 4 — SPLIT KINETIC EDITORIAL TYPOGRAPHY (PARTS LEFT & RIGHT)
+          LAYER 4 — TEGAKI YIN / YANG CALLIGRAPHY (PARTS LEFT & RIGHT ON SCROLL)
          ═══════════════════════════════════════════════════════════════════════ */}
-      {(firstWord || restOfTitle) && (
+      <div
+        ref={titleWrapRef}
+        aria-hidden="true"
+        data-testid="hero-portal-split-title"
+        className="pointer-events-none absolute inset-0 z-[25] flex flex-col justify-between px-6 pt-16 pb-28 md:grid md:grid-cols-[1fr_minmax(420px,510px)_1fr] md:items-center md:px-10 md:py-0 will-change-[opacity]"
+      >
+        {/* Left: YIN (Top on mobile, Left corridor flank on desktop) */}
         <div
-          ref={titleWrapRef}
-          aria-hidden="true"
-          data-testid="hero-portal-split-title"
-          className="pointer-events-none absolute inset-0 z-[25] flex flex-col justify-between px-6 py-12 md:grid md:grid-cols-[1fr_minmax(420px,510px)_1fr] md:items-center md:px-8 md:py-0 will-change-[opacity]"
+          ref={titleLeftRef}
+          className="flex justify-center md:justify-end md:pr-10 will-change-transform"
         >
-          {/* Left Word (Top on mobile, Left flanking corridor on desktop) */}
-          <div className="flex flex-col items-center md:items-end md:pr-9">
-            {subtitle && (
-              <span className="mb-2 hidden font-mono text-[11px] uppercase tracking-[0.28em] text-[#E8CFA8]/80 md:block">
-                {subtitle}
-              </span>
-            )}
-            <span
-              ref={titleLeftRef}
-              className="block whitespace-nowrap text-[clamp(1.75rem,3.35vw,3.15rem)] font-bold uppercase leading-none tracking-[0.18em] text-[#F3E9DE] will-change-transform"
-              style={{
-                fontFamily: "var(--font-playfair), Georgia, serif",
-                textShadow:
-                  "0 6px 32px rgba(14, 3, 6, 0.9), 0 1px 0 rgba(212, 150, 59, 0.32)",
-              }}
-            >
-              {firstWord}
-            </span>
-          </div>
-
-          {/* Central Portal Spacer Column (desktop only) */}
-          <div className="hidden md:block" />
-
-          {/* Right Word (Bottom on mobile, Right flanking corridor on desktop) */}
-          <div className="flex flex-col items-center md:items-start md:pl-9">
-            <span
-              ref={titleRightRef}
-              className="block whitespace-nowrap text-[clamp(1.75rem,3.35vw,3.15rem)] font-bold uppercase leading-none tracking-[0.18em] text-[#F3E9DE] will-change-transform"
-              style={{
-                fontFamily: "var(--font-playfair), Georgia, serif",
-                textShadow:
-                  "0 6px 32px rgba(14, 3, 6, 0.9), 0 1px 0 rgba(212, 150, 59, 0.32)",
-              }}
-            >
-              {restOfTitle}
-            </span>
-          </div>
+          <TegakiYinYangLabel word="YIN" kanji="陰" align="left" />
         </div>
-      )}
+
+        {/* Central Portal Spacer Column (desktop only) */}
+        <div className="hidden md:block" />
+
+        {/* Right: YANG (Lower on mobile, Right corridor flank on desktop) */}
+        <div
+          ref={titleRightRef}
+          className="flex justify-center md:justify-start md:pl-10 will-change-transform"
+        >
+          <TegakiYinYangLabel word="YANG" kanji="陽" align="right" />
+        </div>
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          LAYER 5 — BOLD EXTERIOR JAPANESE CALLIGRAPHY LOADER + LIVE PERCENTAGE
+          Positioned outside below the bottom timber sill so visitors clearly see
+          loading progress in bold vermilion / imperial gold.
+         ═══════════════════════════════════════════════════════════════════════ */}
+      <div
+        ref={loaderOuterRef}
+        className="pointer-events-none absolute inset-x-0 bottom-5 sm:bottom-6 md:bottom-7 z-[26] flex justify-center px-6 will-change-[opacity,transform]"
+      >
+        <TegakiJapaneseStatusLoader
+          percent={loadProgress}
+          ready={mediaReady}
+          holdPulse={holdPulse}
+        />
+      </div>
     </div>
   );
 }

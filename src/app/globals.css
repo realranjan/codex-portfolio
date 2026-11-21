@@ -336,6 +336,100 @@ textarea:focus-visible {
   will-change: transform;
 }
 
+/* ── Xray Text (Pointer-following dual radial-gradient x-ray lens) ── */
+@property --xray-text-x {
+  syntax: "<length-percentage>";
+  inherits: true;
+  initial-value: 50%;
+}
+
+@property --xray-text-y {
+  syntax: "<length-percentage>";
+  inherits: true;
+  initial-value: 50%;
+}
+
+@property --xray-text-open {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
+[data-slot="xray-text"].xray-text {
+  --xray-text-radius: 1.85em;
+  --xray-text-color: #c8372d;
+  --xray-text-x: 50%;
+  --xray-text-y: 50%;
+  --xray-text-open: 0;
+
+  position: relative;
+  display: inline-grid;
+  align-items: baseline;
+  cursor: crosshair;
+  touch-action: pan-y;
+  transition:
+    --xray-text-x 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    --xray-text-y 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    --xray-text-open 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+[data-slot="xray-text"] .xray-text-front,
+[data-slot="xray-text"] .xray-text-secret {
+  grid-area: 1 / 1;
+  white-space: inherit;
+}
+
+[data-slot="xray-text"] .xray-text-front {
+  -webkit-mask-image: radial-gradient(
+    circle calc(var(--xray-text-radius) * var(--xray-text-open)) at var(--xray-text-x) var(--xray-text-y),
+    transparent 0%,
+    transparent 86%,
+    #000 100%
+  );
+  mask-image: radial-gradient(
+    circle calc(var(--xray-text-radius) * var(--xray-text-open)) at var(--xray-text-x) var(--xray-text-y),
+    transparent 0%,
+    transparent 86%,
+    #000 100%
+  );
+}
+
+[data-slot="xray-text"] .xray-text-secret {
+  color: var(--xray-text-color);
+  pointer-events: none;
+  -webkit-mask-image: radial-gradient(
+    circle calc(var(--xray-text-radius) * var(--xray-text-open)) at var(--xray-text-x) var(--xray-text-y),
+    #000 0%,
+    #000 86%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    circle calc(var(--xray-text-radius) * var(--xray-text-open)) at var(--xray-text-x) var(--xray-text-y),
+    #000 0%,
+    #000 86%,
+    transparent 100%
+  );
+}
+
+/* Keyboard focus on an enclosing link reveals the whole secret */
+a:focus-visible [data-slot="xray-text"] .xray-text-front {
+  opacity: 0;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+a:focus-visible [data-slot="xray-text"] .xray-text-secret {
+  opacity: 1;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="xray-text"].xray-text {
+    transition: none;
+  }
+}
+
 /* Directional Media Reveal */
 .media-reveal-frame {
   position: relative;

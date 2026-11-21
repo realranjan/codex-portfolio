@@ -81,6 +81,7 @@ export function ChapterEducation() {
           number={EDUCATION_CONTENT.chapterNumber}
           label={EDUCATION_CONTENT.chapterLabel}
           heading={EDUCATION_CONTENT.heading}
+          secretHeading="FOUNDATION"
           surface="burgundy"
         />
 

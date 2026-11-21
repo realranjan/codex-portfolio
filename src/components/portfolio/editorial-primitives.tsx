@@ -1,13 +1,19 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
+import { motion, useInView } from "motion/react";
 import type { ChapterSurface } from "@/data/portfolio-content";
+import { XrayText } from "@/components/ui/xray-text";
 
 interface ChapterHeadingProps {
   id: string;
   number?: string;
   label: string;
   heading: string;
+  /** Optional secret headline revealed through the pointer-following XrayText lens. */
+  secretHeading?: string;
+  /** Optional custom XrayText reveal colour (defaults to curated vermilion on Ivory, imperial gold on Burgundy). */
+  xrayRevealColor?: string;
   supportingText?: string;
   surface: ChapterSurface;
   align?: "left" | "center";
@@ -17,25 +23,32 @@ interface ChapterHeadingProps {
 
 /**
  * Editorial chapter header pairing monumental condensed Anton display headings
+ * (with scroll-triggered masked line reveal + optional interactive XrayText secret layer)
  * with Cormorant Garamond italic supporting statements strictly in #792B33 and #F3E9DE.
  */
 export function ChapterHeading({
   id,
   label,
   heading,
+  secretHeading,
+  xrayRevealColor,
   supportingText,
   surface,
   align = "left",
   className = "",
   action,
 }: ChapterHeadingProps) {
+  const headerRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(headerRef, { once: true, amount: "some" });
   const isBurgundy = surface === "burgundy";
   const ink = isBurgundy ? "text-[#F3E9DE]" : "text-[#792B33]";
   const muted = isBurgundy ? "text-[#F3E9DE]/70" : "text-[#792B33]/72";
   const rule = isBurgundy ? "border-[#F3E9DE]/20" : "border-[#792B33]/20";
+  const defaultRevealColor = isBurgundy ? "#F5C45E" : "#C8372D";
 
   return (
     <div
+      ref={headerRef}
       className={`border-b ${rule} pb-5 sm:pb-6 ${
         align === "center" ? "text-center" : ""
       } ${className}`}
@@ -45,24 +58,52 @@ export function ChapterHeading({
           align === "center" ? "justify-center" : "justify-between"
         }`}
       >
-        <span className={`font-medium ${ink}`}>{label}</span>
+        <motion.span
+          initial={{ opacity: 0, y: 10 }}
+          animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          className={`font-medium ${ink}`}
+        >
+          {label}
+        </motion.span>
         {action && align !== "center" && <div>{action}</div>}
       </div>
 
-      <h2
-        id={id}
-        className={`m-0 font-normal uppercase leading-[0.88] tracking-[-0.03em] ${ink}`}
-        style={{
-          fontFamily: "var(--font-anton), Impact, sans-serif",
-          fontSize: "clamp(42px, 6.2vw, 96px)",
-          textWrap: "balance",
-        }}
-      >
-        {heading}
-      </h2>
+      {/* Scroll-triggered masked line reveal wrapping monumental XrayText heading */}
+      <div className="masked-line-wrap py-[0.06em]">
+        <motion.div
+          initial={{ y: "104%", opacity: 0 }}
+          animate={inView ? { y: "0%", opacity: 1 } : { y: "104%", opacity: 0 }}
+          transition={{ duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
+          className="masked-line-inner"
+        >
+          <h2
+            id={id}
+            className={`m-0 font-normal uppercase leading-[0.92] tracking-[0.005em] ${ink}`}
+            style={{
+              fontFamily: "var(--font-anton), Impact, sans-serif",
+              fontSize: "clamp(42px, 6.2vw, 96px)",
+              textWrap: "balance",
+            }}
+          >
+            {secretHeading ? (
+              <XrayText
+                text={heading}
+                secret={secretHeading}
+                revealColor={xrayRevealColor ?? defaultRevealColor}
+              />
+            ) : (
+              heading
+            )}
+          </h2>
+        </motion.div>
+      </div>
 
       {supportingText && (
-        <p
+        <motion.p
+          initial={{ opacity: 0, y: 14 }}
+          animate={inView ? { opacity: 1, y: 0 } : { opacity: 0, y: 14 }}
+          transition={{ duration: 0.62, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
           className={`mt-3 max-w-[46ch] font-serif italic leading-[1.26] ${muted} ${
             align === "center" ? "mx-auto" : ""
           }`}
@@ -72,7 +113,7 @@ export function ChapterHeading({
           }}
         >
           {supportingText}
-        </p>
+        </motion.p>
       )}
     </div>
   );

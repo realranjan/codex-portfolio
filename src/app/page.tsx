@@ -73,6 +73,7 @@ export default function Home() {
 
   const [resumeOpen, setResumeOpen] = useState(false);
   const [catReady, setCatReady] = useState(false);
+  const [catLoadProgress, setCatLoadProgress] = useState(0);
   const [forcePortalExpanded, setForcePortalExpanded] = useState(false);
 
   const handlePortalExpandedChange = useCallback((expanded: boolean) => {
@@ -190,7 +191,9 @@ export default function Home() {
     const lenis = new Lenis({
       autoRaf: true,
       anchors: false,
-      lerp: 0.11,
+      lerp: 0.085,
+      smoothWheel: true,
+      wheelMultiplier: 0.95,
     });
     lenisRef.current = lenis;
     if (!portalExpandedRef.current) {
@@ -239,7 +242,8 @@ export default function Home() {
               mediaType="portal"
               bgImageSrc={preloaderBackdrop}
               bgImageAlt="Lantern-lit traditional Japanese burgundy-lacquer sanctuary corridor"
-              title="RANJAN VERNEKAR"
+              title="YIN YANG"
+              loadProgress={catLoadProgress}
               mediaReady={catReady}
               forceExpanded={forcePortalExpanded}
               onExpandedChange={handlePortalExpandedChange}
@@ -267,6 +271,7 @@ export default function Home() {
                 centerMixRef={centerMixRef}
                 controlsRef={spatialControlsRef}
                 onReadyChange={setCatReady}
+                onProgressChange={setCatLoadProgress}
               />
 
               <HeroJapaneseForeground

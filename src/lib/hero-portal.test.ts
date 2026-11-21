@@ -3,22 +3,25 @@ import assert from "node:assert/strict";
 import {
   computeBasePortalDimensions,
   computeHeroPortalGeometry,
+  computeXrayPointerLocal,
+  selectJapaneseLoaderStage,
   shouldBypassHeroPortal,
   stepPortalFromTouchDelta,
   stepPortalFromWheel,
+  stepSmoothPortalKinematics,
 } from "./hero-portal";
 
 test("base portal dimensions stay centered and well-proportioned on desktop and mobile", () => {
   const desktop = computeBasePortalDimensions(1440, 900);
   assert.equal(desktop.isMobile, false);
-  assert.ok(desktop.width >= 380 && desktop.width <= 490);
-  assert.ok(desktop.height >= 510 && desktop.height <= 690);
-  assert.ok(desktop.width < 1440 * 0.4, "desktop portal leaves side corridor space for split titles");
+  assert.ok(desktop.width >= 375 && desktop.width <= 485);
+  assert.ok(desktop.height >= 490 && desktop.height <= 650);
+  assert.ok(desktop.width < 1440 * 0.4, "desktop portal leaves side corridor space for YIN/YANG");
 
   const mobile = computeBasePortalDimensions(390, 844);
   assert.equal(mobile.isMobile, true);
-  assert.ok(mobile.width <= 310 && mobile.width < 390);
-  assert.ok(mobile.height <= 410 && mobile.height < 844);
+  assert.ok(mobile.width <= 304 && mobile.width < 390);
+  assert.ok(mobile.height <= 390 && mobile.height < 844);
 });
 
 test("computeHeroPortalGeometry transitions cleanly from framed portal (0) to full-bleed hero (1)", () => {
@@ -26,7 +29,6 @@ test("computeHeroPortalGeometry transitions cleanly from framed portal (0) to fu
   const mid = computeHeroPortalGeometry(0.5, 1440, 900);
   const end = computeHeroPortalGeometry(1, 1440, 900);
 
-  // At rest (progress = 0): centered frame with visible corridor backdrop & hidden full-bleed nav/curiosity
   assert.ok(start.insetX > 400);
   assert.ok(start.insetY > 100);
   assert.equal(start.backdropOpacity, 1);
@@ -35,26 +37,57 @@ test("computeHeroPortalGeometry transitions cleanly from framed portal (0) to fu
   assert.equal(start.titleOpacity, 1);
   assert.equal(start.shojiOpenProgress, 0);
   assert.equal(start.frameChromeOpacity, 1);
+  assert.equal(start.loaderChromeOpacity, 1);
   assert.equal(start.heroFullChromeOpacity, 0);
   assert.equal(start.navOpacity, 0);
 
-  // Mid-scroll (progress = 0.5): portal expanding, shoji mostly open, titles parted, corridor zooming
   assert.ok(mid.insetX < start.insetX && mid.insetX > 0);
   assert.ok(mid.insetY < start.insetY && mid.insetY > 0);
   assert.ok(mid.backdropScale > 1.05 && mid.backdropScale < 1.18);
   assert.ok(mid.titleShiftVw > 10);
   assert.ok(mid.shojiOpenProgress > 0.85);
+  assert.equal(mid.loaderChromeOpacity, 0);
   assert.equal(mid.navOpacity, 0);
 
-  // Fully expanded (progress = 1): zero seam insets, corridor & chrome dissolved, Hero & Nav 100% revealed
   assert.equal(end.insetX, 0);
   assert.equal(end.insetY, 0);
   assert.equal(end.borderRadius, 0);
   assert.equal(end.backdropOpacity, 0);
   assert.equal(end.titleOpacity, 0);
   assert.equal(end.frameChromeOpacity, 0);
+  assert.equal(end.loaderChromeOpacity, 0);
   assert.equal(end.heroFullChromeOpacity, 1);
   assert.equal(end.navOpacity, 1);
+});
+
+test("selectJapaneseLoaderStage returns verified klee-one stages from 0% to 100% ready", () => {
+  const s0 = selectJapaneseLoaderStage(12, false);
+  assert.equal(s0.japaneseWord, "よみこみ中");
+  assert.equal(s0.percent, 12);
+  assert.equal(s0.isReady, false);
+
+  const s50 = selectJapaneseLoaderStage(58, false);
+  assert.equal(s50.japaneseWord, "じゅんびちゅう");
+  assert.equal(s50.percent, 58);
+
+  const s90 = selectJapaneseLoaderStage(91, false);
+  assert.equal(s90.japaneseWord, "まもなく");
+  assert.equal(s90.percent, 91);
+
+  const sReady = selectJapaneseLoaderStage(100, true);
+  assert.equal(sReady.japaneseWord, "ひらく");
+  assert.equal(sReady.percent, 100);
+  assert.equal(sReady.isReady, true);
+});
+
+test("stepSmoothPortalKinematics glides exponentially toward target and settles deterministically", () => {
+  const a = stepSmoothPortalKinematics({ current: 0, target: 1, dtSeconds: 1 / 60 });
+  assert.ok(a.nextProgress > 0.08 && a.nextProgress < 0.25);
+  assert.equal(a.settled, false);
+
+  const b = stepSmoothPortalKinematics({ current: 0.9995, target: 1, dtSeconds: 1 / 60 });
+  assert.equal(b.nextProgress, 1);
+  assert.equal(b.settled, true);
 });
 
 test("stepPortalFromWheel consumes wheel while expanding and unlocks normal page scroll at full expansion", () => {
@@ -68,7 +101,6 @@ test("stepPortalFromWheel consumes wheel while expanding and unlocks normal page
   assert.equal(s1.expanded, false);
   assert.ok(s1.nextProgress > 0 && s1.nextProgress < 0.3);
 
-  // Complete expansion
   const s2 = stepPortalFromWheel({
     currentProgress: 0.94,
     expanded: false,
@@ -79,7 +111,6 @@ test("stepPortalFromWheel consumes wheel while expanding and unlocks normal page
   assert.equal(s2.expanded, true);
   assert.equal(s2.nextProgress, 1);
 
-  // Downward scroll once expanded passes straight through to Lenis
   const s3 = stepPortalFromWheel({
     currentProgress: 1,
     expanded: true,
@@ -89,7 +120,6 @@ test("stepPortalFromWheel consumes wheel while expanding and unlocks normal page
   assert.equal(s3.consumed, false);
   assert.equal(s3.expanded, true);
 
-  // Upward scroll deep in the page does NOT hijack scroll back into portal
   const s4 = stepPortalFromWheel({
     currentProgress: 1,
     expanded: true,
@@ -99,7 +129,6 @@ test("stepPortalFromWheel consumes wheel while expanding and unlocks normal page
   assert.equal(s4.consumed, false);
   assert.equal(s4.expanded, true);
 
-  // Upward scroll at the very top (scrollY <= 5) smoothly re-closes the Japanese portal
   const s5 = stepPortalFromWheel({
     currentProgress: 1,
     expanded: true,
@@ -153,4 +182,11 @@ test("shouldBypassHeroPortal skips intro for autostart, deep chapter hashes, or 
     shouldBypassHeroPortal({ search: "", hash: "", prefersReducedMotion: true }),
     true
   );
+});
+
+test("computeXrayPointerLocal clamps pointer coordinates cleanly within host box", () => {
+  const rect = { left: 100, top: 50, width: 300, height: 80 };
+  assert.deepEqual(computeXrayPointerLocal(175.4, 90.2, rect), { x: 75.4, y: 40.2 });
+  assert.deepEqual(computeXrayPointerLocal(40, 10, rect), { x: 0, y: 0 });
+  assert.deepEqual(computeXrayPointerLocal(600, 300, rect), { x: 300, y: 80 });
 });
