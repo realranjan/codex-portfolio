@@ -198,11 +198,8 @@ export function PlaceholderVisual({
             </span>
           </div>
 
-          {/* Bottom registration hairline */}
-          <div className="relative z-[1] flex items-center justify-between text-[10px] font-mono uppercase tracking-[0.15em]">
-            <span className={subInk}>Replace in portfolio-content.ts</span>
-            <span className={subInk}>Ready</span>
-          </div>
+          {/* Quiet bottom registration balance */}
+          <div aria-hidden="true" className="h-3" />
         </div>
       )}
     </div>

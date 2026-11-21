@@ -640,7 +640,7 @@ export default function TumbleDeckShowcase<T extends TumbleCard = TumbleCard>({
       </div>
 
       <span className="sr-only" aria-live="polite">
-        {n} projects. Scroll, drag, click, or use the controls to flip through the deck.
+        {n} projects.
       </span>
     </div>
   );

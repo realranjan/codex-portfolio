@@ -5,7 +5,7 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import {
-  computeChapterHingeTransform,
+  computeChapterParallaxLayerState,
   computeContinuousStrokeState,
   computeStoryCardCamera,
 } from "@/lib/story-scroll-camera";
@@ -426,27 +426,35 @@ export interface StoryScrollChapterProps {
   maxDeg?: number;
   /** Surface color exposed behind the swinging sheet corner */
   backdropColor?: string;
+  /** Ascending stacking order so incoming chapters physically rise over previous chapters */
+  zIndex?: number;
+  /** Overlap slightly onto the bottom edge of the previous chapter for a rising curtain feel */
+  overlapPrev?: boolean;
   /** Optional test ID for automated verification */
   testId?: string;
   className?: string;
 }
 
 /**
- * Portfolio-wide Story Scroll chapter wrapper.
- * Swings each entering chapter gracefully from its lower corner pivot
- * (`bottom left` or `bottom right`) into a flat settled plane (`transform: none`),
- * carrying subtle depth lift & shadow without locking sticky chapters elsewhere.
+ * Portfolio-wide Story Scroll chapter wrapper with overlapping depth parallax.
+ * - Entrance: rises UP over the previous chapter from a higher z-index with hinged corner
+ *   swing, accelerated upward lift, and elevated upper cast shadow.
+ * - Exit: lags gently downward (+128px) while scaling softly back (0.945) under a quiet
+ *   atmospheric veil as the next chapter rises over it.
  */
 export const StoryScrollChapter: React.FC<StoryScrollChapterProps> = ({
   children,
   hinge = "left",
   maxDeg = 9.5,
   backdropColor = "#F3E9DE",
+  zIndex = 10,
+  overlapPrev = false,
   testId,
   className,
 }) => {
   const outerRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
+  const veilRef = useRef<HTMLDivElement>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
@@ -461,24 +469,44 @@ export const StoryScrollChapter: React.FC<StoryScrollChapterProps> = ({
     () => {
       const outer = outerRef.current;
       const inner = innerRef.current;
+      const veil = veilRef.current;
       if (!outer || !inner) return;
 
       if (reducedMotion) {
         inner.style.transform = "";
         inner.style.boxShadow = "";
+        if (veil) veil.style.opacity = "0";
         outer.dataset.storyHingeProgress = "1.00";
+        outer.dataset.storyRecedeProgress = "0.00";
         return;
       }
 
-      const applyHinge = (progress: number) => {
-        const st = computeChapterHingeTransform(progress, maxDeg, hinge);
-        outer.dataset.storyHingeProgress = progress.toFixed(2);
-        if (st.isSettled) {
+      let enterProgress = 0;
+      let exitProgress = 0;
+
+      const applyParallaxFrame = () => {
+        const st = computeChapterParallaxLayerState(
+          enterProgress,
+          exitProgress,
+          maxDeg,
+          hinge
+        );
+        outer.dataset.storyHingeProgress = enterProgress.toFixed(2);
+        outer.dataset.storyRecedeProgress = exitProgress.toFixed(2);
+
+        if (st.isNeutral) {
           inner.style.transform = "";
           inner.style.boxShadow = "";
+          if (veil) veil.style.opacity = "0";
         } else {
           inner.style.transform = `translate3d(0, ${st.translateYPx}px, 0) rotate(${st.rotationDeg}deg) scale(${st.scale})`;
-          inner.style.boxShadow = `0 -24px 64px rgba(24, 9, 12, ${st.shadowOpacity})`;
+          inner.style.boxShadow =
+            st.shadowOpacity > 0.005
+              ? `0 -28px 72px rgba(24, 8, 12, ${st.shadowOpacity})`
+              : "";
+          if (veil) {
+            veil.style.opacity = st.recedeVeilOpacity.toFixed(3);
+          }
         }
       };
 
@@ -486,27 +514,45 @@ export const StoryScrollChapter: React.FC<StoryScrollChapterProps> = ({
       const rect = outer.getBoundingClientRect();
       const vh = Math.max(1, window.innerHeight);
       const startY = vh;
-      const endY = vh * 0.24;
-      const initialProgress = Math.min(
+      const endY = vh * 0.2;
+      enterProgress = Math.min(
         1,
         Math.max(0, (startY - rect.top) / Math.max(1, startY - endY))
       );
-      applyHinge(initialProgress);
+      exitProgress = Math.min(
+        1,
+        Math.max(0, (vh - rect.bottom) / Math.max(1, vh))
+      );
+      applyParallaxFrame();
 
-      const trigger = ScrollTrigger.create({
+      const enterTrigger = ScrollTrigger.create({
         trigger: outer,
         start: "top bottom",
-        end: "top 24%",
+        end: "top 20%",
         scrub: true,
         onUpdate: (self) => {
-          applyHinge(self.progress);
+          enterProgress = self.progress;
+          applyParallaxFrame();
+        },
+      });
+
+      const exitTrigger = ScrollTrigger.create({
+        trigger: outer,
+        start: "bottom bottom",
+        end: "bottom top",
+        scrub: true,
+        onUpdate: (self) => {
+          exitProgress = self.progress;
+          applyParallaxFrame();
         },
       });
 
       return () => {
-        trigger.kill();
+        enterTrigger.kill();
+        exitTrigger.kill();
         inner.style.transform = "";
         inner.style.boxShadow = "";
+        if (veil) veil.style.opacity = "0";
       };
     },
     { scope: outerRef, dependencies: [hinge, maxDeg, reducedMotion] }
@@ -518,8 +564,17 @@ export const StoryScrollChapter: React.FC<StoryScrollChapterProps> = ({
       data-testid={testId}
       data-story-hinge={hinge}
       data-story-hinge-progress="0.00"
-      className={cx("relative w-full overflow-x-clip", className)}
-      style={{ backgroundColor: backdropColor, perspective: "1400px" }}
+      data-story-recede-progress="0.00"
+      className={cx(
+        "relative w-full overflow-x-clip",
+        overlapPrev && "-mt-8 sm:-mt-14",
+        className
+      )}
+      style={{
+        backgroundColor: overlapPrev ? "transparent" : backdropColor,
+        perspective: "1400px",
+        zIndex,
+      }}
     >
       <div
         ref={innerRef}
@@ -529,6 +584,13 @@ export const StoryScrollChapter: React.FC<StoryScrollChapterProps> = ({
         }}
       >
         {children}
+        {/* Subtle depth veil dimming outgoing chapter as the next sheet rises over it */}
+        <div
+          ref={veilRef}
+          aria-hidden="true"
+          data-story-recede-veil
+          className="pointer-events-none absolute inset-0 z-30 bg-[#1B090D] opacity-0 will-change-[opacity]"
+        />
       </div>
     </div>
   );

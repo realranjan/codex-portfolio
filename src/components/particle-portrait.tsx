@@ -97,7 +97,7 @@ function applyTextureSafeguards(
   isOuterSamuraiLayer: boolean
 ): THREE.MeshStandardMaterial {
   const cloned = material.clone() as THREE.MeshStandardMaterial;
-  cloned.color.setHex(0xffffff);
+  cloned.color.setHex(isOuterSamuraiLayer ? 0xb4a9a2 : 0xc6bcb5);
   cloned.transparent = false;
   cloned.depthWrite = true;
   cloned.opacity = 1;
@@ -106,12 +106,14 @@ function applyTextureSafeguards(
   }
 
   if (typeof cloned.metalness === "number") {
-    cloned.metalness = Math.min(cloned.metalness, 0.72);
+    cloned.metalness = isOuterSamuraiLayer
+      ? Math.min(cloned.metalness + 0.08, 0.82)
+      : Math.min(cloned.metalness, 0.72);
   }
   if (typeof cloned.roughness === "number") {
-    cloned.roughness = Math.max(cloned.roughness, 0.22);
+    cloned.roughness = Math.max(cloned.roughness, 0.24);
   }
-  cloned.envMapIntensity = 1.15;
+  cloned.envMapIntensity = isOuterSamuraiLayer ? 0.52 : 0.64;
 
   const configureTex = (tex: THREE.Texture | null | undefined, isColor: boolean) => {
     if (!tex) return;
@@ -127,7 +129,7 @@ function applyTextureSafeguards(
   configureTex(cloned.aoMap, false);
 
   cloned.customProgramCacheKey = () =>
-    isOuterSamuraiLayer ? "samurai-washi-blend-v3" : "cute-washi-blend-v3";
+    isOuterSamuraiLayer ? "samurai-washi-blend-v4" : "cute-washi-blend-v4";
   cloned.onBeforeCompile = (shader) => {
     shader.uniforms.uRevealCenter = revealUniforms.uRevealCenter;
     shader.uniforms.uRevealRadius = revealUniforms.uRevealRadius;
@@ -162,12 +164,15 @@ uniform float uSunRimMix;`
     );
 
     const washiBlendBlock = `
+// Rich sculptural shadow depth & contrast grade so dark lacquer & fur read deeply against warm ivory
+gl_FragColor.rgb = pow(max(gl_FragColor.rgb, 0.0), vec3(1.16)) * 0.9;
+
 // Warm rising-sun crimson edge rim behind upper helmet & ears
 vec3 catViewDir = normalize(vViewPosition);
-float catFresnel = pow(1.0 - clamp(abs(dot(normalize(vNormal), catViewDir)), 0.0, 1.0), 2.35);
+float catFresnel = pow(1.0 - clamp(abs(dot(normalize(vNormal), catViewDir)), 0.0, 1.0), 2.55);
 float upperSunMask = smoothstep(-0.35, 0.72, vCatWorldPos.y);
-vec3 crimsonSunGlow = vec3(0.86, 0.23, 0.19);
-gl_FragColor.rgb = mix(gl_FragColor.rgb, crimsonSunGlow, catFresnel * upperSunMask * 0.34 * uSunRimMix);
+vec3 crimsonSunGlow = vec3(0.76, 0.17, 0.15);
+gl_FragColor.rgb = mix(gl_FragColor.rgb, crimsonSunGlow, catFresnel * upperSunMask * 0.28 * uSunRimMix);
 
 // Seamless organic morning mist feathering along the lower armor edge into warm washi paper (#F4EADF)
 float cloudWave = sin(vCatWorldPos.x * 3.6 + 0.5) * 0.075 + cos(vCatWorldPos.x * 7.2 - 0.8) * 0.035;
@@ -356,28 +361,28 @@ function buildSegmentedCatRig(params: {
 }
 
 function attachStudioLights(scene: THREE.Scene) {
-  // Warm parchment hemisphere light so underside armor folds reflect warm washi paper
-  const hemi = new THREE.HemisphereLight(0xfff6e9, 0x8e6b54, 1.32);
+  // Restrained warm hemisphere light preserving deep sculptural shadows in armor & fur crevices
+  const hemi = new THREE.HemisphereLight(0xf3e4d4, 0x35211c, 0.52);
   scene.add(hemi);
 
-  const key = new THREE.DirectionalLight(0xfff4e4, 1.82);
-  key.position.set(2.1, 3.6, 5.4);
+  const key = new THREE.DirectionalLight(0xffe7cf, 1.32);
+  key.position.set(2.5, 4.1, 4.4);
   scene.add(key);
 
-  const fill = new THREE.DirectionalLight(0xf3d8c0, 1.04);
-  fill.position.set(-4.2, 1.5, 3.4);
+  const fill = new THREE.DirectionalLight(0xc9a58e, 0.38);
+  fill.position.set(-4.2, 1.4, 3.0);
   scene.add(fill);
 
-  // Dual crimson rising-sun back-rim lights wrapping the ears & kabuto edges in sun warmth
-  const crimsonRimLeft = new THREE.DirectionalLight(0xe5443b, 1.52);
+  // Dual crimson rising-sun back-rim lights carving out the dark silhouette against the sun
+  const crimsonRimLeft = new THREE.DirectionalLight(0xc92c28, 1.28);
   crimsonRimLeft.position.set(-2.7, 2.3, -3.8);
   scene.add(crimsonRimLeft);
 
-  const crimsonRimRight = new THREE.DirectionalLight(0xea5342, 1.48);
+  const crimsonRimRight = new THREE.DirectionalLight(0xd23a2e, 1.24);
   crimsonRimRight.position.set(2.7, 2.3, -3.8);
   scene.add(crimsonRimRight);
 
-  const pointerLight = new THREE.PointLight(0xffe7cf, 1.4, 12, 1.5);
+  const pointerLight = new THREE.PointLight(0xffdfc2, 0.65, 11, 1.7);
   pointerLight.position.set(0, 1.2, 3.2);
   scene.add(pointerLight);
 
@@ -607,7 +612,7 @@ export default function ParticlePortrait({
         renderer.autoClear = false;
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.08;
+        renderer.toneMappingExposure = 0.78;
         stage.appendChild(renderer.domElement);
 
         const maxAniso = isSoftwareGl

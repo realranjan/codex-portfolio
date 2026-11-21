@@ -471,10 +471,10 @@ export function ChapterProjects() {
             />
           </div>
 
-          {/* Bottom Deck Controls Bar (Single primary CTA + project index) */}
+          {/* Bottom Deck Controls Bar (Active project label + deck index controls) */}
           <div className="page-container relative z-10 flex items-center justify-between gap-4 border-t border-[#792B33]/18 pt-3.5">
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#792B33]/60 truncate">
-              Scroll to flip · Click front plate to open case study
+            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-[#792B33]/72 truncate">
+              {activeProject.number} · {activeProject.title}
             </span>
 
             <div className="flex items-center gap-2 shrink-0">
@@ -613,11 +613,6 @@ export function ChapterProjects() {
             heading={PROJECTS_CONTENT.heading}
             supportingText={PROJECTS_CONTENT.supportingText}
             surface="ivory"
-            action={
-              <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-[#792B33]/72">
-                Swipe or Select
-              </span>
-            }
           />
 
           {/* Compact Mobile 3D Tumble Deck (horizontal swipe + buttons, vertical scroll stays native) */}

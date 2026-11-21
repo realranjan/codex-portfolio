@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence, motion } from "motion/react";
 import { ArrowUpRight, X } from "lucide-react";
 import type { JourneyMilestone } from "@/data/experience-journey";
 
@@ -12,13 +13,12 @@ export interface ExperienceTypographyProps {
 }
 
 /**
- * Strictly borderless editorial company readout.
+ * Framed Japanese editorial dossier box for active journey company checkpoints.
  *
- * - ZERO cards, boxes, translucent panels, glassmorphism, or rectangular borders.
- * - Pure HTML typography directly over the open viewport margin, structured by
- *   scale, generous negative space, and thin 1px Burgundy (#792B33) rules.
- * - Uses only a feather-soft invisible radial ivory wash behind the text baseline
- *   so legibility stays >= 4.5:1 without ever creating a visible rectangle.
+ * Designed as an unmistakable visual focal card (high-contrast burgundy header band,
+ * vermilion-to-gold top ribbon, double archival border, deep elevation shadow, and
+ * spring arrival motion) so the visitor's eye locks immediately onto company details
+ * the moment the traveler arrives at each checkpoint during scroll.
  */
 export function ExperienceTypography({
   milestone,
@@ -26,182 +26,216 @@ export function ExperienceTypography({
   onDismiss,
   variant = "overlay",
 }: ExperienceTypographyProps) {
-  if (!milestone) return null;
-
   if (variant === "inline") {
+    if (!milestone) return null;
+
     return (
       <article
         data-testid="experience-typography-inline"
         aria-live="polite"
-        className="w-full pt-5 pb-2 text-[#792B33]"
+        className="relative w-full overflow-hidden border-2 border-[#792B33] bg-[#F7EFE6] text-[#792B33] shadow-[0_18px_42px_rgba(44,15,20,0.18)]"
       >
-        <div className="flex items-baseline justify-between gap-4">
-          <span className="font-mono text-xs uppercase tracking-[0.22em] text-[#792B33]/75 tabular-nums">
-            {milestone.number} · {milestone.period}
-          </span>
+        {/* Vermilion-to-gold lacquer accent bar */}
+        <div
+          aria-hidden="true"
+          className="h-[4px] w-full bg-gradient-to-r from-[#C8372D] via-[#792B33] to-[#D4963B]"
+        />
+
+        {/* High-contrast burgundy header band */}
+        <div className="flex items-center justify-between gap-3 bg-[#792B33] px-4 py-2.5 text-[#F3E9DE]">
+          <div className="flex items-center gap-2.5 font-mono text-[11px] uppercase tracking-[0.2em] tabular-nums">
+            <span className="inline-flex h-5 w-5 items-center justify-center bg-[#C8372D] font-bold text-[10px] text-[#F3E9DE]">
+              {milestone.number}
+            </span>
+            <span className="text-[#F3E9DE]/90">{milestone.period}</span>
+          </div>
           <button
             type="button"
             onClick={onDismiss}
             aria-label={`Close ${milestone.companyName} details`}
-            className="inline-flex min-h-[44px] items-center gap-1 font-mono text-[11px] uppercase tracking-[0.18em] text-[#792B33]/75 hover:text-[#792B33] cursor-pointer"
+            className="inline-flex h-8 w-8 items-center justify-center text-[#F3E9DE]/80 hover:bg-[#F3E9DE]/15 hover:text-[#F3E9DE] transition-colors cursor-pointer"
           >
-            <span>Close</span>
-            <X size={13} />
+            <X size={15} />
           </button>
         </div>
 
-        <h3
-          className="mt-1 m-0 font-normal uppercase leading-[0.9] tracking-[-0.03em] text-[#792B33]"
-          style={{
-            fontFamily: "var(--font-anton), Impact, sans-serif",
-            fontSize: "clamp(40px, 11vw, 56px)",
-            textWrap: "balance",
-          }}
-        >
-          {milestone.companyName}
-        </h3>
+        <div className="p-5">
+          <h3
+            className="m-0 font-normal uppercase leading-[0.94] tracking-[0.02em] text-[#792B33]"
+            style={{
+              fontFamily: "var(--font-display-bold), 'Arial Black', sans-serif",
+              fontSize: "clamp(28px, 8.5vw, 42px)",
+              textWrap: "balance",
+            }}
+          >
+            {milestone.companyName}
+          </h3>
 
-        <p className="mt-2 m-0 text-sm font-semibold text-[#5B2027]">
-          {milestone.role}
-        </p>
-        <p className="mt-0.5 m-0 font-mono text-xs text-[#792B33]/72">
-          {milestone.location}
-        </p>
-
-        <div className="my-4 h-px w-14 bg-[#792B33]/45" aria-hidden="true" />
-
-        <ul className="m-0 list-none space-y-2.5 p-0 text-sm leading-relaxed text-[#4C2227]">
-          {milestone.achievements.map((item, idx) => (
-            <li key={idx} className="flex gap-2.5">
-              <span aria-hidden="true" className="text-[#792B33]/65 shrink-0">
-                —
-              </span>
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
-
-        <div className="mt-4 pt-3 border-t border-[#792B33]/20 flex flex-wrap items-center justify-between gap-3">
-          <p className="m-0 font-mono text-[11px] leading-relaxed text-[#792B33]/78">
-            {milestone.technologies.join(" · ")}
+          <p className="mt-2 m-0 text-[15px] font-semibold text-[#4B1A20]">
+            {milestone.role}
           </p>
-          {milestone.link && (
-            <a
-              href={milestone.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.16em] text-[#792B33] no-underline hover:underline"
-            >
-              <span>Visit</span>
-              <ArrowUpRight size={12} />
-            </a>
-          )}
+          <p className="mt-0.5 m-0 font-mono text-xs text-[#792B33]/78">
+            {milestone.location}
+          </p>
+
+          <div className="my-4 h-px w-full bg-[#792B33]/20" aria-hidden="true" />
+
+          <ul className="m-0 list-none space-y-2.5 p-0 text-sm leading-relaxed text-[#3B1A1F]">
+            {milestone.achievements.map((item, idx) => (
+              <li key={idx} className="flex items-start gap-2.5">
+                <span
+                  aria-hidden="true"
+                  className="mt-[7px] h-1.5 w-1.5 shrink-0 rotate-45 bg-[#C8372D]"
+                />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-4 pt-3 border-t border-[#792B33]/20 flex flex-wrap items-center justify-between gap-3">
+            <p className="m-0 font-mono text-[11px] leading-relaxed text-[#792B33]/85">
+              {milestone.technologies.join(" · ")}
+            </p>
+            {milestone.link && (
+              <a
+                href={milestone.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.16em] text-[#792B33] no-underline hover:underline"
+              >
+                <span>Visit</span>
+                <ArrowUpRight size={12} />
+              </a>
+            )}
+          </div>
         </div>
       </article>
     );
   }
 
-  const isRight = milestone.sideEdge === "right";
-
   return (
-    <aside
-      data-testid="experience-typography-overlay"
-      data-company-id={milestone.id}
-      data-selection-mode={isManuallySelected ? "clicked" : "reached"}
-      aria-label={`${milestone.companyName} experience details`}
-      onClick={(e) => e.stopPropagation()}
-      className={`pointer-events-auto absolute top-[96px] z-40 w-[min(430px,36vw)] transition-all duration-300 ease-out ${
-        isRight ? "right-[max(40px,4.8vw)] text-left" : "left-[max(40px,4.8vw)] text-left"
-      }`}
-    >
-      {/* Feather-soft invisible radial ivory wash for contrast only (zero visible box or edge) */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -inset-x-28 -inset-y-24 -z-10"
-        style={{
-          background:
-            "radial-gradient(ellipse 64% 62% at 50% 50%, rgba(243,233,222,0.92) 0%, rgba(243,233,222,0.62) 44%, rgba(243,233,222,0) 68%)",
-        }}
-      />
-
-      {/* Company Number + subtle dismiss control */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 font-mono text-xs uppercase tracking-[0.24em] text-[#792B33] tabular-nums">
-          <span>{milestone.number}</span>
-          <span aria-hidden="true" className="inline-block h-px w-8 bg-[#792B33]/55" />
-          <span className="text-[#792B33]/70">
-            {isManuallySelected ? "Selected" : "Checkpoint"}
-          </span>
-        </div>
-
-        <button
-          type="button"
-          onClick={onDismiss}
-          aria-label={`Dismiss ${milestone.companyName} details`}
-          className="inline-flex h-8 items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[#792B33]/72 hover:text-[#792B33] transition-colors cursor-pointer whitespace-nowrap shrink-0"
+    <AnimatePresence mode="wait">
+      {milestone && (
+        <motion.aside
+          key={milestone.id}
+          initial={{ opacity: 0, y: 26, scale: 0.94 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -14, scale: 0.96 }}
+          transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+          data-testid="experience-typography-overlay"
+          data-company-id={milestone.id}
+          data-selection-mode={isManuallySelected ? "clicked" : "reached"}
+          aria-label={`${milestone.companyName} experience details`}
+          onClick={(e) => e.stopPropagation()}
+          className={`pointer-events-auto absolute top-[104px] lg:top-[114px] z-40 w-[min(450px,38vw)] overflow-hidden border-2 border-[#792B33] bg-[#F7EFE6]/[0.96] backdrop-blur-md text-left shadow-[0_28px_68px_rgba(36,12,16,0.32),0_0_0_1px_rgba(243,233,222,0.85)] ${
+            milestone.sideEdge === "right"
+              ? "right-[max(36px,4.5vw)]"
+              : "left-[max(36px,4.5vw)]"
+          }`}
         >
-          <span>Esc</span>
-          <X size={13} />
-        </button>
-      </div>
+          {/* Vibrant vermilion-to-gold lacquer top bar acting as an instant visual magnet */}
+          <div
+            aria-hidden="true"
+            className="h-[4px] w-full bg-gradient-to-r from-[#C8372D] via-[#792B33] to-[#D4963B]"
+          />
 
-      {/* LARGE COMPANY NAME — Editorial display typography */}
-      <h3
-        className="mt-2 m-0 font-normal uppercase leading-[0.88] tracking-[-0.03em] text-[#792B33]"
-        style={{
-          fontFamily: "var(--font-anton), Impact, sans-serif",
-          fontSize: "clamp(46px, 4.6vw, 72px)",
-          textWrap: "balance",
-        }}
-      >
-        {milestone.companyName}
-      </h3>
+          {/* High-contrast Deep Burgundy header strip */}
+          <div className="flex items-center justify-between gap-4 bg-[#792B33] px-5 py-3 text-[#F3E9DE]">
+            <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.22em] tabular-nums">
+              <span className="inline-flex h-6 min-w-[28px] items-center justify-center bg-[#C8372D] px-1.5 font-semibold text-[11px] text-[#F3E9DE]">
+                {milestone.number}
+              </span>
+              <span className="text-[#F3E9DE]/92">{milestone.period}</span>
+            </div>
 
-      {/* Job title & employment dates */}
-      <p className="mt-3 m-0 text-[15px] font-semibold leading-snug text-[#4E1D23]">
-        {milestone.role}
-      </p>
-      <p className="mt-1 m-0 font-mono text-[12px] tracking-[0.06em] text-[#792B33]/80 tabular-nums">
-        <span>{milestone.period}</span>
-        <span aria-hidden="true"> · </span>
-        <span>{milestone.location}</span>
-      </p>
+            <button
+              type="button"
+              onClick={onDismiss}
+              aria-label={`Dismiss ${milestone.companyName} details`}
+              className="inline-flex h-7 w-7 items-center justify-center text-[#F3E9DE]/80 hover:bg-[#F3E9DE]/16 hover:text-[#F3E9DE] transition-colors cursor-pointer shrink-0"
+            >
+              <X size={15} />
+            </button>
+          </div>
 
-      {/* Hairline divider */}
-      <div className="my-4 h-px w-16 bg-[#792B33]/48" aria-hidden="true" />
-
-      {/* Two concise accomplishments */}
-      <ul className="m-0 list-none space-y-2.5 p-0 text-[14px] leading-[1.58] text-[#3F1F23] max-w-[44ch]">
-        {milestone.achievements.map((achievement, idx) => (
-          <li key={idx} className="flex items-start gap-2.5">
+          {/* Framed archival ivory interior */}
+          <div className="relative px-6 py-5">
+            {/* Subtle corner registration brackets inside the frame */}
             <span
               aria-hidden="true"
-              className="mt-[2px] font-mono text-xs text-[#792B33]/70 shrink-0"
-            >
-              —
-            </span>
-            <span>{achievement}</span>
-          </li>
-        ))}
-      </ul>
+              className="pointer-events-none absolute left-2.5 top-2.5 h-2.5 w-2.5 border-l border-t border-[#792B33]/35"
+            />
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute right-2.5 top-2.5 h-2.5 w-2.5 border-r border-t border-[#792B33]/35"
+            />
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute left-2.5 bottom-2.5 h-2.5 w-2.5 border-l border-b border-[#792B33]/35"
+            />
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute right-2.5 bottom-2.5 h-2.5 w-2.5 border-r border-b border-[#792B33]/35"
+            />
 
-      {/* Unboxed technologies (zero pills/chips) */}
-      <div className="mt-5 pt-3 border-t border-[#792B33]/22 flex items-center justify-between gap-4">
-        <p className="m-0 font-mono text-[11px] leading-relaxed tracking-[0.04em] text-[#792B33]/82">
-          {milestone.technologies.join(" · ")}
-        </p>
-        {milestone.link && (
-          <a
-            href={milestone.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-[0.16em] text-[#792B33] no-underline hover:underline shrink-0"
-          >
-            <span>Site</span>
-            <ArrowUpRight size={12} />
-          </a>
-        )}
-      </div>
-    </aside>
+            {/* Bold Monumental Company Name */}
+            <h3
+              className="m-0 font-normal uppercase leading-[0.92] tracking-[0.02em] text-[#792B33]"
+              style={{
+                fontFamily: "var(--font-display-bold), 'Arial Black', sans-serif",
+                fontSize: "clamp(32px, 3.2vw, 50px)",
+                textWrap: "balance",
+              }}
+            >
+              {milestone.companyName}
+            </h3>
+
+            {/* Role & Location */}
+            <div className="mt-2.5 flex flex-wrap items-baseline justify-between gap-2">
+              <p className="m-0 text-[15px] font-semibold leading-snug text-[#4B1A20]">
+                {milestone.role}
+              </p>
+              <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-[#792B33]/74">
+                {milestone.location}
+              </span>
+            </div>
+
+            {/* Accent divider */}
+            <div className="my-4 h-px w-full bg-[#792B33]/20" aria-hidden="true" />
+
+            {/* Structured Achievements with vermilion diamond markers */}
+            <ul className="m-0 list-none space-y-2.5 p-0 text-[13.5px] leading-[1.58] text-[#391B1F]">
+              {milestone.achievements.map((achievement, idx) => (
+                <li key={idx} className="flex items-start gap-2.5">
+                  <span
+                    aria-hidden="true"
+                    className="mt-[7px] h-1.5 w-1.5 shrink-0 rotate-45 bg-[#C8372D]"
+                  />
+                  <span>{achievement}</span>
+                </li>
+              ))}
+            </ul>
+
+            {/* Structured Technology Footer Strip */}
+            <div className="mt-5 flex items-center justify-between gap-4 border-t border-[#792B33]/20 pt-3.5">
+              <p className="m-0 font-mono text-[11px] leading-relaxed tracking-[0.05em] text-[#792B33]/88">
+                {milestone.technologies.join(" · ")}
+              </p>
+              {milestone.link && (
+                <a
+                  href={milestone.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 border border-[#792B33]/35 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[#792B33] no-underline transition-colors hover:bg-[#792B33] hover:text-[#F3E9DE] shrink-0"
+                >
+                  <span>Site</span>
+                  <ArrowUpRight size={11} />
+                </a>
+              )}
+            </div>
+          </div>
+        </motion.aside>
+      )}
+    </AnimatePresence>
   );
 }

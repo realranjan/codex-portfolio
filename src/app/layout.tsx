@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import {
   Anton,
+  Archivo_Black,
   Cormorant_Garamond,
   IBM_Plex_Mono,
   Manrope,
@@ -18,6 +19,13 @@ const plusJakarta = Plus_Jakarta_Sans({
 
 const anton = Anton({
   variable: "--font-anton",
+  subsets: ["latin"],
+  weight: "400",
+  display: "swap",
+});
+
+const archivoBlack = Archivo_Black({
+  variable: "--font-display-bold",
   subsets: ["latin"],
   weight: "400",
   display: "swap",
@@ -74,7 +82,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${plusJakarta.variable} ${anton.variable} ${manrope.variable} ${cormorantGaramond.variable} ${ibmPlexMono.variable} h-full antialiased`}
+      className={`${plusJakarta.variable} ${anton.variable} ${archivoBlack.variable} ${manrope.variable} ${cormorantGaramond.variable} ${ibmPlexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[#F3E9DE] text-[#792B33]">
         <a href="#main-content" className="skip-link">

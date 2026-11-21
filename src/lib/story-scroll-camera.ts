@@ -205,3 +205,80 @@ export function computeChapterHingeTransform(
   };
 }
 
+export interface ChapterParallaxLayerState {
+  /** Combined vertical parallax offset in px (entering upward surge + outgoing downward lag) */
+  translateYPx: number;
+  /** Bottom-corner hinge tilt in degrees while rising onto previous chapter */
+  rotationDeg: number;
+  /** Depth scale: enters 0.968 -> 1.0, recedes 1.0 -> 0.945 behind next rising chapter */
+  scale: number;
+  /** Upper cast shadow opacity while rising over the previous chapter */
+  shadowOpacity: number;
+  /** Atmospheric darkening veil opacity as the next chapter slides up over this one */
+  recedeVeilOpacity: number;
+  /** True when neither entering nor receding so transform can clear cleanly */
+  isNeutral: boolean;
+}
+
+/**
+ * Pure two-phase Story Scroll parallax math so every chapter visibly rises UP
+ * over the previous chapter (accelerated upward surge + hinge + cast shadow)
+ * while the outgoing chapter lags downward with subtle depth recession & veil.
+ */
+export function computeChapterParallaxLayerState(
+  rawEnterProgress: number,
+  rawExitProgress: number,
+  maxDeg = 9,
+  hinge: "left" | "right" = "left",
+  parallaxLiftPx = 92,
+  recedeLagPx = 128
+): ChapterParallaxLayerState {
+  const enterT = clamp01(rawEnterProgress);
+  const exitT = clamp01(rawExitProgress);
+
+  const enterEased = 1 - Math.pow(1 - enterT, 2.4);
+  const enterRem = 1 - enterEased;
+  const exitEased = smoothstep(0, 1, exitT);
+
+  const entering = enterT < 0.995;
+  const receding = exitT > 0.005;
+  const isNeutral = !entering && !receding;
+
+  if (isNeutral) {
+    return {
+      translateYPx: 0,
+      rotationDeg: 0,
+      scale: 1,
+      shadowOpacity: 0,
+      recedeVeilOpacity: 0,
+      isNeutral: true,
+    };
+  }
+
+  const sign = hinge === "left" ? 1 : -1;
+  const rotationDeg = entering ? Number((sign * maxDeg * enterRem).toFixed(3)) || 0 : 0;
+
+  // Entering starts +parallaxLiftPx lower and surges briskly UP onto the previous sheet;
+  // Receding counter-drags +recedeLagPx downward so it lags behind the incoming rising sheet.
+  const enterY = entering ? parallaxLiftPx * enterRem : 0;
+  const exitY = receding ? recedeLagPx * exitEased : 0;
+  const translateYPx = Number((enterY + exitY).toFixed(2)) || 0;
+
+  const enterScale = entering ? 1 - 0.032 * enterRem : 1;
+  const exitScale = receding ? 1 - 0.055 * exitEased : 1;
+  const scale = Number((enterScale * exitScale).toFixed(4));
+
+  const shadowOpacity = entering ? Number((0.34 * enterRem).toFixed(3)) || 0 : 0;
+  const recedeVeilOpacity = receding ? Number((0.28 * exitEased).toFixed(3)) || 0 : 0;
+
+  return {
+    translateYPx,
+    rotationDeg,
+    scale,
+    shadowOpacity,
+    recedeVeilOpacity,
+    isNeutral: false,
+  };
+}
+
+

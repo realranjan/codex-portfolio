@@ -79,7 +79,7 @@ export function ChapterPlayground() {
           surface="ivory"
           action={
             <span className="font-mono text-xs uppercase tracking-[0.18em] text-[#792B33]/72 md:mr-36 lg:mr-44">
-              06 Experiments · Select Any Tile
+              06 Experiments
             </span>
           }
         />

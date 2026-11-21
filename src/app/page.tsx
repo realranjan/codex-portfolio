@@ -6,7 +6,6 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import { MotionConfig } from "motion/react";
-import { ChevronDown } from "lucide-react";
 import { computeHeroStoryScrollState } from "@/lib/motion";
 import type { SpatialControlValues } from "@/components/particle-portrait";
 import {
@@ -57,7 +56,6 @@ export default function Home() {
   const heroSublineRef = useRef<HTMLParagraphElement>(null);
   const heroBrushWashRef = useRef<HTMLDivElement>(null);
   const heroBrushUnderlineRef = useRef<HTMLDivElement>(null);
-  const heroScrollCueRef = useRef<HTMLAnchorElement>(null);
   const heroBackdropDecorRef = useRef<HTMLDivElement>(null);
   const heroSunRef = useRef<HTMLDivElement>(null);
   const heroForegroundRef = useRef<HTMLDivElement>(null);
@@ -114,7 +112,6 @@ export default function Home() {
         punchlineTextRef: heroSublineRef,
         brushWashRef: heroBrushWashRef,
         brushUnderlineRef: heroBrushUnderlineRef,
-        scrollCueRef: heroScrollCueRef,
       });
 
       if (heroBackdropDecorRef.current) {
@@ -192,7 +189,7 @@ export default function Home() {
         {/* ═══════════════════════════════════════════════════════════════════════
             00 / PRESERVED HERO SECTION (UNMODIFIED VISUALS, 3D SAMURAI CAT & TYPOGRAPHY)
            ═══════════════════════════════════════════════════════════════════════ */}
-        <div ref={unifiedRunwayRef} className="hero-runway relative" id="top">
+        <div ref={unifiedRunwayRef} className="hero-runway relative z-[1]" id="top">
           <div
             className="hero-section cursor-grab active:cursor-grabbing"
             role="region"
@@ -231,21 +228,6 @@ export default function Home() {
                   brushWashRef={heroBrushWashRef}
                   brushUnderlineRef={heroBrushUnderlineRef}
                 />
-
-                <a
-                  ref={heroScrollCueRef}
-                  href="#about"
-                  aria-label="Scroll to About chapter"
-                  className="pointer-events-auto absolute bottom-0 inline-flex flex-col items-center gap-1 text-[#2B231E]/80 transition-colors hover:text-[#792B33] will-change-[opacity]"
-                >
-                  <span
-                    aria-hidden="true"
-                    className="flex h-7 w-[18px] items-start justify-center rounded-full border-[1.5px] border-current pt-1.5"
-                  >
-                    <span className="h-1.5 w-[2px] rounded-full bg-current" />
-                  </span>
-                  <ChevronDown size={13} strokeWidth={1.8} aria-hidden="true" />
-                </a>
               </div>
             </div>
           </div>
@@ -262,100 +244,123 @@ export default function Home() {
             POST-HERO NARRATIVE CHAPTERS (STRICT #792B33 BURGUNDY & #F3E9DE IVORY)
            ═══════════════════════════════════════════════════════════════════════ */}
 
-        {/* CHAPTER 01 — ABOUT & PHILOSOPHY (Story Scroll Hinged Entrance · Single Focused Page) */}
+        {/* CHAPTER 01 — ABOUT & PHILOSOPHY (Story Scroll Overlapping Parallax · Rises over Hero) */}
         <StoryScrollChapter
           testId="story-hinge-about"
           hinge="left"
           maxDeg={9}
           backdropColor="#F3E9DE"
+          zIndex={10}
+          overlapPrev
         >
           <ChapterAbout />
         </StoryScrollChapter>
 
         {/* TRANSITION 01 -> 02 — BURGUNDY TORN-PAPER PEEL REVEALING IVORY */}
-        <TornPaperPeel
-          variant="burgundy-to-ivory"
-          testId="torn-paper-about-to-projects"
-          upperCaption="01 / About → 02 / Projects"
-          lowerHint="02 · Selected Projects"
-          phaseOffset={0}
-        />
+        <div className="relative z-[15]">
+          <TornPaperPeel
+            variant="burgundy-to-ivory"
+            testId="torn-paper-about-to-projects"
+            upperCaption="01 / About → 02 / Projects"
+            lowerHint="02 · Selected Projects"
+            phaseOffset={0}
+          />
+        </div>
 
         {/* CHAPTER 02 — SELECTED PROJECTS (Ivory · Preserved Sticky 3D Tumble Deck) */}
-        <ChapterProjects />
+        <div className="relative z-[20]">
+          <ChapterProjects />
+        </div>
 
-        {/* CHAPTER 03 — THE PLAYGROUND (Story Scroll Hinged Entrance · Ivory) */}
+        {/* CHAPTER 03 — THE PLAYGROUND (Story Scroll Overlapping Parallax · Rises over Projects) */}
         <StoryScrollChapter
           testId="story-hinge-playground"
           hinge="right"
           maxDeg={8.5}
           backdropColor="#F3E9DE"
+          zIndex={30}
+          overlapPrev
         >
           <ChapterPlayground />
         </StoryScrollChapter>
 
         {/* TRANSITION 03 -> 04 — IVORY TORN-PAPER PEEL REVEALING BURGUNDY */}
-        <TornPaperPeel
-          variant="ivory-to-burgundy"
-          testId="torn-paper-playground-to-skills"
-          upperCaption="03 / Playground → 04 / Skills"
-          lowerHint="04 · The Art of Making Things"
-          phaseOffset={2.3}
-        />
+        <div className="relative z-[35]">
+          <TornPaperPeel
+            variant="ivory-to-burgundy"
+            testId="torn-paper-playground-to-skills"
+            upperCaption="03 / Playground → 04 / Skills"
+            lowerHint="04 · The Art of Making Things"
+            phaseOffset={2.3}
+          />
+        </div>
 
-        {/* CHAPTER 04 — SKILLS & TECHNOLOGY (Story Scroll Hinged Entrance · Burgundy) */}
+        {/* CHAPTER 04 — SKILLS & TECHNOLOGY (Story Scroll Overlapping Parallax · Burgundy) */}
         <StoryScrollChapter
           testId="story-hinge-skills"
           hinge="left"
           maxDeg={8}
           backdropColor="#5E1E25"
+          zIndex={40}
         >
           <ChapterSkills />
         </StoryScrollChapter>
 
         {/* TRANSITION 04 -> 05 — BURGUNDY TORN-PAPER PEEL REVEALING 3D MOUNTAIN JOURNEY */}
-        <TornPaperPeel
-          variant="burgundy-to-ivory"
-          testId="torn-paper-skills-to-experience"
-          upperCaption="04 / Skills → 05 / Experience"
-          lowerHint="05 · Mountain Journey"
-          phaseOffset={6.1}
-        />
+        <div className="relative z-[45]">
+          <TornPaperPeel
+            variant="burgundy-to-ivory"
+            testId="torn-paper-skills-to-experience"
+            upperCaption="04 / Skills → 05 / Experience"
+            lowerHint="05 · Mountain Journey"
+            phaseOffset={6.1}
+          />
+        </div>
 
         {/* CHAPTER 05 — EXPERIENCE & JOURNEY (Ivory · Preserved Sticky 3D Mountain Journey) */}
-        <ChapterExperience />
+        <div className="relative z-[50]">
+          <ChapterExperience />
+        </div>
 
-        {/* CHAPTER 06 — EDUCATION (Story Scroll Hinged Entrance · Burgundy) */}
+        {/* CHAPTER 06 — EDUCATION (Story Scroll Overlapping Parallax · Rises over Experience) */}
         <StoryScrollChapter
           testId="story-hinge-education"
           hinge="left"
           maxDeg={8.5}
-          backdropColor="#F3E9DE"
+          backdropColor="#792B33"
+          zIndex={60}
+          overlapPrev
         >
           <ChapterEducation />
         </StoryScrollChapter>
 
-        {/* CHAPTER 07 — ACHIEVEMENTS & CERTIFICATIONS (Story Scroll Hinged Entrance · Burgundy) */}
+        {/* CHAPTER 07 — ACHIEVEMENTS & CERTIFICATIONS (Story Scroll Overlapping Parallax · Rises over Education) */}
         <StoryScrollChapter
           testId="story-hinge-achievements"
           hinge="right"
           maxDeg={8}
           backdropColor="#5E1E25"
+          zIndex={70}
+          overlapPrev
         >
           <ChapterAchievements />
         </StoryScrollChapter>
 
         {/* TRANSITION 07 -> 09 — BURGUNDY TORN-PAPER PEEL REVEALING FINAL IVORY FOOTER */}
-        <TornPaperPeel
-          variant="burgundy-to-ivory"
-          testId="torn-paper-achievements-to-contact"
-          upperCaption="07 / Achievements → 09 / Contact"
-          lowerHint="Epilogue"
-          phaseOffset={4.6}
-        />
+        <div className="relative z-[75]">
+          <TornPaperPeel
+            variant="burgundy-to-ivory"
+            testId="torn-paper-achievements-to-contact"
+            upperCaption="07 / Achievements → 09 / Contact"
+            lowerHint="Epilogue"
+            phaseOffset={4.6}
+          />
+        </div>
 
         {/* 09 / CONTACT — CINEMATIC JAPANESE SAMURAI CAT FOOTER (Ivory #F3E9DE) */}
-        <ChapterContact onOpenResume={() => setResumeOpen(true)} />
+        <div className="relative z-[80]">
+          <ChapterContact onOpenResume={() => setResumeOpen(true)} />
+        </div>
       </main>
 
       <ResumeModal open={resumeOpen} onClose={() => setResumeOpen(false)} />

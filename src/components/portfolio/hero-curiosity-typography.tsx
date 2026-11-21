@@ -16,7 +16,7 @@ export interface HeroStoryDomRefs {
   punchlineTextRef: RefObject<HTMLParagraphElement | null>;
   brushWashRef: RefObject<HTMLDivElement | null>;
   brushUnderlineRef: RefObject<HTMLDivElement | null>;
-  scrollCueRef: RefObject<HTMLAnchorElement | null>;
+  scrollCueRef?: RefObject<HTMLAnchorElement | null>;
 }
 
 /**
@@ -146,8 +146,8 @@ export function applyHeroStoryToDom(
     brushWash.style.opacity = washActive ? "0.94" : "0";
   }
 
-  // Initial scroll-down cue (clears once user starts scrolling)
-  const scrollCue = refs.scrollCueRef.current;
+  // Optional scroll-down cue if provided
+  const scrollCue = refs.scrollCueRef?.current;
   if (scrollCue) {
     scrollCue.style.opacity = state.scrollCueOpacity.toFixed(4);
     scrollCue.style.visibility = state.scrollCueOpacity > 0.02 ? "visible" : "hidden";
@@ -192,88 +192,59 @@ export const HeroCuriosityTypography = forwardRef<
       <h1
         id="hero-heading"
         aria-label="Curiosity killed the cat."
-        className="relative m-0 flex h-full w-full items-center justify-center font-normal uppercase text-[#792B33]"
-        style={{ fontFamily: "var(--font-anton), Impact, sans-serif" }}
+        className="relative m-0 flex h-full w-full items-center justify-center font-black uppercase text-[#792B33]"
+        style={{ fontFamily: "var(--font-display-bold), 'Arial Black', sans-serif" }}
       >
-        {/* Beat 1 Slot: CURIOSITY — BIG monumental display type centered behind the cat with deliberate center spacing around the helmet */}
+        {/* Beat 1 Slot: CURIOSITY — Single unified centered monumental bold headline with wide letter-spacing */}
         <div
           ref={curiositySlotRef}
           data-testid="hero-slot-curiosity"
-          className="absolute inset-0 flex items-center justify-center px-2 sm:px-6 text-center will-change-[transform,opacity,clip-path]"
+          className="absolute inset-0 flex items-center justify-center px-3 sm:px-6 text-center will-change-[transform,opacity,clip-path]"
         >
           <span
             ref={curiosityTextRef}
             data-testid="hero-line-curiosity"
-            className="font-hero-display grid w-full grid-cols-[1fr_clamp(140px,31vw,455px)_1fr] items-center whitespace-nowrap leading-[0.88] tracking-[0.1em] sm:tracking-[0.13em] lg:tracking-[0.16em] will-change-[clip-path,transform]"
+            className="font-hero-display block whitespace-nowrap leading-[0.88] tracking-[0.14em] sm:tracking-[0.2em] lg:tracking-[0.25em] pl-[0.14em] sm:pl-[0.2em] lg:pl-[0.25em] will-change-[clip-path,transform]"
             style={{
-              fontFamily: "var(--font-anton), Impact, sans-serif",
-              fontSize: "clamp(32px, 10.2vw, 166px)",
+              fontFamily: "var(--font-display-bold), 'Arial Black', sans-serif",
+              fontSize: "clamp(34px, 9.6vw, 158px)",
             }}
           >
-            <span className="justify-self-end pr-[0.04em]">CURIO</span>
-            <span aria-hidden="true" />
-            <span className="justify-self-start pl-[0.06em]">SITY</span>
+            CURIOSITY
           </span>
         </div>
 
-        {/* Beat 2 Slot: KILLED THE CAT. — BIG monumental display type split symmetrically across the 3D samurai cat so every word is fully readable */}
+        {/* Beat 2 Slot: KILLED THE CAT. — Single unified centered monumental bold headline with generous letter & word spacing */}
         <div
           ref={killedSlotRef}
           data-testid="hero-slot-killed"
-          className="absolute inset-0 flex items-center justify-center px-2 sm:px-6 text-center opacity-0 invisible will-change-[transform,opacity]"
+          className="absolute inset-0 flex items-center justify-center px-3 sm:px-6 text-center opacity-0 invisible will-change-[transform,opacity]"
         >
           <span
             data-testid="hero-line-killed"
-            className="font-hero-display grid w-full grid-cols-[1fr_clamp(124px,32.8vw,486px)_1fr] items-center leading-[0.88] tracking-[0.06em] sm:tracking-[0.1em] lg:tracking-[0.12em] origin-center"
+            className="font-hero-display flex flex-nowrap items-end justify-center gap-x-[0.38em] sm:gap-x-[0.52em] lg:gap-x-[0.64em] leading-[0.88] tracking-[0.1em] sm:tracking-[0.15em] lg:tracking-[0.2em] pl-[0.1em] sm:pl-[0.15em] lg:pl-[0.2em] origin-center"
             style={{
-              fontFamily: "var(--font-anton), Impact, sans-serif",
-              fontSize: "clamp(22px, 7.6vw, 122px)",
+              fontFamily: "var(--font-display-bold), 'Arial Black', sans-serif",
+              fontSize: "clamp(22px, 6.4vw, 108px)",
             }}
           >
-            {/* Left of cat: KILLED */}
-            <span className="justify-self-end inline-flex flex-nowrap items-end">
-              {([0] as const).map((index) => (
+            {KILLED_LINE_WORDS.map((word, index) => (
+              <span
+                key={word}
+                className="inline-block overflow-hidden align-bottom pt-[0.04em] pb-[0.06em]"
+              >
                 <span
-                  key={KILLED_LINE_WORDS[index]}
-                  className="inline-block overflow-hidden align-bottom pt-[0.04em] pb-[0.06em]"
+                  ref={(el) => {
+                    killedWordRefs.current[index] = el;
+                  }}
+                  data-testid={`hero-word-${index}`}
+                  className="inline-block whitespace-nowrap will-change-transform"
+                  style={{ transform: "translate3d(0, 115%, 0)" }}
                 >
-                  <span
-                    ref={(el) => {
-                      killedWordRefs.current[index] = el;
-                    }}
-                    data-testid={`hero-word-${index}`}
-                    className="inline-block whitespace-nowrap will-change-transform"
-                    style={{ transform: "translate3d(0, 115%, 0)" }}
-                  >
-                    {KILLED_LINE_WORDS[index]}
-                  </span>
+                  {word}
                 </span>
-              ))}
-            </span>
-
-            {/* Dedicated center space occupied by the 3D samurai cat */}
-            <span aria-hidden="true" />
-
-            {/* Right of cat: THE CAT. */}
-            <span className="justify-self-start inline-flex flex-nowrap items-end gap-x-[0.22em] sm:gap-x-[0.28em] lg:gap-x-[0.34em]">
-              {([1, 2] as const).map((index) => (
-                <span
-                  key={KILLED_LINE_WORDS[index]}
-                  className="inline-block overflow-hidden align-bottom pt-[0.04em] pb-[0.06em]"
-                >
-                  <span
-                    ref={(el) => {
-                      killedWordRefs.current[index] = el;
-                    }}
-                    data-testid={`hero-word-${index}`}
-                    className="inline-block whitespace-nowrap will-change-transform"
-                    style={{ transform: "translate3d(0, 115%, 0)" }}
-                  >
-                    {KILLED_LINE_WORDS[index]}
-                  </span>
-                </span>
-              ))}
-            </span>
+              </span>
+            ))}
           </span>
         </div>
       </h1>

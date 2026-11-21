@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   computeChapterHingeTransform,
+  computeChapterParallaxLayerState,
   computeContinuousStrokeState,
   computeStoryCardCamera,
   computeWordRevealState,
@@ -117,4 +118,33 @@ test("computeChapterHingeTransform swings cleanly from angled entry to settled f
   assert.equal(settled.scale, 1);
   assert.equal(settled.isSettled, true);
 });
+
+test("computeChapterParallaxLayerState surges upward on enter, rests neutral, and lags with depth veil on exit", () => {
+  const enteringLeft = computeChapterParallaxLayerState(0, 0, 9, "left");
+  assert.equal(enteringLeft.isNeutral, false);
+  assert.equal(enteringLeft.rotationDeg, 9);
+  assert.ok(enteringLeft.translateYPx >= 88, "Entering sheet should start below and surge up");
+  assert.ok(enteringLeft.scale < 0.98, "Entering sheet should scale slightly up as it arrives");
+  assert.ok(enteringLeft.shadowOpacity > 0.25, "Entering sheet should cast an upper overlap shadow");
+  assert.equal(enteringLeft.recedeVeilOpacity, 0);
+
+  const enteringRight = computeChapterParallaxLayerState(0, 0, 9, "right");
+  assert.equal(enteringRight.rotationDeg, -9);
+
+  const settled = computeChapterParallaxLayerState(1, 0, 9, "left");
+  assert.equal(settled.isNeutral, true);
+  assert.equal(settled.rotationDeg, 0);
+  assert.equal(settled.translateYPx, 0);
+  assert.equal(settled.scale, 1);
+  assert.equal(settled.shadowOpacity, 0);
+  assert.equal(settled.recedeVeilOpacity, 0);
+
+  const receding = computeChapterParallaxLayerState(1, 1, 9, "left");
+  assert.equal(receding.isNeutral, false);
+  assert.equal(receding.rotationDeg, 0);
+  assert.ok(receding.translateYPx > 100, "Outgoing sheet should lag downward behind incoming sheet");
+  assert.ok(receding.scale < 0.96, "Outgoing sheet should recede softly in scale");
+  assert.ok(receding.recedeVeilOpacity > 0.25, "Outgoing sheet should dim under recession veil");
+});
+
 
