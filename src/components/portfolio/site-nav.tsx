@@ -11,6 +11,8 @@ import {
 
 interface SiteNavProps {
   onOpenResume: () => void;
+  navWrapRef?: React.Ref<HTMLDivElement>;
+  onBeforeNavigate?: (chapterId: string) => void;
 }
 
 /**
@@ -21,7 +23,11 @@ interface SiteNavProps {
  *   to match the active chapter surface without expensive backdrop-filter blur.
  * - Reaches every chapter (01 About .. 08 Contact) reliably even across GSAP pinned sections.
  */
-export function SiteNav({ onOpenResume }: SiteNavProps) {
+export function SiteNav({
+  onOpenResume,
+  navWrapRef,
+  onBeforeNavigate,
+}: SiteNavProps) {
   const [scrolled, setScrolled] = useState(false);
   const [activeId, setActiveId] = useState<string>("top");
   const [activeSurface, setActiveSurface] = useState<ChapterSurface>("ivory");
@@ -78,19 +84,23 @@ export function SiteNav({ onOpenResume }: SiteNavProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [menuOpen]);
 
-  const navigateToChapter = useCallback((id: string) => {
-    setMenuOpen(false);
-    if (id === "top") {
-      window.history.pushState(null, "", "#top");
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
-    const target = document.getElementById(id);
-    if (!target) return;
-    window.history.pushState(null, "", `#${id}`);
-    const top = target.getBoundingClientRect().top + window.scrollY;
-    window.scrollTo({ top, behavior: "smooth" });
-  }, []);
+  const navigateToChapter = useCallback(
+    (id: string) => {
+      setMenuOpen(false);
+      onBeforeNavigate?.(id);
+      if (id === "top") {
+        window.history.pushState(null, "", "#top");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      const target = document.getElementById(id);
+      if (!target) return;
+      window.history.pushState(null, "", `#${id}`);
+      const top = target.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({ top, behavior: "smooth" });
+    },
+    [onBeforeNavigate]
+  );
 
   // Align direct hash URLs (e.g. /#projects, /#experience) after pinned ScrollTriggers mount
   useEffect(() => {
@@ -124,8 +134,10 @@ export function SiteNav({ onOpenResume }: SiteNavProps) {
   return (
     <>
       <div
+        ref={navWrapRef}
         className={`site-nav-wrap font-nav transition-colors duration-300 ${barClass}`}
         data-nav-surface={isBurgundyBar ? "burgundy" : "ivory"}
+        style={navWrapRef ? { opacity: 0, pointerEvents: "none" } : undefined}
       >
         <header className="page-container flex h-16 md:h-[74px] items-center justify-between gap-8">
           {/* Zone 1: Single-line brand wordmark */}

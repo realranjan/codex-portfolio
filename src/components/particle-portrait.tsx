@@ -33,6 +33,7 @@ interface ParticlePortraitProps {
   projectsProgressRef?: MutableRefObject<number>;
   centerMixRef?: MutableRefObject<number>;
   controlsRef?: MutableRefObject<SpatialControlValues>;
+  onReadyChange?: (ready: boolean) => void;
 }
 
 interface RevealUniforms {
@@ -394,10 +395,14 @@ export default function ParticlePortrait({
   projectsProgressRef,
   centerMixRef,
   controlsRef,
+  onReadyChange,
 }: ParticlePortraitProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
-  const [progress, setProgress] = useState(0);
+  const onReadyChangeRef = useRef(onReadyChange);
+  useEffect(() => {
+    onReadyChangeRef.current = onReadyChange;
+  }, [onReadyChange]);
   const [ready, setReady] = useState(false);
   const [webglUnavailable, setWebglUnavailable] = useState(false);
 
@@ -557,34 +562,18 @@ export default function ParticlePortrait({
         if (!canUseWebGL) {
           if (!cleaned) {
             setWebglUnavailable(true);
-            setProgress(100);
             setReady(true);
+            onReadyChangeRef.current?.(true);
           }
           return;
         }
 
         const isSoftwareGl = detectSoftwareWebGL();
-        let samuraiLoaded = 0;
-        let samuraiTotal = 8_651_784;
-        let cuteLoaded = 0;
-        let cuteTotal = 8_026_276;
-
-        const updateFetchProgress = () => {
-          const combined = (samuraiLoaded + cuteLoaded) / Math.max(1, samuraiTotal + cuteTotal);
-          setProgress(Math.min(95, Math.round(combined * 95)));
-        };
+        const noopBytes = () => {};
 
         const [samuraiBuffer, cuteBuffer] = await Promise.all([
-          fetchGlbWithProgress(SAMURAI_MODEL, controller.signal, (l, t) => {
-            samuraiLoaded = l;
-            samuraiTotal = t;
-            updateFetchProgress();
-          }),
-          fetchGlbWithProgress(CUTE_MODEL, controller.signal, (l, t) => {
-            cuteLoaded = l;
-            cuteTotal = t;
-            updateFetchProgress();
-          }),
+          fetchGlbWithProgress(SAMURAI_MODEL, controller.signal, noopBytes),
+          fetchGlbWithProgress(CUTE_MODEL, controller.signal, noopBytes),
         ]);
 
         await MeshoptDecoder.ready;
@@ -597,9 +586,8 @@ export default function ParticlePortrait({
         ]);
 
         if (cleaned) return;
-        setProgress(100);
         if (!reduced && !isSoftwareGl) {
-          await new Promise((resolve) => setTimeout(resolve, 160));
+          await new Promise((resolve) => setTimeout(resolve, 120));
         }
         if (cleaned) return;
 
@@ -820,6 +808,7 @@ export default function ParticlePortrait({
           if (!shown) {
             shown = true;
             setReady(true);
+            onReadyChangeRef.current?.(true);
           }
 
           const { spatial, transition, centerMix, rawProjects } = applyCameraFraming(
@@ -1019,8 +1008,8 @@ export default function ParticlePortrait({
         if (!controller.signal.aborted) {
           console.error(cause);
           setWebglUnavailable(true);
-          setProgress(100);
           setReady(true);
+          onReadyChangeRef.current?.(true);
         }
       }
     }
@@ -1073,32 +1062,6 @@ export default function ParticlePortrait({
           aria-hidden="true"
         />
       )}
-
-      <div
-        className="particle-loader"
-        role="progressbar"
-        aria-label="Loading 3D cat models"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={progress}
-      >
-        <svg viewBox="-110 -110 220 220" aria-hidden="true">
-          {Array.from({ length: 96 }, (_, i) => {
-            const angle = (i / 96) * Math.PI * 2 - Math.PI / 2;
-            const lit = i / 96 < progress / 100;
-            return (
-              <circle
-                key={i}
-                cx={92 * Math.cos(angle)}
-                cy={92 * Math.sin(angle)}
-                r={lit ? 2.2 : 1.5}
-                className={lit ? "is-lit" : ""}
-              />
-            );
-          })}
-        </svg>
-        <span className="particle-counter">{String(progress).padStart(3, "0")}</span>
-      </div>
     </div>
   );
 }

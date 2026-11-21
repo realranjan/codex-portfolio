@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -10,6 +10,7 @@ import {
   computeHeroStoryScrollState,
   type HeroStoryScrollState,
 } from "@/lib/motion";
+import type { HeroPortalGeometry } from "@/lib/hero-portal";
 import type { SpatialControlValues } from "@/components/particle-portrait";
 import {
   applyHeroStoryToDom,
@@ -20,6 +21,8 @@ import {
   HeroJapaneseBackdrop,
   HeroJapaneseForeground,
 } from "@/components/portfolio/hero-japanese-backdrop";
+import { ScrollExpandMedia } from "@/components/ui/scroll-expansion-hero";
+import preloaderBackdrop from "@/assets/images/jp_preloader_shoji_backdrop_1795262400466.jpg";
 import { SiteNav } from "@/components/portfolio/site-nav";
 import { ResumeModal } from "@/components/portfolio/resume-modal";
 import { StoryScrollChapter } from "@/components/ui/story-scroll";
@@ -57,6 +60,10 @@ export default function Home() {
   const heroSunRef = useRef<HTMLDivElement>(null);
   const heroForegroundRef = useRef<HTMLDivElement>(null);
   const heroForegroundDecorRef = useRef<HTMLDivElement>(null);
+  const heroCuriosityGateRef = useRef<HTMLDivElement>(null);
+  const siteNavWrapRef = useRef<HTMLDivElement>(null);
+  const lenisRef = useRef<Lenis | null>(null);
+  const portalExpandedRef = useRef<boolean>(false);
 
   const heroStoryRef = useRef<HeroStoryScrollState>(computeHeroStoryScrollState(0));
   const spatialProgressRef = useRef<number>(0);
@@ -65,6 +72,38 @@ export default function Home() {
   const spatialControlsRef = useRef<SpatialControlValues>(DEFAULT_SPATIAL_CONTROLS);
 
   const [resumeOpen, setResumeOpen] = useState(false);
+  const [catReady, setCatReady] = useState(false);
+  const [forcePortalExpanded, setForcePortalExpanded] = useState(false);
+
+  const handlePortalExpandedChange = useCallback((expanded: boolean) => {
+    portalExpandedRef.current = expanded;
+    const lenis = lenisRef.current;
+    if (!lenis) return;
+    if (expanded) {
+      lenis.start();
+    } else {
+      lenis.stop();
+    }
+  }, []);
+
+  const handlePortalGeometryFrame = useCallback((geometry: HeroPortalGeometry) => {
+    if (heroCuriosityGateRef.current) {
+      heroCuriosityGateRef.current.style.opacity = geometry.heroFullChromeOpacity.toFixed(4);
+      heroCuriosityGateRef.current.style.visibility =
+        geometry.heroFullChromeOpacity > 0.01 ? "visible" : "hidden";
+    }
+    if (siteNavWrapRef.current) {
+      siteNavWrapRef.current.style.opacity = geometry.navOpacity.toFixed(4);
+      siteNavWrapRef.current.style.pointerEvents =
+        geometry.navOpacity > 0.5 ? "auto" : "none";
+    }
+  }, []);
+
+  const handleBeforeNavigate = useCallback((chapterId: string) => {
+    if (chapterId !== "top") {
+      setForcePortalExpanded(true);
+    }
+  }, []);
 
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -147,12 +186,16 @@ export default function Home() {
       };
     }
 
-    // Single smooth-scroll loop via Lenis (zero duplicate window scroll listener overhead)
+    // Single smooth-scroll loop via Lenis (paused while Japanese portal intro is active)
     const lenis = new Lenis({
       autoRaf: true,
       anchors: false,
       lerp: 0.11,
     });
+    lenisRef.current = lenis;
+    if (!portalExpandedRef.current) {
+      lenis.stop();
+    }
     const syncScroll = () => {
       applyHeroFromScroll();
       ScrollTrigger.update();
@@ -170,16 +213,21 @@ export default function Home() {
       window.removeEventListener("resize", handleResize);
       lenis.off("scroll", syncScroll);
       lenis.destroy();
+      lenisRef.current = null;
     };
   }, []);
 
   return (
     <MotionConfig reducedMotion="user">
-      <SiteNav onOpenResume={() => setResumeOpen(true)} />
+      <SiteNav
+        onOpenResume={() => setResumeOpen(true)}
+        navWrapRef={siteNavWrapRef}
+        onBeforeNavigate={handleBeforeNavigate}
+      />
 
       <main ref={pageRef} id="main-content">
         {/* ═══════════════════════════════════════════════════════════════════════
-            00 / HERO SECTION — 3D SAMURAI CAT + LIVING TYPE GARDEN BOTANICAL TYPOGRAPHY
+            00 / HERO SECTION — JAPANESE SCROLL-EXPANSION PORTAL INTO LIVE 3D SAMURAI CAT
            ═══════════════════════════════════════════════════════════════════════ */}
         <div ref={unifiedRunwayRef} className="hero-runway relative z-[5]" id="top">
           <div
@@ -187,38 +235,56 @@ export default function Home() {
             role="region"
             aria-label="Interactive 3D samurai cat sculpture hero"
           >
-            <HeroJapaneseBackdrop
-              decorRef={heroBackdropDecorRef}
-              sunRef={heroSunRef}
-            />
+            <ScrollExpandMedia
+              mediaType="portal"
+              bgImageSrc={preloaderBackdrop}
+              bgImageAlt="Lantern-lit traditional Japanese burgundy-lacquer sanctuary corridor"
+              title="RANJAN VERNEKAR"
+              mediaReady={catReady}
+              forceExpanded={forcePortalExpanded}
+              onExpandedChange={handlePortalExpandedChange}
+              onGeometryFrame={handlePortalGeometryFrame}
+            >
+              <HeroJapaneseBackdrop
+                decorRef={heroBackdropDecorRef}
+                sunRef={heroSunRef}
+              />
 
-            <HeroCuriosityTypography
-              ref={heroWordRef}
-              storyRef={heroStoryRef}
-            />
-
-            <ParticlePortrait
-              spatialProgressRef={spatialProgressRef}
-              projectsProgressRef={projectsProgressRef}
-              centerMixRef={centerMixRef}
-              controlsRef={spatialControlsRef}
-            />
-
-            <HeroJapaneseForeground
-              ref={heroForegroundRef}
-              decorRef={heroForegroundDecorRef}
-            />
-
-            <div className="pointer-events-none absolute inset-0 z-[25] flex flex-col justify-end pb-8 sm:pb-11">
-              <div className="page-container pointer-events-none relative flex min-h-[84px] items-center justify-center">
-                <HeroPunchlineBrushReveal
-                  punchlineSlotRef={heroPunchlineSlotRef}
-                  punchlineTextRef={heroSublineRef}
-                  brushWashRef={heroBrushWashRef}
-                  brushUnderlineRef={heroBrushUnderlineRef}
+              <div
+                ref={heroCuriosityGateRef}
+                className="pointer-events-none absolute inset-0 z-[2] will-change-[opacity]"
+                style={{ opacity: 0, visibility: "hidden" }}
+              >
+                <HeroCuriosityTypography
+                  ref={heroWordRef}
+                  storyRef={heroStoryRef}
                 />
               </div>
-            </div>
+
+              <ParticlePortrait
+                spatialProgressRef={spatialProgressRef}
+                projectsProgressRef={projectsProgressRef}
+                centerMixRef={centerMixRef}
+                controlsRef={spatialControlsRef}
+                onReadyChange={setCatReady}
+              />
+
+              <HeroJapaneseForeground
+                ref={heroForegroundRef}
+                decorRef={heroForegroundDecorRef}
+              />
+
+              <div className="pointer-events-none absolute inset-0 z-[25] flex flex-col justify-end pb-8 sm:pb-11">
+                <div className="page-container pointer-events-none relative flex min-h-[84px] items-center justify-center">
+                  <HeroPunchlineBrushReveal
+                    punchlineSlotRef={heroPunchlineSlotRef}
+                    punchlineTextRef={heroSublineRef}
+                    brushWashRef={heroBrushWashRef}
+                    brushUnderlineRef={heroBrushUnderlineRef}
+                  />
+                </div>
+              </div>
+            </ScrollExpandMedia>
           </div>
 
           {/* Scroll Band for the 3-Beat Hero Story (CURIOSITY -> KILLED THE CAT. -> Not this one.) */}

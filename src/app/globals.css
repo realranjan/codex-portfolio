@@ -325,53 +325,6 @@ textarea:focus-visible {
   pointer-events: auto;
 }
 
-.particle-loader {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  pointer-events: none;
-  font-family: var(--font-ibm-plex-mono), monospace;
-  opacity: 1;
-  transition: opacity 0.45s var(--ease-editorial);
-}
-
-.particle-portrait.is-ready .particle-loader {
-  opacity: 0;
-  visibility: hidden;
-}
-
-.particle-loader svg {
-  position: absolute;
-  left: 50%;
-  top: 43%;
-  width: 204px;
-  height: 204px;
-  transform: translate(-50%, -50%);
-  overflow: visible;
-}
-
-.particle-loader circle {
-  fill: rgba(251, 245, 237, 0.25);
-  transition: fill 250ms ease, r 250ms ease;
-}
-
-.particle-loader circle.is-lit {
-  fill: #fbf5ed;
-}
-
-.particle-counter {
-  position: absolute;
-  top: 43%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 28px;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
-  color: #fbf5ed;
-  white-space: nowrap;
-}
-
 /* Masked Line Reveal */
 .masked-line-wrap {
   display: block;
@@ -459,12 +412,6 @@ textarea:focus-visible {
   .btn-primary,
   .btn-secondary {
     min-height: 44px;
-  }
-
-  .particle-loader svg,
-  .particle-counter {
-    left: 50%;
-    top: 38%;
   }
 
   .particle-stage {
