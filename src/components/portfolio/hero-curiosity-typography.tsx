@@ -1,70 +1,18 @@
 "use client";
 
-import { forwardRef, useEffect, type RefObject } from "react";
-import gsap from "gsap";
+import { forwardRef, type RefObject } from "react";
 import type { HeroStoryScrollState } from "@/lib/motion";
+import { HeroTypeGarden } from "@/components/portfolio/hero-type-garden";
 
 export const KILLED_LINE_WORDS = ["KILLED", "THE", "CAT."] as const;
 
 export interface HeroStoryDomRefs {
   stageRef: RefObject<HTMLDivElement | null>;
-  curiositySlotRef: RefObject<HTMLDivElement | null>;
-  curiosityTextRef: RefObject<HTMLSpanElement | null>;
-  killedSlotRef: RefObject<HTMLDivElement | null>;
-  killedWordRefs: RefObject<Array<HTMLSpanElement | null>>;
   punchlineSlotRef: RefObject<HTMLDivElement | null>;
   punchlineTextRef: RefObject<HTMLParagraphElement | null>;
   brushWashRef: RefObject<HTMLDivElement | null>;
   brushUnderlineRef: RefObject<HTMLDivElement | null>;
   scrollCueRef?: RefObject<HTMLAnchorElement | null>;
-}
-
-/**
- * Plays the crisp initial Beat 1 entrance for "CURIOSITY" on mount (L->R clip-mask + 30px upward rise,
- * 1.2s power3.out), then keeps it completely stationary until the user scrolls.
- * Beats 2 ("KILLED THE CAT.") and 3 ("Not this one.") remain hidden until driven by scroll.
- */
-export function useHeroCuriosityEntrance(
-  curiosityTextRef: RefObject<HTMLSpanElement | null>,
-  stageRef: RefObject<HTMLDivElement | null>
-): void {
-  useEffect(() => {
-    const textEl = curiosityTextRef.current;
-    const stageEl = stageRef.current;
-    if (!textEl) return;
-
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) {
-      gsap.set(textEl, { clipPath: "inset(0% 0% 0% 0%)", y: 0 });
-      stageEl?.setAttribute("data-entrance-state", "complete");
-      return;
-    }
-
-    stageEl?.setAttribute("data-entrance-state", "playing");
-
-    const tween = gsap.fromTo(
-      textEl,
-      {
-        clipPath: "inset(0% 100% 0% 0%)",
-        y: 30,
-      },
-      {
-        clipPath: "inset(0% 0% 0% 0%)",
-        y: 0,
-        duration: 1.2,
-        delay: 0.12,
-        ease: "power3.out",
-        clearProps: "clipPath",
-        onComplete: () => {
-          stageEl?.setAttribute("data-entrance-state", "complete");
-        },
-      }
-    );
-
-    return () => {
-      tween.kill();
-    };
-  }, [curiosityTextRef, stageRef]);
 }
 
 /**
@@ -80,33 +28,6 @@ export function applyHeroStoryToDom(
     stageEl.setAttribute("data-active-beat", state.activeBeat);
     const anyBackTextVisible = state.curiosity.visible || state.killed.visible;
     stageEl.style.visibility = anyBackTextVisible ? "visible" : "hidden";
-  }
-
-  // Beat 1: CURIOSITY
-  const curiositySlot = refs.curiositySlotRef.current;
-  if (curiositySlot) {
-    curiositySlot.style.opacity = state.curiosity.opacity.toFixed(4);
-    curiositySlot.style.transform = `translate3d(0, ${state.curiosity.y.toFixed(1)}px, 0)`;
-    curiositySlot.style.clipPath =
-      state.curiosity.clipTopPct > 0.05
-        ? `inset(${state.curiosity.clipTopPct.toFixed(2)}% 0% 0% 0%)`
-        : "none";
-    curiositySlot.style.visibility = state.curiosity.visible ? "visible" : "hidden";
-  }
-
-  // Beat 2: KILLED THE CAT. (word-by-word bottom-to-top overflow mask)
-  const killedSlot = refs.killedSlotRef.current;
-  if (killedSlot) {
-    killedSlot.style.opacity = state.killed.opacity.toFixed(4);
-    killedSlot.style.transform = `translate3d(0, ${state.killed.y.toFixed(1)}px, 0)`;
-    killedSlot.style.visibility = state.killed.visible ? "visible" : "hidden";
-  }
-  const wordEls = refs.killedWordRefs.current ?? [];
-  for (let i = 0; i < KILLED_LINE_WORDS.length; i++) {
-    const wordEl = wordEls[i];
-    if (!wordEl) continue;
-    const yPct = state.killed.wordYPercent[i] ?? 115;
-    wordEl.style.transform = `translate3d(0, ${yPct.toFixed(2)}%, 0)`;
   }
 
   // Beat 3: "Not this one." + Sweeping Crimson SVG Brushstroke
@@ -156,32 +77,20 @@ export function applyHeroStoryToDom(
 }
 
 interface HeroCuriosityTypographyProps {
-  curiositySlotRef: RefObject<HTMLDivElement | null>;
-  curiosityTextRef: RefObject<HTMLSpanElement | null>;
-  killedSlotRef: RefObject<HTMLDivElement | null>;
-  killedWordRefs: RefObject<Array<HTMLSpanElement | null>>;
+  storyRef: RefObject<HeroStoryScrollState>;
   className?: string;
 }
 
 /**
- * Scroll-driven behind-cat typography stage (z-[3], strictly behind the 3D samurai cat at z-[5]
- * and in front of the crimson rising sun at z-[1]).
- * Displays Beat 1 ("CURIOSITY") initially, then replaces it cleanly with Beat 2 ("KILLED THE CAT.")
- * on scroll without keeping previous text on screen.
+ * Scroll-driven behind-cat Type Garden typography stage (z-[3], strictly behind the 3D samurai cat
+ * at z-[5] and in front of the crimson rising sun at z-[1]).
+ * Renders monumental wide-tracked Playfair Display Bold ("CURIOSITY" -> "KILLED THE CAT.")
+ * with living botanical stems, veined leaves, and spiraled roses weaving around the letterforms.
  */
 export const HeroCuriosityTypography = forwardRef<
   HTMLDivElement,
   HeroCuriosityTypographyProps
->(function HeroCuriosityTypography(
-  {
-    curiositySlotRef,
-    curiosityTextRef,
-    killedSlotRef,
-    killedWordRefs,
-    className = "",
-  },
-  ref
-) {
+>(function HeroCuriosityTypography({ storyRef, className = "" }, ref) {
   return (
     <div
       ref={ref}
@@ -189,65 +98,11 @@ export const HeroCuriosityTypography = forwardRef<
       data-active-beat="curiosity"
       className={`pointer-events-none absolute inset-0 z-[3] flex items-center justify-center overflow-hidden select-none ${className}`}
     >
-      <h1
-        id="hero-heading"
-        aria-label="Curiosity killed the cat."
-        className="relative m-0 flex h-full w-full items-center justify-center font-black uppercase text-[#792B33]"
-        style={{ fontFamily: "var(--font-display-bold), 'Arial Black', sans-serif" }}
-      >
-        {/* Beat 1 Slot: CURIOSITY — Single unified centered monumental bold headline with wide letter-spacing */}
-        <div
-          ref={curiositySlotRef}
-          data-testid="hero-slot-curiosity"
-          className="absolute inset-0 flex items-center justify-center px-3 sm:px-6 text-center will-change-[transform,opacity,clip-path]"
-        >
-          <span
-            ref={curiosityTextRef}
-            data-testid="hero-line-curiosity"
-            className="font-hero-display block whitespace-nowrap leading-[0.88] tracking-[0.14em] sm:tracking-[0.2em] lg:tracking-[0.25em] pl-[0.14em] sm:pl-[0.2em] lg:pl-[0.25em] will-change-[clip-path,transform]"
-            style={{
-              fontFamily: "var(--font-display-bold), 'Arial Black', sans-serif",
-              fontSize: "clamp(34px, 9.6vw, 158px)",
-            }}
-          >
-            CURIOSITY
-          </span>
-        </div>
-
-        {/* Beat 2 Slot: KILLED THE CAT. — Single unified centered monumental bold headline with generous letter & word spacing */}
-        <div
-          ref={killedSlotRef}
-          data-testid="hero-slot-killed"
-          className="absolute inset-0 flex items-center justify-center px-3 sm:px-6 text-center opacity-0 invisible will-change-[transform,opacity]"
-        >
-          <span
-            data-testid="hero-line-killed"
-            className="font-hero-display flex flex-nowrap items-end justify-center gap-x-[0.38em] sm:gap-x-[0.52em] lg:gap-x-[0.64em] leading-[0.88] tracking-[0.1em] sm:tracking-[0.15em] lg:tracking-[0.2em] pl-[0.1em] sm:pl-[0.15em] lg:pl-[0.2em] origin-center"
-            style={{
-              fontFamily: "var(--font-display-bold), 'Arial Black', sans-serif",
-              fontSize: "clamp(22px, 6.4vw, 108px)",
-            }}
-          >
-            {KILLED_LINE_WORDS.map((word, index) => (
-              <span
-                key={word}
-                className="inline-block overflow-hidden align-bottom pt-[0.04em] pb-[0.06em]"
-              >
-                <span
-                  ref={(el) => {
-                    killedWordRefs.current[index] = el;
-                  }}
-                  data-testid={`hero-word-${index}`}
-                  className="inline-block whitespace-nowrap will-change-transform"
-                  style={{ transform: "translate3d(0, 115%, 0)" }}
-                >
-                  {word}
-                </span>
-              </span>
-            ))}
-          </span>
-        </div>
+      <h1 id="hero-heading" className="sr-only">
+        Curiosity killed the cat.
       </h1>
+
+      <HeroTypeGarden storyRef={storyRef} />
     </div>
   );
 });

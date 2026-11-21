@@ -230,18 +230,19 @@ export function computeChapterParallaxLayerState(
   rawExitProgress: number,
   maxDeg = 9,
   hinge: "left" | "right" = "left",
-  parallaxLiftPx = 92,
-  recedeLagPx = 128
+  parallaxLiftPx = 104,
+  recedeLagPx = 128,
+  allowExitRecede = true
 ): ChapterParallaxLayerState {
   const enterT = clamp01(rawEnterProgress);
-  const exitT = clamp01(rawExitProgress);
+  const exitT = allowExitRecede ? clamp01(rawExitProgress) : 0;
 
-  const enterEased = 1 - Math.pow(1 - enterT, 2.4);
+  const enterEased = 1 - Math.pow(1 - enterT, 2.35);
   const enterRem = 1 - enterEased;
   const exitEased = smoothstep(0, 1, exitT);
 
   const entering = enterT < 0.995;
-  const receding = exitT > 0.005;
+  const receding = allowExitRecede && exitT > 0.005;
   const isNeutral = !entering && !receding;
 
   if (isNeutral) {
@@ -268,8 +269,8 @@ export function computeChapterParallaxLayerState(
   const exitScale = receding ? 1 - 0.055 * exitEased : 1;
   const scale = Number((enterScale * exitScale).toFixed(4));
 
-  const shadowOpacity = entering ? Number((0.34 * enterRem).toFixed(3)) || 0 : 0;
-  const recedeVeilOpacity = receding ? Number((0.28 * exitEased).toFixed(3)) || 0 : 0;
+  const shadowOpacity = entering ? Number((0.52 * enterRem).toFixed(3)) || 0 : 0;
+  const recedeVeilOpacity = receding ? Number((0.38 * exitEased).toFixed(3)) || 0 : 0;
 
   return {
     translateYPx,
@@ -280,5 +281,6 @@ export function computeChapterParallaxLayerState(
     isNeutral: false,
   };
 }
+
 
 

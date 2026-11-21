@@ -103,14 +103,19 @@ const VARIANT_PALETTES: Record<
 export interface TornPaperPeelProps {
   /** Surface peel direction (default: burgundy-to-ivory) */
   variant?: TornPaperVariant;
-  /** Small editorial note printed near the torn lip of the upper sheet */
+  /** Small editorial note printed near the torn lip of the upper sheet (standalone mode only) */
   upperCaption?: string;
-  /** Subtle destination hint revealed on the lip */
+  /** Subtle destination hint revealed on the lip (standalone mode only) */
   lowerHint?: string;
   /** Unique test identifier for verification */
   testId?: string;
   /** Optional phase seed offset so multiple peel instances have distinct organic tear contours */
   phaseOffset?: number;
+  /**
+   * When true, renders as a transparent-backed torn paper edge fused directly onto
+   * the bottom of a StoryScrollChapter sheet so chapter & tear move as ONE seamless piece.
+   */
+  attached?: boolean;
 }
 
 /**
@@ -118,15 +123,17 @@ export interface TornPaperPeelProps {
  * - Burgundy (#792B33) -> Warm Ivory (#F3E9DE)
  * - Warm Ivory (#F3E9DE) -> Burgundy (#792B33)
  *
- * Driven by GSAP ScrollTrigger (`scrub: true`) with physical upward transform occlusion
- * and a live scroll-morphing jagged fiber WebGL shader that pauses automatically when offscreen.
+ * In `attached` mode, mounts directly inside a StoryScrollChapter's transforming sheet
+ * with premultiplied alpha transparency below the jagged fiber edge so there is never
+ * a horizontal seam or right-edge alignment gap.
  */
 export function TornPaperPeel({
   variant = "burgundy-to-ivory",
-  upperCaption = "Peel upward",
+  upperCaption,
   lowerHint,
   testId = "torn-paper-peel",
   phaseOffset = 0,
+  attached = false,
 }: TornPaperPeelProps) {
   const palette = VARIANT_PALETTES[variant];
   const rootRef = useRef<HTMLDivElement>(null);
@@ -301,7 +308,7 @@ export function TornPaperPeel({
                 stopLoop();
               }
             },
-            { rootMargin: "280px 0px" }
+            { rootMargin: "320px 0px" }
           )
         : null;
     intersectionObserver?.observe(rootEl);
@@ -325,8 +332,9 @@ export function TornPaperPeel({
     };
   }, [phaseOffset, variant]);
 
-  // 2. Compact scroll-scrubbed physical upward peel (zero full-screen blank interstitial void)
+  // 2. Standalone scroll-scrubbed upward peel (skipped in `attached` mode where parent StoryScrollChapter moves the whole sheet)
   useEffect(() => {
+    if (attached) return;
     const rootEl = rootRef.current;
     const sheetEl = sheetRef.current;
     if (!rootEl || !sheetEl) return;
@@ -351,7 +359,6 @@ export function TornPaperPeel({
         },
       });
 
-      // Physical upward lift as the torn edge sweeps cleanly across the sheet seam
       tl.fromTo(
         sheetEl,
         { yPercent: 0 },
@@ -361,13 +368,58 @@ export function TornPaperPeel({
     }, rootRef);
 
     return () => ctx.revert();
-  }, []);
+  }, [attached]);
+
+  // Attached mode: transparent-backed jagged paper lip welded directly to bottom of parent sheet
+  if (attached) {
+    return (
+      <div
+        ref={rootRef}
+        data-testid={testId}
+        data-peel-variant={variant}
+        data-peel-mode="attached"
+        className="pointer-events-none relative -mt-[2px] h-[132px] sm:h-[164px] lg:h-[188px] w-full overflow-hidden select-none"
+        aria-hidden="true"
+      >
+        {/* 3px hairline overlap anchor in upper sheet hue to prevent subpixel seam on retina scaling */}
+        <div
+          className="absolute inset-x-0 top-0 h-[4px]"
+          style={{ backgroundColor: palette.upperHex }}
+        />
+        <div ref={edgeWrapRef} className="relative h-full w-full overflow-hidden">
+          {!useSvgFallback ? (
+            <canvas ref={canvasRef} className="block h-full w-full" />
+          ) : (
+            <svg
+              viewBox={`0 0 ${FALLBACK_TORN_GEOMETRY.viewBoxWidth} ${FALLBACK_TORN_GEOMETRY.viewBoxHeight}`}
+              preserveAspectRatio="none"
+              className="block h-full w-full overflow-visible"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d={FALLBACK_TORN_GEOMETRY.shadowPath}
+                fill={palette.svgShadowHex}
+                fillOpacity="0.28"
+              />
+              <path
+                d={FALLBACK_TORN_GEOMETRY.fiberFringePath}
+                fill={palette.svgFiberHex}
+                fillOpacity="0.72"
+              />
+              <path d={FALLBACK_TORN_GEOMETRY.sheetPath} fill={palette.upperHex} />
+            </svg>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
       ref={rootRef}
       data-testid={testId}
       data-peel-variant={variant}
+      data-peel-mode="standalone"
       data-peel-progress="0.00"
       className="relative h-[168px] sm:h-[208px] lg:h-[236px] w-full overflow-hidden"
       style={{ backgroundColor: palette.lowerHex }}
@@ -413,7 +465,7 @@ export function TornPaperPeel({
               <path
                 d={FALLBACK_TORN_GEOMETRY.shadowPath}
                 fill={palette.svgShadowHex}
-                fillOpacity="0.18"
+                fillOpacity="0.22"
               />
               <path
                 d={FALLBACK_TORN_GEOMETRY.fiberFringePath}

@@ -20,6 +20,12 @@ export function ChapterExperience() {
       data-chapter-surface="ivory"
       className="relative bg-[#F3E9DE] text-[#792B33] overflow-x-clip"
     >
+      {/* Top Ivory breathing clearance underneath Chapter 04's attached overhanging torn paper edge */}
+      <div
+        aria-hidden="true"
+        className="h-[118px] sm:h-[146px] lg:h-[170px] w-full bg-[#F3E9DE]"
+      />
+
       <JourneyScene />
 
       {/* Restrained transition into Chapter 06 (Education · Burgundy #792B33) */}

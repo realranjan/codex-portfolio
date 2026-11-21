@@ -371,6 +371,12 @@ export function ChapterProjects() {
       data-chapter-surface="ivory"
       className="relative bg-[#F3E9DE] text-[#792B33] overflow-x-clip"
     >
+      {/* Top Ivory breathing clearance underneath Chapter 01's attached overhanging torn paper edge */}
+      <div
+        aria-hidden="true"
+        className="h-[118px] sm:h-[146px] lg:h-[170px] w-full bg-[#F3E9DE]"
+      />
+
       {/* ═══════════════════════════════════════════════════════════════════════
           DESKTOP PINNED 3D TUMBLE DECK SHOWCASE (>= 1024px)
           Vertical scroll tips each project card forward on its bottom floor hinge

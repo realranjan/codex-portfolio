@@ -188,9 +188,9 @@ void main() {
   float rimTeeth = smoothstep(0.013, 0.0, sdf) * paperAlpha * (1.0 - topLock);
   paperColor = mix(paperColor, uFiberColor, rimTeeth * 0.36);
 
-  // Subtle narrow contact shadow just beneath the torn edge (physical separation over lower sheet)
-  float shadowBand = (1.0 - paperAlpha) * smoothstep(-0.048, -0.002, sdf) * (1.0 - topLock);
-  float shadowAlpha = shadowBand * 0.20;
+  // Grounded contact shadow just beneath the torn edge (physical separation over lower sheet)
+  float shadowBand = (1.0 - paperAlpha) * smoothstep(-0.082, -0.002, sdf) * (1.0 - topLock);
+  float shadowAlpha = shadowBand * 0.34;
 
   float outAlpha = clamp(paperAlpha + shadowAlpha, 0.0, 1.0);
   vec3 outPremul = paperColor * paperAlpha + uShadowColor * shadowAlpha;

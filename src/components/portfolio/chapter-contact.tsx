@@ -236,7 +236,7 @@ export function ChapterContact({ onOpenResume }: ChapterContactProps) {
       data-testid="samurai-cat-footer"
       data-touch-phase="entrance"
       data-touch-progress="0.00"
-      className="relative overflow-x-clip bg-[#F3E9DE] text-[#792B33] pt-10 sm:pt-12 pb-6 sm:pb-7"
+      className="relative overflow-x-clip bg-[#F3E9DE] text-[#792B33] pt-36 sm:pt-44 lg:pt-48 pb-6 sm:pb-7"
     >
       {/* Soft warm sunset atmospheric wash lending subtle color depth behind the footer */}
       <div
@@ -252,7 +252,7 @@ export function ChapterContact({ onOpenResume }: ChapterContactProps) {
       <div
         aria-hidden="true"
         data-testid="footer-sakura-left"
-        className="pointer-events-none select-none absolute -top-3 -left-6 z-[3] hidden md:block w-[270px] lg:w-[355px] xl:w-[400px]"
+        className="pointer-events-none select-none absolute top-28 sm:top-36 lg:top-40 -left-6 z-[3] hidden md:block w-[270px] lg:w-[355px] xl:w-[400px]"
         style={{
           filter: "drop-shadow(0 12px 22px rgba(121, 43, 51, 0.14))",
         }}
@@ -268,7 +268,7 @@ export function ChapterContact({ onOpenResume }: ChapterContactProps) {
       <div
         aria-hidden="true"
         data-testid="footer-sakura-right"
-        className="pointer-events-none select-none absolute -top-2 -right-6 z-[3] hidden md:block w-[240px] lg:w-[310px] xl:w-[350px] -scale-x-100"
+        className="pointer-events-none select-none absolute top-28 sm:top-36 lg:top-40 -right-6 z-[3] hidden md:block w-[240px] lg:w-[310px] xl:w-[350px] -scale-x-100"
         style={{
           filter: "drop-shadow(0 12px 22px rgba(121, 43, 51, 0.14))",
         }}

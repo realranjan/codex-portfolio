@@ -9,6 +9,10 @@ import {
   computeContinuousStrokeState,
   computeStoryCardCamera,
 } from "@/lib/story-scroll-camera";
+import {
+  TornPaperPeel,
+  type TornPaperVariant,
+} from "@/components/portfolio/torn-paper-peel";
 
 gsap.registerPlugin(ScrollTrigger, useGSAP);
 
@@ -418,6 +422,12 @@ const FlowArt: React.FC<FlowArtProps> = ({
   );
 };
 
+export interface StoryScrollTornBottomConfig {
+  variant: TornPaperVariant;
+  phaseOffset?: number;
+  testId?: string;
+}
+
 export interface StoryScrollChapterProps {
   children: React.ReactNode;
   /** Corner pivot for the tactile Story-Scroll hinged swing */
@@ -430,17 +440,53 @@ export interface StoryScrollChapterProps {
   zIndex?: number;
   /** Overlap slightly onto the bottom edge of the previous chapter for a rising curtain feel */
   overlapPrev?: boolean;
+  /** Surface tone of this sheet so its top edge highlight & cast shadow maximize contrast */
+  surfaceTone?: "burgundy" | "ivory";
+  /**
+   * Optional attached jagged torn-paper edge fused directly onto the bottom of this sheet.
+   * When present, the chapter and its torn edge transform as ONE seamless piece of handmade
+   * paper overhanging the next chapter with zero seam or side-edge gap.
+   */
+  tornBottom?: StoryScrollTornBottomConfig;
   /** Optional test ID for automated verification */
   testId?: string;
   className?: string;
 }
 
+function buildSheetShadow(
+  dynamicStrength: number,
+  persistent: boolean,
+  isTornBottom: boolean
+): string {
+  // Always give overlapping Story Scroll sheets a grounded upper shadow so adjacent same-color
+  // sheets (Ivory-on-Ivory or Burgundy-on-Burgundy) stay unmistakably layered & legible.
+  const base = persistent ? 0.28 : 0;
+  const strength = Math.max(base, dynamicStrength);
+  if (strength <= 0.005) return "";
+
+  const ambientAlpha = Math.min(0.46, strength * 0.8).toFixed(3);
+  const deepAlpha = Math.min(0.68, strength * 1.15).toFixed(3);
+  const midAlpha = Math.min(0.48, strength * 0.82).toFixed(3);
+  const contactAlpha = Math.min(0.36, strength * 0.62).toFixed(3);
+
+  // If the bottom is a transparent WebGL torn-paper lip, avoid casting a rectangular box-shadow
+  // at the bottom edge (top negative Y-offset keeps the shadow strictly above the sheet lip).
+  const spread = isTornBottom ? "-6px" : "0px";
+  return [
+    `0 -48px 110px ${spread} rgba(14, 3, 6, ${ambientAlpha})`,
+    `0 -28px 68px ${spread} rgba(18, 5, 8, ${deepAlpha})`,
+    `0 -10px 26px ${spread} rgba(24, 7, 11, ${midAlpha})`,
+    `0 -2px 7px 0px rgba(18, 5, 8, ${contactAlpha})`,
+  ].join(", ");
+}
+
 /**
- * Portfolio-wide Story Scroll chapter wrapper with overlapping depth parallax.
+ * Portfolio-wide Story Scroll chapter wrapper with overlapping depth parallax,
+ * distinct multi-layer sheet shadows, and optional fused torn-paper bottom edges.
  * - Entrance: rises UP over the previous chapter from a higher z-index with hinged corner
- *   swing, accelerated upward lift, and elevated upper cast shadow.
- * - Exit: lags gently downward (+128px) while scaling softly back (0.945) under a quiet
- *   atmospheric veil as the next chapter rises over it.
+ *   swing, accelerated upward lift, crisp top hairline highlight, and bold cast shadow.
+ * - Exit: lags gently downward while scaling softly back under a recessed atmospheric veil
+ *   (disabled on `tornBottom` sheets so the overhanging torn edge never pulls back from the sides).
  */
 export const StoryScrollChapter: React.FC<StoryScrollChapterProps> = ({
   children,
@@ -449,13 +495,18 @@ export const StoryScrollChapter: React.FC<StoryScrollChapterProps> = ({
   backdropColor = "#F3E9DE",
   zIndex = 10,
   overlapPrev = false,
+  surfaceTone = "burgundy",
+  tornBottom,
   testId,
   className,
 }) => {
   const outerRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
+  const sheetSurfaceRef = useRef<HTMLDivElement>(null);
   const veilRef = useRef<HTMLDivElement>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
+
+  const hasTornBottom = Boolean(tornBottom);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -469,12 +520,15 @@ export const StoryScrollChapter: React.FC<StoryScrollChapterProps> = ({
     () => {
       const outer = outerRef.current;
       const inner = innerRef.current;
+      const sheetSurface = sheetSurfaceRef.current;
       const veil = veilRef.current;
-      if (!outer || !inner) return;
+      if (!outer || !inner || !sheetSurface) return;
+
+      const settledShadow = buildSheetShadow(0, overlapPrev, hasTornBottom);
 
       if (reducedMotion) {
         inner.style.transform = "";
-        inner.style.boxShadow = "";
+        sheetSurface.style.boxShadow = settledShadow;
         if (veil) veil.style.opacity = "0";
         outer.dataset.storyHingeProgress = "1.00";
         outer.dataset.storyRecedeProgress = "0.00";
@@ -489,21 +543,25 @@ export const StoryScrollChapter: React.FC<StoryScrollChapterProps> = ({
           enterProgress,
           exitProgress,
           maxDeg,
-          hinge
+          hinge,
+          104,
+          128,
+          !hasTornBottom
         );
         outer.dataset.storyHingeProgress = enterProgress.toFixed(2);
         outer.dataset.storyRecedeProgress = exitProgress.toFixed(2);
 
         if (st.isNeutral) {
           inner.style.transform = "";
-          inner.style.boxShadow = "";
+          sheetSurface.style.boxShadow = settledShadow;
           if (veil) veil.style.opacity = "0";
         } else {
           inner.style.transform = `translate3d(0, ${st.translateYPx}px, 0) rotate(${st.rotationDeg}deg) scale(${st.scale})`;
-          inner.style.boxShadow =
-            st.shadowOpacity > 0.005
-              ? `0 -28px 72px rgba(24, 8, 12, ${st.shadowOpacity})`
-              : "";
+          sheetSurface.style.boxShadow = buildSheetShadow(
+            st.shadowOpacity,
+            overlapPrev,
+            hasTornBottom
+          );
           if (veil) {
             veil.style.opacity = st.recedeVeilOpacity.toFixed(3);
           }
@@ -536,26 +594,31 @@ export const StoryScrollChapter: React.FC<StoryScrollChapterProps> = ({
         },
       });
 
-      const exitTrigger = ScrollTrigger.create({
-        trigger: outer,
-        start: "bottom bottom",
-        end: "bottom top",
-        scrub: true,
-        onUpdate: (self) => {
-          exitProgress = self.progress;
-          applyParallaxFrame();
-        },
-      });
+      const exitTrigger = !hasTornBottom
+        ? ScrollTrigger.create({
+            trigger: outer,
+            start: "bottom bottom",
+            end: "bottom top",
+            scrub: true,
+            onUpdate: (self) => {
+              exitProgress = self.progress;
+              applyParallaxFrame();
+            },
+          })
+        : null;
 
       return () => {
         enterTrigger.kill();
-        exitTrigger.kill();
+        exitTrigger?.kill();
         inner.style.transform = "";
-        inner.style.boxShadow = "";
+        sheetSurface.style.boxShadow = "";
         if (veil) veil.style.opacity = "0";
       };
     },
-    { scope: outerRef, dependencies: [hinge, maxDeg, reducedMotion] }
+    {
+      scope: outerRef,
+      dependencies: [hinge, maxDeg, overlapPrev, hasTornBottom, reducedMotion],
+    }
   );
 
   return (
@@ -565,17 +628,28 @@ export const StoryScrollChapter: React.FC<StoryScrollChapterProps> = ({
       data-story-hinge={hinge}
       data-story-hinge-progress="0.00"
       data-story-recede-progress="0.00"
+      data-story-has-torn={hasTornBottom ? "true" : "false"}
       className={cx(
         "relative w-full overflow-x-clip",
         overlapPrev && "-mt-8 sm:-mt-14",
+        hasTornBottom && "-mb-[116px] sm:-mb-[144px] lg:-mb-[168px]",
         className
       )}
       style={{
-        backgroundColor: overlapPrev ? "transparent" : backdropColor,
+        backgroundColor: overlapPrev || hasTornBottom ? "transparent" : backdropColor,
         perspective: "1400px",
         zIndex,
       }}
     >
+      {/* Lower recessed backdrop (below top overlap zone) so receding sheets never expose a light body gap at the side margin */}
+      {overlapPrev && !hasTornBottom && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 top-32 -z-10"
+          style={{ backgroundColor: backdropColor }}
+        />
+      )}
+
       <div
         ref={innerRef}
         className="relative w-full will-change-transform"
@@ -583,14 +657,46 @@ export const StoryScrollChapter: React.FC<StoryScrollChapterProps> = ({
           transformOrigin: hinge === "left" ? "bottom left" : "bottom right",
         }}
       >
-        {children}
-        {/* Subtle depth veil dimming outgoing chapter as the next sheet rises over it */}
+        {/* Main elevated sheet surface with multi-layer drop shadow & crisp top-edge bevel highlight */}
         <div
-          ref={veilRef}
-          aria-hidden="true"
-          data-story-recede-veil
-          className="pointer-events-none absolute inset-0 z-30 bg-[#1B090D] opacity-0 will-change-[opacity]"
-        />
+          ref={sheetSurfaceRef}
+          data-story-sheet-surface
+          className="relative w-full"
+        >
+          {/* Crisp top-edge architectural paper highlight so same-color Story Scroll sheets read clearly */}
+          {overlapPrev && (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 z-40 h-[1.5px]"
+              style={{
+                background:
+                  surfaceTone === "ivory"
+                    ? "linear-gradient(90deg, rgba(121,43,51,0.16) 0%, rgba(121,43,51,0.34) 50%, rgba(121,43,51,0.16) 100%)"
+                    : "linear-gradient(90deg, rgba(243,233,222,0.14) 0%, rgba(243,233,222,0.36) 50%, rgba(243,233,222,0.14) 100%)",
+              }}
+            />
+          )}
+
+          {children}
+
+          {/* Atmospheric depth veil dimming outgoing chapter as the next sheet rises over it */}
+          <div
+            ref={veilRef}
+            aria-hidden="true"
+            data-story-recede-veil
+            className="pointer-events-none absolute inset-0 z-30 bg-[#140508] opacity-0 will-change-[opacity]"
+          />
+        </div>
+
+        {/* Seamless attached torn-paper lip welded directly to the transforming sheet */}
+        {tornBottom && (
+          <TornPaperPeel
+            attached
+            variant={tornBottom.variant}
+            phaseOffset={tornBottom.phaseOffset}
+            testId={tornBottom.testId}
+          />
+        )}
       </div>
     </div>
   );

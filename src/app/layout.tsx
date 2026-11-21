@@ -5,6 +5,7 @@ import {
   Cormorant_Garamond,
   IBM_Plex_Mono,
   Manrope,
+  Playfair_Display,
   Plus_Jakarta_Sans,
 } from "next/font/google";
 import "lenis/dist/lenis.css";
@@ -28,6 +29,13 @@ const archivoBlack = Archivo_Black({
   variable: "--font-display-bold",
   subsets: ["latin"],
   weight: "400",
+  display: "swap",
+});
+
+const playfairDisplay = Playfair_Display({
+  variable: "--font-playfair",
+  subsets: ["latin"],
+  weight: ["700"],
   display: "swap",
 });
 
@@ -82,7 +90,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${plusJakarta.variable} ${anton.variable} ${archivoBlack.variable} ${manrope.variable} ${cormorantGaramond.variable} ${ibmPlexMono.variable} h-full antialiased`}
+      className={`${plusJakarta.variable} ${anton.variable} ${archivoBlack.variable} ${playfairDisplay.variable} ${manrope.variable} ${cormorantGaramond.variable} ${ibmPlexMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[#F3E9DE] text-[#792B33]">
         <a href="#main-content" className="skip-link">

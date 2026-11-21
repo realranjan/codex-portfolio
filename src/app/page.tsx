@@ -6,13 +6,15 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import { MotionConfig } from "motion/react";
-import { computeHeroStoryScrollState } from "@/lib/motion";
+import {
+  computeHeroStoryScrollState,
+  type HeroStoryScrollState,
+} from "@/lib/motion";
 import type { SpatialControlValues } from "@/components/particle-portrait";
 import {
   applyHeroStoryToDom,
   HeroCuriosityTypography,
   HeroPunchlineBrushReveal,
-  useHeroCuriosityEntrance,
 } from "@/components/portfolio/hero-curiosity-typography";
 import {
   HeroJapaneseBackdrop,
@@ -20,7 +22,6 @@ import {
 } from "@/components/portfolio/hero-japanese-backdrop";
 import { SiteNav } from "@/components/portfolio/site-nav";
 import { ResumeModal } from "@/components/portfolio/resume-modal";
-import { TornPaperPeel } from "@/components/portfolio/torn-paper-peel";
 import { StoryScrollChapter } from "@/components/ui/story-scroll";
 import { ChapterAbout } from "@/components/portfolio/chapter-about";
 import { ChapterProjects } from "@/components/portfolio/chapter-projects";
@@ -48,10 +49,6 @@ export default function Home() {
   const heroBandRef = useRef<HTMLDivElement>(null);
 
   const heroWordRef = useRef<HTMLDivElement>(null);
-  const heroCuriositySlotRef = useRef<HTMLDivElement>(null);
-  const heroCuriosityTextRef = useRef<HTMLSpanElement>(null);
-  const heroKilledSlotRef = useRef<HTMLDivElement>(null);
-  const heroKilledWordRefs = useRef<Array<HTMLSpanElement | null>>([]);
   const heroPunchlineSlotRef = useRef<HTMLDivElement>(null);
   const heroSublineRef = useRef<HTMLParagraphElement>(null);
   const heroBrushWashRef = useRef<HTMLDivElement>(null);
@@ -61,15 +58,13 @@ export default function Home() {
   const heroForegroundRef = useRef<HTMLDivElement>(null);
   const heroForegroundDecorRef = useRef<HTMLDivElement>(null);
 
+  const heroStoryRef = useRef<HeroStoryScrollState>(computeHeroStoryScrollState(0));
   const spatialProgressRef = useRef<number>(0);
   const projectsProgressRef = useRef<number>(0);
   const centerMixRef = useRef<number>(0);
   const spatialControlsRef = useRef<SpatialControlValues>(DEFAULT_SPATIAL_CONTROLS);
 
   const [resumeOpen, setResumeOpen] = useState(false);
-
-  // Preserved existing Hero Beat 1 entrance animation ("CURIOSITY")
-  useHeroCuriosityEntrance(heroCuriosityTextRef, heroWordRef);
 
   useEffect(() => {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -98,16 +93,13 @@ export default function Home() {
       const rawHero = Math.min(1, Math.max(0, y / pinnedDistance));
       const story = computeHeroStoryScrollState(rawHero);
 
+      heroStoryRef.current = story;
       spatialProgressRef.current = story.carouselStageProgress * 0.35;
       projectsProgressRef.current = 0;
       centerMixRef.current = 0;
 
       applyHeroStoryToDom(story, {
         stageRef: heroWordRef,
-        curiositySlotRef: heroCuriositySlotRef,
-        curiosityTextRef: heroCuriosityTextRef,
-        killedSlotRef: heroKilledSlotRef,
-        killedWordRefs: heroKilledWordRefs,
         punchlineSlotRef: heroPunchlineSlotRef,
         punchlineTextRef: heroSublineRef,
         brushWashRef: heroBrushWashRef,
@@ -187,9 +179,9 @@ export default function Home() {
 
       <main ref={pageRef} id="main-content">
         {/* ═══════════════════════════════════════════════════════════════════════
-            00 / PRESERVED HERO SECTION (UNMODIFIED VISUALS, 3D SAMURAI CAT & TYPOGRAPHY)
+            00 / HERO SECTION — 3D SAMURAI CAT + LIVING TYPE GARDEN BOTANICAL TYPOGRAPHY
            ═══════════════════════════════════════════════════════════════════════ */}
-        <div ref={unifiedRunwayRef} className="hero-runway relative z-[1]" id="top">
+        <div ref={unifiedRunwayRef} className="hero-runway relative z-[5]" id="top">
           <div
             className="hero-section cursor-grab active:cursor-grabbing"
             role="region"
@@ -202,10 +194,7 @@ export default function Home() {
 
             <HeroCuriosityTypography
               ref={heroWordRef}
-              curiositySlotRef={heroCuriositySlotRef}
-              curiosityTextRef={heroCuriosityTextRef}
-              killedSlotRef={heroKilledSlotRef}
-              killedWordRefs={heroKilledWordRefs}
+              storyRef={heroStoryRef}
             />
 
             <ParticlePortrait
@@ -242,123 +231,106 @@ export default function Home() {
 
         {/* ═══════════════════════════════════════════════════════════════════════
             POST-HERO NARRATIVE CHAPTERS (STRICT #792B33 BURGUNDY & #F3E9DE IVORY)
+            Non-conflicting adjacent z-index stack so every Story Scroll sheet rises
+            with bold shadow while attached torn-paper lips overhang cleanly below.
            ═══════════════════════════════════════════════════════════════════════ */}
 
-        {/* CHAPTER 01 — ABOUT & PHILOSOPHY (Story Scroll Overlapping Parallax · Rises over Hero) */}
+        {/* CHAPTER 01 — ABOUT & PHILOSOPHY (Burgundy · Rises over Hero [25 > 5], torn bottom overhangs Projects [25 > 20]) */}
         <StoryScrollChapter
           testId="story-hinge-about"
           hinge="left"
           maxDeg={9}
           backdropColor="#F3E9DE"
-          zIndex={10}
+          surfaceTone="burgundy"
+          zIndex={25}
           overlapPrev
+          tornBottom={{
+            variant: "burgundy-to-ivory",
+            testId: "torn-paper-about-to-projects",
+            phaseOffset: 0,
+          }}
         >
           <ChapterAbout />
         </StoryScrollChapter>
 
-        {/* TRANSITION 01 -> 02 — BURGUNDY TORN-PAPER PEEL REVEALING IVORY */}
-        <div className="relative z-[15]">
-          <TornPaperPeel
-            variant="burgundy-to-ivory"
-            testId="torn-paper-about-to-projects"
-            upperCaption="01 / About → 02 / Projects"
-            lowerHint="02 · Selected Projects"
-            phaseOffset={0}
-          />
-        </div>
-
-        {/* CHAPTER 02 — SELECTED PROJECTS (Ivory · Preserved Sticky 3D Tumble Deck) */}
+        {/* CHAPTER 02 — SELECTED PROJECTS (Ivory · Tucked cleanly under About's torn bottom [20 < 25]) */}
         <div className="relative z-[20]">
           <ChapterProjects />
         </div>
 
-        {/* CHAPTER 03 — THE PLAYGROUND (Story Scroll Overlapping Parallax · Rises over Projects) */}
+        {/* CHAPTER 03 — THE PLAYGROUND (Ivory · Rises over Projects with deep shadow [40 > 20], torn bottom overhangs Skills [40 > 35]) */}
         <StoryScrollChapter
           testId="story-hinge-playground"
           hinge="right"
           maxDeg={8.5}
           backdropColor="#F3E9DE"
-          zIndex={30}
+          surfaceTone="ivory"
+          zIndex={40}
           overlapPrev
+          tornBottom={{
+            variant: "ivory-to-burgundy",
+            testId: "torn-paper-playground-to-skills",
+            phaseOffset: 2.3,
+          }}
         >
           <ChapterPlayground />
         </StoryScrollChapter>
 
-        {/* TRANSITION 03 -> 04 — IVORY TORN-PAPER PEEL REVEALING BURGUNDY */}
-        <div className="relative z-[35]">
-          <TornPaperPeel
-            variant="ivory-to-burgundy"
-            testId="torn-paper-playground-to-skills"
-            upperCaption="03 / Playground → 04 / Skills"
-            lowerHint="04 · The Art of Making Things"
-            phaseOffset={2.3}
-          />
-        </div>
-
-        {/* CHAPTER 04 — SKILLS & TECHNOLOGY (Story Scroll Overlapping Parallax · Burgundy) */}
+        {/* CHAPTER 04 — SKILLS & TECHNOLOGY (Burgundy · Tucked under Playground's torn bottom [35 < 40], torn bottom overhangs Experience [35 > 30]) */}
         <StoryScrollChapter
           testId="story-hinge-skills"
           hinge="left"
-          maxDeg={8}
+          maxDeg={7.5}
           backdropColor="#5E1E25"
-          zIndex={40}
+          surfaceTone="burgundy"
+          zIndex={35}
+          tornBottom={{
+            variant: "burgundy-to-ivory",
+            testId: "torn-paper-skills-to-experience",
+            phaseOffset: 6.1,
+          }}
         >
           <ChapterSkills />
         </StoryScrollChapter>
 
-        {/* TRANSITION 04 -> 05 — BURGUNDY TORN-PAPER PEEL REVEALING 3D MOUNTAIN JOURNEY */}
-        <div className="relative z-[45]">
-          <TornPaperPeel
-            variant="burgundy-to-ivory"
-            testId="torn-paper-skills-to-experience"
-            upperCaption="04 / Skills → 05 / Experience"
-            lowerHint="05 · Mountain Journey"
-            phaseOffset={6.1}
-          />
-        </div>
-
-        {/* CHAPTER 05 — EXPERIENCE & JOURNEY (Ivory · Preserved Sticky 3D Mountain Journey) */}
-        <div className="relative z-[50]">
+        {/* CHAPTER 05 — EXPERIENCE & JOURNEY (Ivory · Tucked under Skills' torn bottom [30 < 35]) */}
+        <div className="relative z-[30]">
           <ChapterExperience />
         </div>
 
-        {/* CHAPTER 06 — EDUCATION (Story Scroll Overlapping Parallax · Rises over Experience) */}
+        {/* CHAPTER 06 — EDUCATION (Burgundy · Rises over Experience [50 > 30], recedes beneath Achievements [50 < 60]) */}
         <StoryScrollChapter
           testId="story-hinge-education"
           hinge="left"
           maxDeg={8.5}
           backdropColor="#792B33"
-          zIndex={60}
+          surfaceTone="burgundy"
+          zIndex={50}
           overlapPrev
         >
           <ChapterEducation />
         </StoryScrollChapter>
 
-        {/* CHAPTER 07 — ACHIEVEMENTS & CERTIFICATIONS (Story Scroll Overlapping Parallax · Rises over Education) */}
+        {/* CHAPTER 07 — ACHIEVEMENTS & CERTIFICATIONS (Burgundy · Rises over Education with deep shadow [60 > 50], torn bottom overhangs Contact [60 > 55]) */}
         <StoryScrollChapter
           testId="story-hinge-achievements"
           hinge="right"
           maxDeg={8}
           backdropColor="#5E1E25"
-          zIndex={70}
+          surfaceTone="burgundy"
+          zIndex={60}
           overlapPrev
+          tornBottom={{
+            variant: "burgundy-to-ivory",
+            testId: "torn-paper-achievements-to-contact",
+            phaseOffset: 4.6,
+          }}
         >
           <ChapterAchievements />
         </StoryScrollChapter>
 
-        {/* TRANSITION 07 -> 09 — BURGUNDY TORN-PAPER PEEL REVEALING FINAL IVORY FOOTER */}
-        <div className="relative z-[75]">
-          <TornPaperPeel
-            variant="burgundy-to-ivory"
-            testId="torn-paper-achievements-to-contact"
-            upperCaption="07 / Achievements → 09 / Contact"
-            lowerHint="Epilogue"
-            phaseOffset={4.6}
-          />
-        </div>
-
-        {/* 09 / CONTACT — CINEMATIC JAPANESE SAMURAI CAT FOOTER (Ivory #F3E9DE) */}
-        <div className="relative z-[80]">
+        {/* 09 / CONTACT — CINEMATIC JAPANESE SAMURAI CAT FOOTER (Ivory · Tucked under Achievements' torn bottom [55 < 60]) */}
+        <div className="relative z-[55]">
           <ChapterContact onOpenResume={() => setResumeOpen(true)} />
         </div>
       </main>

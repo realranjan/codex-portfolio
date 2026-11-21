@@ -145,6 +145,12 @@ test("computeChapterParallaxLayerState surges upward on enter, rests neutral, an
   assert.ok(receding.translateYPx > 100, "Outgoing sheet should lag downward behind incoming sheet");
   assert.ok(receding.scale < 0.96, "Outgoing sheet should recede softly in scale");
   assert.ok(receding.recedeVeilOpacity > 0.25, "Outgoing sheet should dim under recession veil");
+
+  const tornBottomExit = computeChapterParallaxLayerState(1, 1, 9, "left", 104, 128, false);
+  assert.equal(tornBottomExit.isNeutral, true, "Torn-bottom overhanging sheet stays full-width on exit");
+  assert.equal(tornBottomExit.scale, 1);
+  assert.equal(tornBottomExit.translateYPx, 0);
 });
+
 
 

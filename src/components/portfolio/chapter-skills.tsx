@@ -20,7 +20,7 @@ export function ChapterSkills() {
       id="skills"
       aria-labelledby="skills-heading"
       data-chapter-surface="burgundy"
-      className="relative bg-[#792B33] text-[#F3E9DE] pt-16 sm:pt-24 pb-14 sm:pb-20 overflow-x-clip"
+      className="relative bg-[#792B33] text-[#F3E9DE] pt-36 sm:pt-44 lg:pt-48 pb-14 sm:pb-20 overflow-x-clip"
     >
       {/* Subtle Kigo-style background-free gnarled black pine bough */}
       <SpotIllustration
@@ -31,7 +31,7 @@ export function ChapterSkills() {
         baseRotate={3}
         rotateDelta={2.4}
         testId="skills-pine-spot"
-        className="hidden md:block absolute top-12 sm:top-16 right-[3vw] lg:right-[4vw] z-[2] w-[152px] lg:w-[192px] opacity-95"
+        className="hidden md:block absolute top-32 sm:top-40 right-[3vw] lg:right-[4vw] z-[2] w-[152px] lg:w-[192px] opacity-95"
       />
 
       <div className="page-container relative z-10">
